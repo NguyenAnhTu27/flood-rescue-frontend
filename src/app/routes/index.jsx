@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 
 import {
     PUBLIC_ROUTES,
@@ -10,102 +10,45 @@ import {
     MANAGER_ROUTES,
     ADMIN_ROUTES,
 } from './route.constants.js';
+import RootLayout from '../../layouts/RootLayout.jsx';
+import AuthLayout from '../../layouts/AuthLayout.jsx';
+import RequireAuth from '../../shared/guards/RequireAuth.jsx';
+import RequireRole from '../../shared/guards/RequireRole.jsx';
 
-/* =========================
-   1) Layouts (import thật sau)
-   ========================= */
-// TODO: thay bằng import thật từ src/layouts/...
-function RootLayout({ children }) {
-    // Layout chung: Topbar + container
-    return (
-        <div className="min-h-screen bg-white">
-            <div className="sticky top-0 z-10 border-b bg-white">
-                <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-                    <div className="font-semibold">Flood Rescue</div>
-                    <div className="text-sm text-slate-600">Topbar (đồng nhất)</div>
-                </div>
-            </div>
-            <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
-        </div>
-    );
-}
+// Public
+import HomePage from '../../pages/public/HomePage.jsx';
+import EmergencyGuidePage from '../../pages/public/EmergencyGuidePage.jsx';
+import NotFoundPage from '../../pages/public/NotFoundPage.jsx';
 
-function AuthLayout({ children }) {
-    return (
-        <div className="min-h-screen bg-white">
-            <main className="mx-auto max-w-md px-4 py-10">{children}</main>
-        </div>
-    );
-}
+// Auth
+import LoginPage from '../../pages/auth/LoginPage.jsx';
+import RegisterPage from '../../pages/auth/RegisterPage.jsx';
 
-/* =========================
-   2) Mock auth (thay bằng store thật sau)
-   ========================= */
-// TODO: thay bằng zustand store: useAuthStore()
-function useAuth() {
-    // Demo nhanh: đọc token/role từ localStorage
-    const token = localStorage.getItem('token');
-    const role = localStorage.getItem('role'); // CITIZEN / COORDINATOR / RESCUER / MANAGER / ADMIN
-    return { isAuthed: !!token, role };
-}
+// Citizen
+import CitizenDashboard from '../../pages/citizen/CItizenDashboard.jsx';
+import RescueRequestCreatePage from '../../pages/citizen/RescueRequestCreatePage.jsx';
+import RescueRequestStatusPage from '../../pages/citizen/RescueRequestStatusPage.jsx';
 
-/* =========================
-   3) Guards
-   ========================= */
-function RequireAuth({ children }) {
-    const { isAuthed } = useAuth();
-    if (!isAuthed) return <Navigate to={AUTH_ROUTES.LOGIN} replace />;
-    return children;
-}
+// Coordinator
+import CoordinatorDashboard from '../../pages/coordinator/CoordinatorDashboard.jsx';
+import RescueQueuePage from '../../pages/coordinator/RescueQueuePage.jsx';
+import RescueVerifyPage from '../../pages/coordinator/RescueVerifyPage.jsx';
+import RescueAssignPage from '../../pages/coordinator/RescueAssignPage.jsx';
+import TeamWorkloadPage from '../../pages/coordinator/TeamWorkloadPage.jsx';
 
-function RequireRole({ allow, children }) {
-    const { role } = useAuth();
-    if (!role || !allow.includes(role)) return <Navigate to={PUBLIC_ROUTES.HOME} replace />;
-    return children;
-}
+// Rescuer
+import RescuerDashboard from '../../pages/rescuer/RescuerDashboard.jsx';
+import MyAssignmentsPage from '../../pages/rescuer/MyAssignmentsPage.jsx';
 
-/* =========================
-   4) Placeholder Pages (thay bằng pages thật sau)
-   ========================= */
-const Page = ({ title }) => (
-    <div className="rounded-xl border bg-white p-6">
-        <h1 className="text-xl font-semibold">{title}</h1>
-        <p className="mt-2 text-slate-600">Placeholder page</p>
-    </div>
-);
+// Manager
+import ManagerDashboard from '../../pages/manager/ManagerDashboard.jsx';
+import InventoryOverviewPage from '../../pages/manager/InventoryOverviewPage.jsx';
+import DistributionPlanPage from '../../pages/manager/DistributionPlanPage.jsx';
+import AssetsManagementPage from '../../pages/manager/AssetsManagementPage.jsx';
 
-const HomePage = () => <Page title="Home" />;
-const EmergencyGuidePage = () => <Page title="Hướng dẫn khẩn cấp" />;
-const NotFoundPage = () => <Page title="404 - Không tìm thấy trang" />;
-
-const LoginPage = () => <Page title="Đăng nhập" />;
-const RegisterPage = () => <Page title="Đăng ký (Citizen)" />;
-
-/* Citizen */
-const CitizenDashboard = () => <Page title="Công dân - Dashboard" />;
-const RescueRequestCreatePage = () => <Page title="Công dân - Tạo yêu cầu cứu hộ" />;
-const RescueRequestStatusPage = () => <Page title="Công dân - Trạng thái cứu hộ" />;
-
-/* Coordinator */
-const CoordinatorDashboard = () => <Page title="Điều phối - Dashboard" />;
-const RescueQueuePage = () => <Page title="Điều phối - Danh sách yêu cầu" />;
-const RescueVerifyPage = () => <Page title="Điều phối - Xác minh yêu cầu" />;
-const RescueAssignPage = () => <Page title="Điều phối - Phân công đội & phương tiện" />;
-const TeamWorkloadPage = () => <Page title="Điều phối - Theo dõi đội xử lý nhiều yêu cầu" />;
-
-/* Rescuer */
-const RescuerDashboard = () => <Page title="Đội cứu hộ - Dashboard" />;
-const MyAssignmentsPage = () => <Page title="Đội cứu hộ - Nhiệm vụ" />;
-
-/* Manager */
-const ManagerDashboard = () => <Page title="Quản lý - Dashboard" />;
-const InventoryOverviewPage = () => <Page title="Quản lý - Kho hàng (1 kho)" />;
-const DistributionPlanPage = () => <Page title="Quản lý - Lập phiếu phân phối" />;
-const AssetsManagementPage = () => <Page title="Quản lý - Phương tiện & thiết bị" />;
-
-/* Admin */
-const AdminDashboard = () => <Page title="Admin - Dashboard" />;
-const UsersManagementPage = () => <Page title="Admin - Quản lý người dùng" />;
+// Admin
+import AdminDashboard from '../../pages/admin/AdminDashboard.jsx';
+import UserManagementPage from '../../pages/admin/UserManagementPage.jsx';
 
 /* =========================
    5) Route tree
@@ -116,11 +59,7 @@ export default function AppRoutes() {
             {/* -------- PUBLIC -------- */}
             <Route
                 path={PUBLIC_ROUTES.HOME}
-                element={
-                    <RootLayout>
-                        <HomePage />
-                    </RootLayout>
-                }
+                element={<HomePage />}
             />
             <Route
                 path={PUBLIC_ROUTES.EMERGENCY_GUIDE}
@@ -344,7 +283,7 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['ADMIN']}>
                             <RootLayout>
-                                <UsersManagementPage />
+                                <UserManagementPage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
