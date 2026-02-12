@@ -28,6 +28,8 @@ import RegisterPage from '../../pages/auth/RegisterPage.jsx';
 import CitizenDashboard from '../../pages/citizen/CItizenDashboard.jsx';
 import RescueRequestCreatePage from '../../pages/citizen/RescueRequestCreatePage.jsx';
 import RescueRequestStatusPage from '../../pages/citizen/RescueRequestStatusPage.jsx';
+import RescueRequestUpdatePage from '../../pages/citizen/RescueRequestUpdatePage.jsx';
+
 
 // Coordinator
 import CoordinatorDashboard from '../../pages/coordinator/CoordinatorDashboard.jsx';
@@ -120,6 +122,18 @@ export default function AppRoutes() {
                         <RequireRole allow={['CITIZEN']}>
                             <RootLayout>
                                 <RescueRequestStatusPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={CITIZEN_ROUTES.UPDATE_RESCUE_REQUEST}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['CITIZEN']}>
+                            <RootLayout>
+                                <RescueRequestUpdatePage /> 
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
