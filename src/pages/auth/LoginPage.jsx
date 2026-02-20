@@ -11,6 +11,8 @@ import {
     Briefcase,
 } from 'lucide-react';
 import { AUTH_ROUTES } from '../../app/routes/route.constants.js';
+import { login } from '../../features/auth/api.js';
+import { setToken, setRole, setUser } from '../../shared/lib/storage.js';
 
 const ROLES = [
     { value: 'CITIZEN', label: 'Công dân' },
@@ -27,23 +29,139 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // TODO: Implement login logic
-        // For now, just store role and redirect
-        localStorage.setItem('role', selectedRole);
-        localStorage.setItem('token', 'demo-token');
+        setError(null);
+        setLoading(true);
 
-        // Redirect based on role
-        const roleRoutes = {
-            CITIZEN: '/cong-dan',
-            COORDINATOR: '/dieu-phoi',
-            RESCUER: '/doi-cuu-ho',
-            MANAGER: '/quan-ly',
-            ADMIN: '/admin',
-        };
-        navigate(roleRoutes[selectedRole] || '/');
+        try {
+            // Call login API
+            // Backend requires 'identifier' field (can be email or phone)
+            // Note: Most backends don't accept 'role' in login request
+            // The role is determined from the user account, not the request
+            const response = await login({
+                identifier: email, // Backend expects 'identifier' field (not 'email')
+                password: password,
+                // role: selectedRole, // Commented out - backend determines role from user account
+            });
+
+            // Log response for debugging
+            console.log('[Login Response]', response);
+
+            // Handle different response formats from backend
+            // Format 1: { token: "...", user: {...} }
+            // Format 2: { data: { token: "...", user: {...} } }
+            // Format 3: { accessToken: "...", user: {...} } (alternative token field name)
+            const token = response.token || response.accessToken || response.data?.token || response.data?.accessToken;
+            const user = response.user || response.data?.user;
+
+            if (token) {
+                setToken(token);
+            } else {
+                console.warn('[Login] No token received from backend');
+            }
+
+            if (user) {
+                const userRole = user.role || selectedRole;
+                setRole(userRole);
+                setUser(user);
+
+                // Redirect based on role from user (not selectedRole)
+                const roleRoutes = {
+                    CITIZEN: '/cong-dan',
+                    COORDINATOR: '/dieu-phoi',
+                    RESCUER: '/doi-cuu-ho',
+                    MANAGER: '/quan-ly',
+                    ADMIN: '/admin',
+                };
+                navigate(roleRoutes[userRole] || '/');
+            } else {
+                // If no user object, create a minimal one from the response
+                const userData = {
+                    email: email,
+                    role: selectedRole,
+                    ...response,
+                };
+                setRole(selectedRole);
+                setUser(userData);
+
+                // Fallback: redirect based on selectedRole
+                const roleRoutes = {
+                    CITIZEN: '/cong-dan',
+                    COORDINATOR: '/dieu-phoi',
+                    RESCUER: '/doi-cuu-ho',
+                    MANAGER: '/quan-ly',
+                    ADMIN: '/admin',
+                };
+                navigate(roleRoutes[selectedRole] || '/');
+            }
+        } catch (err) {
+            // Handle error - show more helpful messages
+            console.error('[Login Error]', err);
+
+            // Log detailed validation errors for debugging
+            if (err.status === 400 && err.data?.errors) {
+                console.error('[Validation Errors]', err.data.errors);
+            }
+
+            let errorMessage = 'Đăng nhập thất bại. Vui lòng thử lại.';
+
+            // Check for validation errors (400 Bad Request)
+            if (err.status === 400 && err.data?.errors) {
+                // Backend returned field-specific validation errors
+                const errors = err.data.errors;
+                const errorFields = Object.keys(errors);
+
+                if (errorFields.length > 0) {
+                    // Combine all validation errors into a readable message
+                    const errorMessages = [];
+
+                    errorFields.forEach(field => {
+                        const fieldErrors = errors[field];
+                        if (Array.isArray(fieldErrors)) {
+                            fieldErrors.forEach(msg => {
+                                errorMessages.push(`${field}: ${msg}`);
+                            });
+                        } else if (typeof fieldErrors === 'string') {
+                            errorMessages.push(`${field}: ${fieldErrors}`);
+                        }
+                    });
+
+                    if (errorMessages.length > 0) {
+                        // Show all errors, or just the first one if too many
+                        if (errorMessages.length === 1) {
+                            errorMessage = errorMessages[0];
+                        } else {
+                            errorMessage = errorMessages[0] + ` (+${errorMessages.length - 1} lỗi khác)`;
+                        }
+                    } else {
+                        errorMessage = err.data.message || 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin đăng nhập.';
+                    }
+                } else {
+                    errorMessage = err.data.message || 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin đăng nhập.';
+                }
+            } else if (err.message) {
+                errorMessage = err.message;
+            } else if (err.data?.message) {
+                errorMessage = err.data.message;
+            } else if (err.data?.error) {
+                errorMessage = err.data.error;
+            } else if (err.originalError) {
+                // Network error details
+                if (err.originalError.includes('Failed to fetch')) {
+                    errorMessage = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng hoặc đảm bảo backend đang chạy.';
+                } else {
+                    errorMessage = err.originalError;
+                }
+            }
+
+            setError(errorMessage);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -144,12 +262,20 @@ export default function LoginPage() {
                         </Link>
                     </div>
 
+                    {/* Error Message */}
+                    {error && (
+                        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                            {error}
+                        </div>
+                    )}
+
                     {/* Login Button */}
                     <button
                         type="submit"
-                        className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 hover:shadow-lg"
+                        disabled={loading}
+                        className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Đăng nhập
+                        {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
                     </button>
                 </form>
 

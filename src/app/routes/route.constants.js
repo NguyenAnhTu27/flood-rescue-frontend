@@ -20,8 +20,12 @@ export const PUBLIC_ROUTES = {
   export const CITIZEN_ROUTES = {
     DASHBOARD: '/cong-dan',
     CREATE_RESCUE_REQUEST: '/cong-dan/tao-yeu-cau-cuu-ho',
+    MY_RESCUE_REQUESTS: '/cong-dan/yeu-cau-cuu-ho',
+    RESCUE_DETAIL: '/cong-dan/chi-tiet-cuu-ho',
     RESCUE_REQUEST_STATUS: '/cong-dan/trang-thai-cuu-ho',
     UPDATE_RESCUE_REQUEST: '/cong-dan/cap-nhat-yeu-cau',
+    CANCEL_RESCUE_REQUEST: '/cong-dan/huy-yeu-cau',
+    RESCUE_REQUEST_LIST: '/cong-dan/danh-sach-yeu-cau',
     FEEDBACK: '/cong-dan/phan-hoi',
   };
   

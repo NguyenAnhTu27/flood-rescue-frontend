@@ -2,12 +2,13 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle2, Clock, MapPin, Users, AlertTriangle, Info } from 'lucide-react';
 
-export default function RescueRequestStatusPage() {
+export default function RescueDetailRequestPage() {
     const location = useLocation();
     const navigate = useNavigate();
 
     // Request data được truyền từ trang tạo yêu cầu
     const request = location.state?.request || null;
+    const formDraft = location.state?.formDraft || null;
 
     // Fallback dữ liệu demo nếu người dùng truy cập trực tiếp
     const demoRequest = {
@@ -23,6 +24,18 @@ export default function RescueRequestStatusPage() {
 
     const data = request || demoRequest;
 
+    // Prefer values from BE response; fallback to what user filled in the create form
+    const merged = {
+        ...data,
+        addressText: data.addressText || formDraft?.address || demoRequest.addressText,
+        affectedPeopleCount:
+            data.affectedPeopleCount ??
+            (formDraft?.peopleCount ? parseInt(formDraft.peopleCount, 10) : undefined) ??
+            demoRequest.affectedPeopleCount,
+        priority: data.priority || formDraft?.level || demoRequest.priority,
+        description: data.description || formDraft?.description || demoRequest.description,
+    };
+
     const formatPriority = (priority) => {
         switch (priority) {
             case 'HIGH':
@@ -34,7 +47,7 @@ export default function RescueRequestStatusPage() {
         }
     };
 
-    const priorityMeta = formatPriority(data.priority);
+    const priorityMeta = formatPriority(merged.priority);
 
     const steps = [
         {
@@ -87,7 +100,7 @@ export default function RescueRequestStatusPage() {
                         <h1 className="text-2xl font-bold text-slate-900">
                             Chi tiết Yêu cầu{' '}
                             <span className="text-blue-700">
-                                #{data.code || `RR${String(data.id || 0).padStart(4, '0')}`}
+                                #{merged.code || `RR${String(merged.id || 0).padStart(4, '0')}`}
                             </span>
                         </h1>
                         <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
@@ -215,7 +228,7 @@ export default function RescueRequestStatusPage() {
                                         Địa chỉ
                                     </p>
                                     <p className="mt-1 text-sm font-medium text-slate-900">
-                                        {data.addressText || 'Chưa cập nhật địa chỉ'}
+                                        {merged.addressText || 'Chưa cập nhật địa chỉ'}
                                     </p>
                                 </div>
                             </div>
@@ -230,7 +243,7 @@ export default function RescueRequestStatusPage() {
                                         Số lượng người
                                     </p>
                                     <p className="mt-1 text-sm font-medium text-slate-900">
-                                        {data.affectedPeopleCount || 1} người
+                                        {merged.affectedPeopleCount || 1} người
                                     </p>
                                 </div>
                             </div>
@@ -260,7 +273,7 @@ export default function RescueRequestStatusPage() {
                                 <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                                     Ghi chú tình hình
                                 </p>
-                                <p>{data.description || 'Chưa có mô tả chi tiết.'}</p>
+                                <p>{merged.description || 'Chưa có mô tả chi tiết.'}</p>
                             </div>
                         </div>
 

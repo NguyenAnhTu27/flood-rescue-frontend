@@ -33,8 +33,8 @@ export default function RootLayout({ children }) {
     }, []);
 
     const navItems = [
-        { label: "Trang chủ", to: "/cong-dan" },
-        { label: "Yêu cầu của tôi", to: "/cong-dan/yeu-cau-cuu-ho" },
+        { label: "Trang chủ", to: CITIZEN_ROUTES.DASHBOARD },
+        { label: "Yêu cầu của tôi", to: CITIZEN_ROUTES.MY_RESCUE_REQUESTS },
         { label: "Bản đồ cứu trợ", to: "/cong-dan/ban-do-cuu-tro" },
         { label: "Hướng dẫn an toàn", to: "/cong-dan/huong-dan-an-toan" },
     ];

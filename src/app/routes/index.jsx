@@ -26,8 +26,10 @@ import RegisterPage from '../../pages/auth/RegisterPage.jsx';
 
 // Citizen
 import CitizenDashboard from '../../pages/citizen/CItizenDashboard.jsx';
+import RescueDetailRequestPage from '../../pages/citizen/RescueDetailRequestPage.jsx';
 import RescueRequestCreatePage from '../../pages/citizen/RescueRequestCreatePage.jsx';
 import RescueRequestStatusPage from '../../pages/citizen/RescueRequestStatusPage.jsx';
+import MyRescueRequestsPage from '../../pages/citizen/MyRescueRequestsPage.jsx';
 
 // Coordinator
 import CoordinatorDashboard from '../../pages/coordinator/CoordinatorDashboard.jsx';
@@ -114,12 +116,36 @@ export default function AppRoutes() {
                 }
             />
             <Route
+                path={CITIZEN_ROUTES.RESCUE_DETAIL}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['CITIZEN']}>
+                            <RootLayout>
+                                <RescueDetailRequestPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
                 path={CITIZEN_ROUTES.RESCUE_REQUEST_STATUS}
                 element={
                     <RequireAuth>
                         <RequireRole allow={['CITIZEN']}>
                             <RootLayout>
                                 <RescueRequestStatusPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={CITIZEN_ROUTES.MY_RESCUE_REQUESTS}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['CITIZEN']}>
+                            <RootLayout>
+                                <MyRescueRequestsPage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>

@@ -14,19 +14,23 @@ import {
     BriefcaseMedical,
 } from 'lucide-react';
 import { AUTH_ROUTES } from '../../app/routes/route.constants.js';
+import { register } from '../../features/auth/api.js';
+import { setToken, setRole, setUser } from '../../shared/lib/storage.js';
 
 export default function RegisterPage() {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
-        fullName: 'Nguyễn Văn A',
-        phone: '09xx xxx xxx',
-        email: 'example@gmail.com',
+        fullName: '',
+        phone: '',
+        email: '',
         password: '',
         confirmPassword: '',
     });
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [agreeTerms, setAgreeTerms] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
     const handleChange = (e) => {
         setFormData({
@@ -35,13 +39,148 @@ export default function RegisterPage() {
         });
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // TODO: Implement registration logic
-        // For now, just store and redirect
-        localStorage.setItem('role', 'CITIZEN');
-        localStorage.setItem('token', 'demo-token');
-        navigate('/cong-dan');
+        setError(null);
+
+        // Validate password match
+        if (formData.password !== formData.confirmPassword) {
+            setError('Mật khẩu xác nhận không khớp');
+            return;
+        }
+
+        // Validate password length
+        if (formData.password.length < 6) {
+            setError('Mật khẩu phải có ít nhất 6 ký tự');
+            return;
+        }
+
+        // Validate required fields
+        if (!formData.fullName || !formData.phone || !formData.password) {
+            setError('Vui lòng điền đầy đủ thông tin bắt buộc');
+            return;
+        }
+
+        // Validate terms agreement
+        if (!agreeTerms) {
+            setError('Vui lòng đồng ý với điều khoản sử dụng');
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            // Prepare registration data
+            // Backend might expect different field names - adjust based on your API
+            const registerData = {
+                fullName: formData.fullName,
+                phone: formData.phone,
+                password: formData.password,
+            };
+
+            // Add email if provided (optional field)
+            if (formData.email) {
+                registerData.email = formData.email;
+            }
+
+            // Call register API
+            const response = await register(registerData);
+
+            // Log response for debugging
+            console.log('[Register Response]', response);
+
+            // Handle different response formats from backend
+            const token = response.token || response.accessToken || response.data?.token || response.data?.accessToken;
+            const user = response.user || response.data?.user;
+
+            if (token) {
+                setToken(token);
+            } else {
+                console.warn('[Register] No token received from backend');
+            }
+
+            if (user) {
+                setRole(user.role || 'CITIZEN');
+                setUser(user);
+            } else {
+                // If no user object, create a minimal one
+                const userData = {
+                    fullName: formData.fullName,
+                    phone: formData.phone,
+                    email: formData.email,
+                    role: 'CITIZEN',
+                    ...response,
+                };
+                setRole('CITIZEN');
+                setUser(userData);
+            }
+
+            // Redirect to citizen dashboard
+            navigate('/cong-dan');
+        } catch (err) {
+            // Handle error - show more helpful messages
+            console.error('[Register Error]', err);
+
+            // Log detailed validation errors for debugging
+            if (err.status === 400 && err.data?.errors) {
+                console.error('[Validation Errors]', err.data.errors);
+            }
+
+            let errorMessage = 'Đăng ký thất bại. Vui lòng thử lại.';
+
+            // Check for validation errors (400 Bad Request)
+            if (err.status === 400 && err.data?.errors) {
+                // Backend returned field-specific validation errors
+                const errors = err.data.errors;
+                const errorFields = Object.keys(errors);
+
+                if (errorFields.length > 0) {
+                    // Combine all validation errors into a readable message
+                    const errorMessages = [];
+
+                    errorFields.forEach(field => {
+                        const fieldErrors = errors[field];
+                        if (Array.isArray(fieldErrors)) {
+                            fieldErrors.forEach(msg => {
+                                errorMessages.push(`${field}: ${msg}`);
+                            });
+                        } else if (typeof fieldErrors === 'string') {
+                            errorMessages.push(`${field}: ${fieldErrors}`);
+                        }
+                    });
+
+                    if (errorMessages.length > 0) {
+                        // Show all errors, or just the first one if too many
+                        if (errorMessages.length === 1) {
+                            errorMessage = errorMessages[0];
+                        } else {
+                            errorMessage = errorMessages[0] + ` (+${errorMessages.length - 1} lỗi khác)`;
+                        }
+                    } else {
+                        errorMessage = err.data.message || 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin đăng ký.';
+                    }
+                } else {
+                    errorMessage = err.data.message || 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin đăng ký.';
+                }
+            } else if (err.message) {
+                errorMessage = err.message;
+            } else if (err.data?.message) {
+                errorMessage = err.data.message;
+            } else if (err.data?.error) {
+                errorMessage = err.data.error;
+            } else if (err.originalError) {
+                // Network error details
+                if (err.originalError.includes('Failed to fetch')) {
+                    errorMessage = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng hoặc đảm bảo backend đang chạy.';
+                } else {
+                    errorMessage = err.originalError;
+                }
+            }
+
+            setError(errorMessage);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -180,6 +319,13 @@ export default function RegisterPage() {
                         </span>
                     </label>
 
+                    {/* Error Message */}
+                    {error && (
+                        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                            {error}
+                        </div>
+                    )}
+
                     {/* Warning Box */}
                     <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
                         <div className="flex items-start gap-3">
@@ -193,9 +339,10 @@ export default function RegisterPage() {
                     {/* Register Button */}
                     <button
                         type="submit"
-                        className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 hover:shadow-lg"
+                        disabled={loading}
+                        className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Đăng ký tài khoản
+                        {loading ? 'Đang đăng ký...' : 'Đăng ký tài khoản'}
                     </button>
                 </form>
 

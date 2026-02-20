@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     MapPin,
@@ -7,11 +7,13 @@ import {
     ChevronRight,
     ChevronLeft,
     Phone,
-    Upload,
-    Image as ImageIcon,
     CheckCircle2,
 } from 'lucide-react';
 import { CITIZEN_ROUTES } from '../../app/routes/route.constants.js';
+import GoogleMap from '../../features/map/components/GoogleMap.jsx';
+import { createRescueRequest } from '../../features/rescue/api.js';
+import PrioritySelector from '../../features/rescue/components/PrioritySelector.jsx';
+import AttachmentGallery from '../../features/rescue/components/AttachmentGallery.jsx';
 
 const STEPS = [
     { id: 1, label: 'Vị trí cứu hộ' },
@@ -24,15 +26,19 @@ export default function RescueRequestCreatePage() {
     const [currentStep, setCurrentStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [form, setForm] = useState({
-        address: '72 Lê Thánh Tôn, Bến Nghé, Quận 1',
-        ward: 'Phường Bến Nghé, Quận 1, TP. HCM',
-        description:
-            'Ví dụ: Nước đang dâng tràn vào nhà, có người già và trẻ em bị kẹt, cần xuồng cứu hộ...',
-        peopleCount: '4',
+        address: '',
+        ward: '',
+        description: '',
+        peopleCount: '',
         level: 'MEDIUM',
         phone: '',
         images: [],
+        latitude: null,
+        longitude: null,
     });
+    const [mapCenter, setMapCenter] = useState({ lat: 10.8231, lng: 106.6297 }); // Default: Ho Chi Minh City
+    const [markerPosition, setMarkerPosition] = useState(null);
+    const [isLoadingGps, setIsLoadingGps] = useState(false);
 
     const handleChange = (field) => (e) => {
         setForm((prev) => ({
@@ -45,32 +51,203 @@ export default function RescueRequestCreatePage() {
         setForm((prev) => ({ ...prev, level }));
     };
 
-    const handleImagesChange = (e) => {
-        const files = Array.from(e.target.files || []);
+    const handleImagesChange = (files) => {
         setForm((prev) => ({
             ...prev,
             images: files,
         }));
     };
 
-    const handleUseGps = () => {
-        if (!navigator.geolocation) return;
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                // Chỉ demo: hiển thị toạ độ vào mô tả
+    // Helper function to wait for Google Maps to be ready
+    const waitForGoogleMaps = async (maxRetries = 20, delay = 300) => {
+        for (let i = 0; i < maxRetries; i++) {
+            if (window.google && window.google.maps && window.google.maps.Geocoder) {
+                return true;
+            }
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+        return false;
+    };
+
+    // Helper function to reverse geocode coordinates to address
+    const reverseGeocodeAddress = async (lat, lng) => {
+        // Wait for Google Maps to be ready
+        const isReady = await waitForGoogleMaps();
+        if (!isReady) {
+            console.warn('Google Maps not loaded yet, cannot geocode');
+            return null;
+        }
+
+        const geocoder = new window.google.maps.Geocoder();
+        const latlng = { lat, lng };
+
+        try {
+            const results = await new Promise((resolve, reject) => {
+                geocoder.geocode(
+                    {
+                        location: latlng,
+                        language: 'vi', // Vietnamese language
+                        region: 'vn' // Vietnam region
+                    },
+                    (results, status) => {
+                        if (status === 'OK') {
+                            resolve(results);
+                        } else {
+                            reject(new Error(`Geocoding failed: ${status}`));
+                        }
+                    }
+                );
+            });
+
+            if (results && results[0]) {
+                const address = results[0].formatted_address;
+                const addressParts = address.split(',');
+
+                // Update form with address
                 setForm((prev) => ({
                     ...prev,
-                    description:
-                        prev.description +
-                        `\n\n[Vị trí GPS: ${position.coords.latitude.toFixed(
-                            5,
-                        )}, ${position.coords.longitude.toFixed(5)}]`,
+                    address: addressParts[0]?.trim() || address,
+                    ward: addressParts.slice(1).join(',').trim() || '',
                 }));
+
+                console.log('[Geocoding Success]', {
+                    lat,
+                    lng,
+                    fullAddress: address,
+                    addressField: addressParts[0]?.trim() || address,
+                    wardField: addressParts.slice(1).join(',').trim() || ''
+                });
+
+                return address;
+            }
+        } catch (error) {
+            console.error('Reverse geocoding error:', error);
+            // Still update coordinates even if geocoding fails
+        }
+
+        return null;
+    };
+
+    // Get user's current location on mount
+    useEffect(() => {
+        if (navigator.geolocation) {
+            setIsLoadingGps(true);
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+
+                    setMapCenter({ lat, lng });
+                    setMarkerPosition({ lat, lng });
+                    setForm((prev) => ({
+                        ...prev,
+                        latitude: lat,
+                        longitude: lng,
+                    }));
+
+                    // Reverse geocode to get address (will wait for Google Maps if needed)
+                    await reverseGeocodeAddress(lat, lng);
+                    setIsLoadingGps(false);
+                },
+                (error) => {
+                    console.warn('Geolocation error:', error);
+                    setIsLoadingGps(false);
+                    // Keep default center (Ho Chi Minh City)
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        }
+    }, []);
+
+    const handleUseGps = async () => {
+        if (!navigator.geolocation) {
+            alert('Trình duyệt của bạn không hỗ trợ định vị GPS');
+            return;
+        }
+
+        setIsLoadingGps(true);
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+
+                setMapCenter({ lat, lng });
+                setMarkerPosition({ lat, lng });
+                setForm((prev) => ({
+                    ...prev,
+                    latitude: lat,
+                    longitude: lng,
+                }));
+
+                // Reverse geocode to get address (will wait for Google Maps if needed)
+                await reverseGeocodeAddress(lat, lng);
+                setIsLoadingGps(false);
             },
-            () => {
-                // Bỏ qua lỗi, không cần thông báo phức tạp
+            (error) => {
+                setIsLoadingGps(false);
+                let errorMessage = 'Không thể lấy vị trí GPS. ';
+
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage += 'Bạn đã từ chối quyền truy cập vị trí. Vui lòng cho phép trong cài đặt trình duyệt.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage += 'Vị trí không khả dụng.';
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage += 'Hết thời gian chờ. Vui lòng thử lại.';
+                        break;
+                    default:
+                        errorMessage += 'Vui lòng kiểm tra quyền truy cập vị trí của trình duyệt.';
+                }
+
+                alert(errorMessage);
+                console.error('Geolocation error:', error);
             },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
         );
+    };
+
+    const handleLocationSelect = async (location) => {
+        // Update coordinates first
+        setForm((prev) => ({
+            ...prev,
+            latitude: location.lat,
+            longitude: location.lng,
+        }));
+
+        // Update marker position (this will update the map)
+        setMarkerPosition({ lat: location.lat, lng: location.lng });
+
+        // Update address if geocoding succeeded from map
+        if (location.address) {
+            // Try to extract address components
+            const addressParts = location.address.split(',');
+            if (addressParts.length >= 2) {
+                setForm((prev) => ({
+                    ...prev,
+                    address: addressParts[0].trim(),
+                    ward: addressParts.slice(1).join(',').trim(),
+                }));
+            } else {
+                setForm((prev) => ({
+                    ...prev,
+                    address: location.address,
+                }));
+            }
+        } else {
+            // If no address from map, manually reverse geocode
+            await reverseGeocodeAddress(location.lat, location.lng);
+        }
     };
 
     const goNext = () => {
@@ -81,17 +258,64 @@ export default function RescueRequestCreatePage() {
         if (currentStep > 1) setCurrentStep((s) => s - 1);
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (isSubmitting) return;
+
+        // Validate required fields
+        if (!form.address || !form.description || !form.phone) {
+            alert('Vui lòng điền đầy đủ thông tin bắt buộc');
+            return;
+        }
+
+        if (!form.latitude || !form.longitude) {
+            alert('Vui lòng chọn vị trí trên bản đồ hoặc sử dụng GPS');
+            return;
+        }
+
         setIsSubmitting(true);
 
-        // TODO: Gửi dữ liệu lên API
-        // Hiện tại chỉ giả lập và điều hướng sang trang trạng thái
-        setTimeout(() => {
+        try {
+            // Map FE form data to BE DTO format
+            // Combine address and ward into addressText
+            const addressText = form.ward
+                ? `${form.address}, ${form.ward}`.trim()
+                : form.address;
+
+            // Prepare request data matching BE RescueRequestCreateRequest DTO
+            const requestData = {
+                affectedPeopleCount: parseInt(form.peopleCount) || 1,
+                description: form.description,
+                addressText: addressText,
+                priority: form.level, // "HIGH" | "MEDIUM" | "LOW"
+                // Note: attachments currently empty because BE expects fileUrl (string),
+                // not File objects. To support file upload, you need to:
+                // 1. Upload files first to get URLs (need file upload endpoint)
+                // 2. Then include those URLs in attachments array like:
+                //    attachments: [{ fileUrl: "https://...", fileType: "IMAGE" }]
+                attachments: [],
+            };
+
+            console.log('[Creating Rescue Request]', requestData);
+
+            // Call API to create rescue request
+            const response = await createRescueRequest(requestData);
+
+            console.log('[Rescue Request Created]', response);
+
+            // Redirect to dashboard - it will automatically refresh and show the new request in the list
+            navigate(CITIZEN_ROUTES.DASHBOARD, {
+                state: {
+                    newlyCreatedRequest: response,
+                    showSuccessMessage: true
+                },
+            });
+        } catch (error) {
+            console.error('[Rescue Request Error]', error);
+            alert(error.message || 'Không thể tạo yêu cầu cứu hộ. Vui lòng thử lại.');
+        } finally {
             setIsSubmitting(false);
-            navigate(CITIZEN_ROUTES.RESCUE_REQUEST_STATUS);
-        }, 800);
+        }
     };
 
     return (
@@ -116,13 +340,12 @@ export default function RescueRequestCreatePage() {
                         return (
                             <div key={step.id} className="flex items-center gap-3">
                                 <div
-                                    className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${
-                                        isActive
-                                            ? 'bg-blue-600 text-white'
-                                            : isDone
+                                    className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${isActive
+                                        ? 'bg-blue-600 text-white'
+                                        : isDone
                                             ? 'bg-emerald-500 text-white'
                                             : 'bg-slate-100 text-slate-500'
-                                    }`}
+                                        }`}
                                 >
                                     {isDone ? (
                                         <CheckCircle2 className="h-5 w-5" />
@@ -132,9 +355,8 @@ export default function RescueRequestCreatePage() {
                                 </div>
                                 <div className="flex flex-col">
                                     <span
-                                        className={`text-sm font-medium ${
-                                            isActive ? 'text-slate-900' : 'text-slate-500'
-                                        }`}
+                                        className={`text-sm font-medium ${isActive ? 'text-slate-900' : 'text-slate-500'
+                                            }`}
                                     >
                                         Bước {step.id}
                                     </span>
@@ -159,37 +381,33 @@ export default function RescueRequestCreatePage() {
             >
                 {/* Left column: Map / Preview */}
                 <div className="space-y-4">
-                    {/* Map / Illustration */}
-                    <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(37,99,235,0.18),_transparent_60%)]" />
-                        <div className="relative flex h-[340px] flex-col">
-                            <div className="flex items-center justify-between px-4 py-3">
-                                <div className="flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 shadow-sm">
+                    {/* Google Maps */}
+                    <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                        <div className="flex h-[340px] flex-col">
+                            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+                                <div className="flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1">
                                     <MapPin className="h-4 w-4 text-blue-600" />
                                     <span className="text-xs font-medium text-slate-700">
                                         Bản đồ khu vực cứu hộ
                                     </span>
                                 </div>
-                                <div className="flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 shadow-sm text-xs text-slate-600">
+                                <div className="flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs text-emerald-700">
                                     <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
                                     Đã kết nối trung tâm điều phối
                                 </div>
                             </div>
                             <div className="relative flex-1">
-                                <div className="absolute inset-4 rounded-xl border border-slate-200 bg-[url('https://maps.gstatic.com/mapfiles/api-3/images/google4_hdpi.png')] bg-cover bg-center opacity-10" />
-                                <div className="relative flex h-full items-center justify-center">
-                                    <div className="relative">
-                                        <div className="h-40 w-40 rounded-full bg-blue-200/50" />
-                                        <div className="absolute inset-6 rounded-full bg-blue-300/60" />
-                                        <div className="absolute inset-10 flex items-center justify-center rounded-full bg-blue-600 shadow-xl shadow-blue-500/40">
-                                            <MapPin className="h-8 w-8 text-white" />
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="pointer-events-none absolute inset-x-6 bottom-4 flex justify-between text-[10px] font-medium text-slate-600">
-                                    <span>Thu phóng</span>
-                                    <span>Kéo để thay đổi vùng ảnh hưởng (mô phỏng)</span>
-                                </div>
+                                <GoogleMap
+                                    center={mapCenter}
+                                    markerPosition={markerPosition}
+                                    onLocationSelect={handleLocationSelect}
+                                    zoom={15}
+                                />
+                            </div>
+                            <div className="px-4 py-2 border-t border-slate-200 bg-slate-50">
+                                <p className="text-[10px] text-slate-500">
+                                    💡 Nhấp vào bản đồ hoặc kéo marker để chọn vị trí cứu hộ
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -226,14 +444,20 @@ export default function RescueRequestCreatePage() {
                                 <div>
                                     <label className="mb-2 block text-sm font-medium text-slate-700">
                                         Địa chỉ cụ thể
+                                        {form.latitude && form.longitude && (
+                                            <span className="ml-2 text-xs font-normal text-emerald-600">
+                                                ✓ Đã có tọa độ: {form.latitude.toFixed(6)}, {form.longitude.toFixed(6)}
+                                            </span>
+                                        )}
                                     </label>
                                     <input
                                         type="text"
                                         value={form.address}
                                         onChange={handleChange('address')}
                                         className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                                        placeholder="Ví dụ: 72 Lê Thánh Tôn, Bến Nghé, Quận 1"
+                                        placeholder={isLoadingGps ? "Đang lấy địa chỉ từ GPS..." : "Ví dụ: Xã Nam Danh, Thị xã Ba Đồn, Tỉnh Quảng Bình"}
                                         required
+                                        disabled={isLoadingGps}
                                     />
                                 </div>
 
@@ -254,10 +478,20 @@ export default function RescueRequestCreatePage() {
                                         <button
                                             type="button"
                                             onClick={handleUseGps}
-                                            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
+                                            disabled={isLoadingGps}
+                                            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            <Crosshair className="h-4 w-4" />
-                                            Lấy vị trí GPS của tôi
+                                            {isLoadingGps ? (
+                                                <>
+                                                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
+                                                    <span>Đang lấy vị trí...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Crosshair className="h-4 w-4" />
+                                                    Lấy vị trí GPS của tôi
+                                                </>
+                                            )}
                                         </button>
                                     </div>
                                 </div>
@@ -309,69 +543,10 @@ export default function RescueRequestCreatePage() {
                                     <label className="mb-3 block text-sm font-medium text-slate-700">
                                         Mức độ khẩn cấp
                                     </label>
-                                    <div className="space-y-3">
-                                        <button
-                                            type="button"
-                                            onClick={() => handleLevelChange('HIGH')}
-                                            className={`flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left text-sm transition ${
-                                                form.level === 'HIGH'
-                                                    ? 'border-red-500 bg-red-50'
-                                                    : 'border-slate-200 hover:border-red-400 hover:bg-red-50/40'
-                                            }`}
-                                        >
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
-                                                    <span className="font-semibold text-red-700">Cao</span>
-                                                </div>
-                                                <p className="mt-1 text-xs text-red-700">
-                                                    Nguy hiểm trực tiếp đến tính mạng, cần cứu hộ ngay lập tức.
-                                                </p>
-                                            </div>
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => handleLevelChange('MEDIUM')}
-                                            className={`flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left text-sm transition ${
-                                                form.level === 'MEDIUM'
-                                                    ? 'border-amber-500 bg-amber-50'
-                                                    : 'border-slate-200 hover:border-amber-400 hover:bg-amber-50/40'
-                                            }`}
-                                        >
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
-                                                    <span className="font-semibold text-amber-700">
-                                                        Trung bình
-                                                    </span>
-                                                </div>
-                                                <p className="mt-1 text-xs text-amber-700">
-                                                    Khu vực nguy hiểm nhưng tạm thời ổn định, cần hỗ trợ sớm.
-                                                </p>
-                                            </div>
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => handleLevelChange('LOW')}
-                                            className={`flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left text-sm transition ${
-                                                form.level === 'LOW'
-                                                    ? 'border-blue-500 bg-blue-50'
-                                                    : 'border-slate-200 hover:border-blue-400 hover:bg-blue-50/40'
-                                            }`}
-                                        >
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
-                                                    <span className="font-semibold text-blue-700">Thấp</span>
-                                                </div>
-                                                <p className="mt-1 text-xs text-blue-700">
-                                                    Cần hỗ trợ nhưng chưa đe doạ trực tiếp đến tính mạng.
-                                                </p>
-                                            </div>
-                                        </button>
-                                    </div>
+                                    <PrioritySelector
+                                        value={form.level}
+                                        onChange={handleLevelChange}
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -384,48 +559,12 @@ export default function RescueRequestCreatePage() {
                             </h2>
                             <div className="grid gap-4 sm:grid-cols-2">
                                 {/* Upload images */}
-                                <div className="space-y-3">
-                                    <span className="text-sm font-medium text-slate-700">
-                                        Ảnh minh hoạ hiện trường
-                                    </span>
-                                    <label className="flex h-40 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-center text-xs text-slate-600 transition hover:border-blue-400 hover:bg-blue-50/50">
-                                        <Upload className="h-5 w-5 text-slate-500" />
-                                        <span className="font-medium">
-                                            Nhấn để tải ảnh hoặc kéo thả
-                                        </span>
-                                        <span className="text-[11px] text-slate-500">
-                                            Hỗ trợ JPG, PNG tối đa 10MB
-                                        </span>
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            multiple
-                                            onChange={handleImagesChange}
-                                            className="hidden"
-                                        />
-                                    </label>
-
-                                    {form.images.length > 0 && (
-                                        <div className="flex flex-wrap gap-2">
-                                            {form.images.slice(0, 3).map((file, index) => (
-                                                <div
-                                                    key={index}
-                                                    className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] text-slate-600"
-                                                >
-                                                    <ImageIcon className="h-3.5 w-3.5 text-slate-500" />
-                                                    <span className="line-clamp-1 max-w-[120px]">
-                                                        {file.name}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                            {form.images.length > 3 && (
-                                                <span className="text-[11px] text-slate-500">
-                                                    +{form.images.length - 3} ảnh khác
-                                                </span>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
+                                <AttachmentGallery
+                                    files={form.images}
+                                    onChange={handleImagesChange}
+                                    maxFiles={10}
+                                    maxSizeMB={10}
+                                />
 
                                 {/* Contact info */}
                                 <div className="space-y-3">
