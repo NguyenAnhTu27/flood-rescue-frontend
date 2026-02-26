@@ -57,6 +57,7 @@ export default function LoginPage() {
             // Format 3: { accessToken: "...", user: {...} } (alternative token field name)
             const token = response.token || response.accessToken || response.data?.token || response.data?.accessToken;
             const user = response.user || response.data?.user;
+            const roleFromResponse = response.role || response.data?.role || user?.role || null;
 
             if (token) {
                 setToken(token);
@@ -65,7 +66,7 @@ export default function LoginPage() {
             }
 
             if (user) {
-                const userRole = user.role || selectedRole;
+                const userRole = roleFromResponse || selectedRole;
                 setRole(userRole);
                 setUser(user);
 
@@ -80,15 +81,16 @@ export default function LoginPage() {
                 navigate(roleRoutes[userRole] || '/');
             } else {
                 // If no user object, create a minimal one from the response
+                const userRole = roleFromResponse || selectedRole;
                 const userData = {
                     email: email,
-                    role: selectedRole,
+                    role: userRole,
                     ...response,
                 };
-                setRole(selectedRole);
+                setRole(userRole);
                 setUser(userData);
 
-                // Fallback: redirect based on selectedRole
+                // Redirect based on role from BE response (fallback to selectedRole only if BE doesn't return role)
                 const roleRoutes = {
                     CITIZEN: '/cong-dan',
                     COORDINATOR: '/dieu-phoi',
@@ -96,7 +98,7 @@ export default function LoginPage() {
                     MANAGER: '/quan-ly',
                     ADMIN: '/admin',
                 };
-                navigate(roleRoutes[selectedRole] || '/');
+                navigate(roleRoutes[userRole] || '/');
             }
         } catch (err) {
             // Handle error - show more helpful messages

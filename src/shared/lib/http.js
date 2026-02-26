@@ -163,9 +163,11 @@ async function httpClient(url, options = {}) {
 
             switch (response.status) {
                 case 401:
-                    // Unauthorized - clear token and redirect to login
-                    removeToken();
-                    window.location.href = '/dang-nhap';
+                    // Unauthorized - log error but let caller handle it
+                    // Caller can decide whether to logout, retry, or show error message
+                    console.error('Unauthorized (401):', error.message);
+                    // Note: Token may be invalid/expired, but we don't auto-logout here
+                    // Each page/component can handle 401 as needed (e.g., show error, retry, or manual logout)
                     break;
                 case 403:
                     console.error('Access forbidden:', error.message);

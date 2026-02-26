@@ -46,6 +46,23 @@ export async function createRescueRequest(data) {
 }
 
 /**
+ * Upload rescue request attachments (images)
+ * @param {File[]} files
+ * @returns {Promise<Array<{fileUrl: string, fileType: string}>>}
+ */
+export async function uploadRescueAttachments(files) {
+    const formData = new FormData();
+    files.forEach((file) => {
+        formData.append('files', file);
+    });
+
+    // httpClient.post will handle FormData correctly
+    const response = await httpClient.post('/rescue/citizen/attachments', formData);
+    // BE returns a plain array of { fileUrl, fileType }
+    return response;
+}
+
+/**
  * Update rescue request
  * @param {string} id - Request ID
  * @param {Object} data - Updated data

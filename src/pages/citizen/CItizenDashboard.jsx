@@ -4,6 +4,7 @@ import { CITIZEN_ROUTES } from "../../app/routes/route.constants.js";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { getMyRescueRequests } from "../../features/citizen/api.js";
 import GoogleMap from "../../features/map/components/GoogleMap.jsx";
+import Button from "../../shared/ui/Button.jsx";
 
 export default function CitizenDashboard() {
     const [latestRequest, setLatestRequest] = useState(null);
@@ -190,7 +191,7 @@ export default function CitizenDashboard() {
         return (
             <div className="space-y-10 pb-10">
                 {/* Empty state card */}
-                <section className="mx-auto max-w-3xl">
+                <section>
                     <div className="rounded-3xl bg-white px-6 py-10 shadow-sm ring-1 ring-slate-200">
                         <div className="flex flex-col items-center text-center">
                             {/* Icon circle */}
@@ -208,13 +209,15 @@ export default function CitizenDashboard() {
                                 phối và các đội cứu nạn có thể tiếp cận kịp thời.
                             </p>
 
-                            <Link
+                            <Button
                                 to={CITIZEN_ROUTES.CREATE_RESCUE_REQUEST}
-                                className="mt-8 inline-flex items-center gap-2 rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 hover:shadow-lg"
+                                variant="primary"
+                                size="lg"
+                                className="mt-8"
                             >
                                 <Plus className="h-4 w-4" />
                                 Tạo yêu cầu cứu hộ mới
-                            </Link>
+                            </Button>
                         </div>
                     </div>
                 </section>
@@ -300,13 +303,14 @@ export default function CitizenDashboard() {
                             Theo dõi tiến độ yêu cầu cứu hộ mới nhất của bạn
                         </p>
                     </div>
-                    <Link
+                    <Button
                         to={CITIZEN_ROUTES.MY_RESCUE_REQUESTS}
-                        className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                        variant="secondary"
+                        size="lg"
                     >
                         <List className="h-4 w-4" />
                         Xem tất cả yêu cầu
-                    </Link>
+                    </Button>
                 </div>
             </section>
 
@@ -435,20 +439,24 @@ export default function CitizenDashboard() {
 
             {/* Action Buttons */}
             <section className="flex flex-col gap-3 sm:flex-row">
-                <button
+                <Button
                     onClick={() => navigate(CITIZEN_ROUTES.RESCUE_DETAIL, { state: { request: latestRequest } })}
-                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 hover:shadow-lg"
+                    variant="primary"
+                    size="lg"
+                    fullWidth
                 >
                     <Eye className="h-4 w-4" />
                     Xem chi tiết yêu cầu
-                </button>
-                <Link
+                </Button>
+                <Button
                     to={CITIZEN_ROUTES.CREATE_RESCUE_REQUEST}
-                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                    variant="secondary"
+                    size="lg"
+                    fullWidth
                 >
                     <Plus className="h-4 w-4" />
                     Tạo yêu cầu mới
-                </Link>
+                </Button>
             </section>
         </div>
     );

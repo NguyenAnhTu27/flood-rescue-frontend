@@ -17,7 +17,7 @@ import { AUTH_ROUTES, PUBLIC_ROUTES, CITIZEN_ROUTES } from "../../app/routes/rou
 
 /** ============ Small UI helpers ============ */
 function Container({ children, className = "" }) {
-    return <div className={`mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 ${className}`}>{children}</div>;
+    return <div className={`mx-auto w-full max-w-[90%] px-2 lg:px-3 ${className}`}>{children}</div>;
 }
 
 function IconBadge({ children, className = "" }) {
@@ -62,7 +62,7 @@ export default function HomePage() {
     return (
         <div className="min-h-screen bg-white text-slate-900">
             {/* ================= Header ================= */}
-            <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur">
+            <header className="sticky top-0 z-50 border-b border-slate-200  bg-white/90 backdrop-blur">
                 <Container>
                     <div className="flex h-14 items-center justify-between">
                         {/* Logo */}
@@ -102,7 +102,7 @@ export default function HomePage() {
             </header>
 
             {/* ================= Hero ================= */}
-            <main>
+            <main >
                 <section className="pt-10 sm:pt-14">
                     <Container>
                         <div className="grid items-center gap-10 lg:grid-cols-2">

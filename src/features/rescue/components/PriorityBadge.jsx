@@ -17,6 +17,7 @@ export default function PriorityBadge({ level, size = 'md' }) {
             textColor: 'text-red-700',
             borderColor: 'border-red-500',
             dotColor: 'bg-red-500',
+
         },
         MEDIUM: {
             label: 'Trung bình',
@@ -52,9 +53,9 @@ export default function PriorityBadge({ level, size = 'md' }) {
 
     return (
         <div
-            className={`inline-flex items-center gap-1.5 rounded-full border ${currentConfig.bgColor} ${currentConfig.borderColor} ${currentConfig.textColor} ${sizeClasses[size]}`}
+            className={`inline-flex items-center gap-1.5 rounded-md border ${currentConfig.bgColor} ${currentConfig.borderColor} ${currentConfig.textColor} ${sizeClasses[size]}`}
         >
-            <span className={`${currentConfig.dotColor} ${dotSizes[size]} rounded-full`} />
+            <span className={`${currentConfig.dotColor} ${dotSizes[size]} rounded-sm`} />
             <span className="font-semibold">{currentConfig.label}</span>
         </div>
     );

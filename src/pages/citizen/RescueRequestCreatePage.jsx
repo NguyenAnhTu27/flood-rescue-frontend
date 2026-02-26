@@ -11,9 +11,12 @@ import {
 } from 'lucide-react';
 import { CITIZEN_ROUTES } from '../../app/routes/route.constants.js';
 import GoogleMap from '../../features/map/components/GoogleMap.jsx';
-import { createRescueRequest } from '../../features/rescue/api.js';
+import { createRescueRequest, uploadRescueAttachments } from '../../features/rescue/api.js';
 import PrioritySelector from '../../features/rescue/components/PrioritySelector.jsx';
 import AttachmentGallery from '../../features/rescue/components/AttachmentGallery.jsx';
+import Button from '../../shared/ui/Button.jsx';
+import Input from '../../shared/ui/Input.jsx';
+import Textarea from '../../shared/ui/Textarea.jsx';
 
 const STEPS = [
     { id: 1, label: 'Vị trí cứu hộ' },
@@ -282,18 +285,21 @@ export default function RescueRequestCreatePage() {
                 ? `${form.address}, ${form.ward}`.trim()
                 : form.address;
 
-            // Prepare request data matching BE RescueRequestCreateRequest DTO
+            // 1) Upload attachments first (if any)
+            let attachments = [];
+            if (form.images && form.images.length > 0) {
+                const uploadResult = await uploadRescueAttachments(form.images);
+                // uploadResult is expected to be an array of { fileUrl, fileType }
+                attachments = Array.isArray(uploadResult) ? uploadResult : [];
+            }
+
+            // 2) Prepare request data matching BE RescueRequestCreateRequest DTO
             const requestData = {
                 affectedPeopleCount: parseInt(form.peopleCount) || 1,
                 description: form.description,
                 addressText: addressText,
                 priority: form.level, // "HIGH" | "MEDIUM" | "LOW"
-                // Note: attachments currently empty because BE expects fileUrl (string),
-                // not File objects. To support file upload, you need to:
-                // 1. Upload files first to get URLs (need file upload endpoint)
-                // 2. Then include those URLs in attachments array like:
-                //    attachments: [{ fileUrl: "https://...", fileType: "IMAGE" }]
-                attachments: [],
+                attachments,
             };
 
             console.log('[Creating Rescue Request]', requestData);
@@ -450,11 +456,10 @@ export default function RescueRequestCreatePage() {
                                             </span>
                                         )}
                                     </label>
-                                    <input
+                                    <Input
                                         type="text"
                                         value={form.address}
                                         onChange={handleChange('address')}
-                                        className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                                         placeholder={isLoadingGps ? "Đang lấy địa chỉ từ GPS..." : "Ví dụ: Xã Nam Danh, Thị xã Ba Đồn, Tỉnh Quảng Bình"}
                                         required
                                         disabled={isLoadingGps}
@@ -466,20 +471,21 @@ export default function RescueRequestCreatePage() {
                                         <label className="mb-2 block text-sm font-medium text-slate-700">
                                             Khu vực / Phường
                                         </label>
-                                        <input
+                                        <Input
                                             type="text"
                                             value={form.ward}
                                             onChange={handleChange('ward')}
-                                            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                                             placeholder="Phường, Quận/Huyện, Tỉnh/TP"
                                         />
                                     </div>
                                     <div className="flex items-end">
-                                        <button
+                                        <Button
                                             type="button"
+                                            variant="info"
+                                            size="sm"
+                                            fullWidth
                                             onClick={handleUseGps}
                                             disabled={isLoadingGps}
-                                            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             {isLoadingGps ? (
                                                 <>
@@ -492,7 +498,7 @@ export default function RescueRequestCreatePage() {
                                                     Lấy vị trí GPS của tôi
                                                 </>
                                             )}
-                                        </button>
+                                        </Button>
                                     </div>
                                 </div>
 
@@ -515,11 +521,10 @@ export default function RescueRequestCreatePage() {
                                     <label className="mb-2 block text-sm font-medium text-slate-700">
                                         Nội dung sự việc
                                     </label>
-                                    <textarea
+                                    <Textarea
                                         rows={4}
                                         value={form.description}
                                         onChange={handleChange('description')}
-                                        className="w-full resize-none rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                                         placeholder="Mô tả chi tiết tình huống, mức nước, người mắc kẹt, tình trạng sức khoẻ..."
                                         required
                                     />
@@ -529,12 +534,11 @@ export default function RescueRequestCreatePage() {
                                     <label className="mb-2 block text-sm font-medium text-slate-700">
                                         Số người cần hỗ trợ
                                     </label>
-                                    <input
+                                    <Input
                                         type="number"
                                         min={1}
                                         value={form.peopleCount}
                                         onChange={handleChange('peopleCount')}
-                                        className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                                         placeholder="Ví dụ: 4"
                                     />
                                 </div>
@@ -579,11 +583,11 @@ export default function RescueRequestCreatePage() {
                                             <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-xs text-slate-400">
                                                 +84
                                             </span>
-                                            <input
+                                            <Input
                                                 type="tel"
                                                 value={form.phone}
                                                 onChange={handleChange('phone')}
-                                                className="w-full rounded-lg border border-slate-300 bg-white px-10 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                                className="pl-10"
                                                 placeholder="09xx xxx xxx"
                                                 required
                                             />
@@ -609,36 +613,36 @@ export default function RescueRequestCreatePage() {
 
                     {/* Footer actions */}
                     <div className="mt-2 flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                        <button
+                        <Button
                             type="button"
+                            variant="outline"
                             onClick={goPrev}
                             disabled={currentStep === 1}
-                            className="inline-flex items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             <ChevronLeft className="h-4 w-4" />
                             Quay lại
-                        </button>
+                        </Button>
 
                         <div className="flex gap-3">
                             {currentStep < 3 && (
-                                <button
+                                <Button
                                     type="button"
+                                    variant="primary"
                                     onClick={goNext}
-                                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 hover:shadow-lg"
                                 >
                                     Tiếp tục
                                     <ChevronRight className="h-4 w-4" />
-                                </button>
+                                </Button>
                             )}
 
                             {currentStep === 3 && (
-                                <button
+                                <Button
                                     type="submit"
+                                    variant="primary"
                                     disabled={isSubmitting}
-                                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 hover:shadow-lg disabled:cursor-not-allowed disabled:bg-blue-400"
                                 >
                                     {isSubmitting ? 'Đang gửi yêu cầu...' : 'Gửi yêu cầu cứu hộ'}
-                                </button>
+                                </Button>
                             )}
                         </div>
                     </div>

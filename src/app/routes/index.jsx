@@ -30,11 +30,13 @@ import RescueDetailRequestPage from '../../pages/citizen/RescueDetailRequestPage
 import RescueRequestCreatePage from '../../pages/citizen/RescueRequestCreatePage.jsx';
 import RescueRequestStatusPage from '../../pages/citizen/RescueRequestStatusPage.jsx';
 import MyRescueRequestsPage from '../../pages/citizen/MyRescueRequestsPage.jsx';
+import RescueRequestUpdatePage from '../../pages/citizen/RescueRequestUpdatePage.jsx';
 
 // Coordinator
 import CoordinatorDashboard from '../../pages/coordinator/CoordinatorDashboard.jsx';
 import RescueQueuePage from '../../pages/coordinator/RescueQueuePage.jsx';
 import RescueVerifyPage from '../../pages/coordinator/RescueVerifyPage.jsx';
+import RescuePrioritizePage from '../../pages/coordinator/RescuePrioritizePage.jsx';
 import RescueAssignPage from '../../pages/coordinator/RescueAssignPage.jsx';
 import TeamWorkloadPage from '../../pages/coordinator/TeamWorkloadPage.jsx';
 
@@ -61,7 +63,8 @@ export default function AppRoutes() {
             {/* -------- PUBLIC -------- */}
             <Route
                 path={PUBLIC_ROUTES.HOME}
-                element={<HomePage />}
+                element={
+                    <HomePage />}
             />
             <Route
                 path={PUBLIC_ROUTES.EMERGENCY_GUIDE}
@@ -151,6 +154,18 @@ export default function AppRoutes() {
                     </RequireAuth>
                 }
             />
+            <Route
+                path={CITIZEN_ROUTES.UPDATE_RESCUE_REQUEST}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['CITIZEN']}>
+                            <RootLayout>
+                                <RescueRequestUpdatePage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
 
             {/* -------- COORDINATOR (Private) -------- */}
             <Route
@@ -184,6 +199,18 @@ export default function AppRoutes() {
                         <RequireRole allow={['COORDINATOR']}>
                             <RootLayout>
                                 <RescueVerifyPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={COORDINATOR_ROUTES.PRIORITIZE_REQUEST}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['COORDINATOR']}>
+                            <RootLayout>
+                                <RescuePrioritizePage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>

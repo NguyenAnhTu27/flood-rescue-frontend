@@ -49,7 +49,7 @@ export default function RootLayout({ children }) {
         <div className="min-h-screen bg-white flex flex-col">
             {/* Topbar */}
             <header className="sticky top-0 z-50 border-b border-slate-200 bg-white">
-                <div className="mx-auto max-w-6xl px-4">
+                <div className="mx-auto w-full max-w-[90%] px-2 lg:px-3">
                     <div className="flex h-14 items-center justify-between">
                         {/* Left: Logo */}
                         <div className="flex items-center gap-3">
@@ -213,11 +213,11 @@ export default function RootLayout({ children }) {
             </header>
 
             {/* Main content */}
-            <main className="mx-auto max-w-6xl px-4 py-6 flex-1 w-full">{children}</main>
+            <main className="mx-auto w-full max-w-[90%] px-2 lg:px-3 py-4 lg:py-6 flex-1">{children}</main>
 
             {/* Shared Footer */}
-            <footer className="mt-8 border-t border-slate-200 bg-white">
-                <div className="mx-auto max-w-6xl px-4 py-8">
+            <footer className="mt-6 lg:mt-8 border-t border-slate-200 bg-white">
+                <div className="mx-auto w-full max-w-[90%] px-2 lg:px-3 py-6 lg:py-8">
                     <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
                         {/* Left */}
                         <div className="space-y-3">

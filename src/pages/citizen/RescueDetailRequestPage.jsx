@@ -1,6 +1,9 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle2, Clock, MapPin, Users, AlertTriangle, Info } from 'lucide-react';
+import { CITIZEN_ROUTES } from '../../app/routes/route.constants.js';
+import Button from '../../shared/ui/Button.jsx';
+import Badge from '../../shared/ui/Badge.jsx';
 
 export default function RescueDetailRequestPage() {
     const location = useLocation();
@@ -103,22 +106,24 @@ export default function RescueDetailRequestPage() {
                                 #{merged.code || `RR${String(merged.id || 0).padStart(4, '0')}`}
                             </span>
                         </h1>
-                        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                        <Badge variant="info" size="lg">
                             ĐANG XỬ LÝ
-                        </span>
+                        </Badge>
                     </div>
                     <p className="mt-1 text-xs text-slate-500">
                         Hệ thống sẽ liên tục cập nhật tiến độ xử lý yêu cầu cứu hộ của bạn.
                     </p>
                 </div>
 
-                <button
+                <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={handleBackToList}
-                    className="mt-3 inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50 sm:mt-0"
+                    className="mt-3 sm:mt-0"
                 >
                     Danh sách yêu cầu của tôi
-                </button>
+                </Button>
             </div>
 
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1.3fr)] items-start">
@@ -280,18 +285,25 @@ export default function RescueDetailRequestPage() {
                         {/* Actions */}
                         <div className="mt-5 flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex flex-1 flex-col gap-2 sm:flex-row">
-                                <button
+                                <Button
                                     type="button"
-                                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-md transition hover:bg-blue-700 hover:shadow-lg"
+                                    variant="primary"
+                                    size="sm"
+                                    onClick={() => navigate(CITIZEN_ROUTES.UPDATE_RESCUE_REQUEST, {
+                                        state: { request: merged }
+                                    })}
+                                    className="flex-1"
                                 >
                                     Cập nhật thêm thông tin
-                                </button>
-                                <button
+                                </Button>
+                                <Button
                                     type="button"
-                                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                                    variant="danger"
+                                    size="sm"
+                                    className="flex-1"
                                 >
                                     Hủy yêu cầu cứu hộ
-                                </button>
+                                </Button>
                             </div>
                         </div>
                     </div>
@@ -305,13 +317,15 @@ export default function RescueDetailRequestPage() {
                                 ưu tiên nguồn lực cho các trường hợp khác.
                             </p>
                         </div>
-                        <button
+                        <Button
                             type="button"
-                            className="mt-2 inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 sm:mt-0"
+                            variant="success"
+                            size="sm"
+                            className="mt-2 sm:mt-0"
                             disabled
                         >
                             Xác nhận đã được cứu (sắp có)
-                        </button>
+                        </Button>
                     </div>
                 </div>
             </div>
