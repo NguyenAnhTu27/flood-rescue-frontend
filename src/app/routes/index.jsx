@@ -33,7 +33,7 @@ import MyRescueRequestsPage from '../../pages/citizen/MyRescueRequestsPage.jsx';
 import RescueRequestUpdatePage from '../../pages/citizen/RescueRequestUpdatePage.jsx';
 
 // Coordinator
-import CoordinatorDashboard from '../../pages/coordinator/CoordinatorDashboard.jsx';
+import CoordinatorDashboard from '../../pages/coordinator/CoordinatorDashboardPage.jsx';
 import RescueQueuePage from '../../pages/coordinator/RescueQueuePage.jsx';
 import RescueVerifyPage from '../../pages/coordinator/RescueVerifyPage.jsx';
 import RescuePrioritizePage from '../../pages/coordinator/RescuePrioritizePage.jsx';
@@ -43,6 +43,7 @@ import TeamWorkloadPage from '../../pages/coordinator/TeamWorkloadPage.jsx';
 // Rescuer
 import RescuerDashboard from '../../pages/rescuer/RescuerDashboard.jsx';
 import MyAssignmentsPage from '../../pages/rescuer/MyAssignmentsPage.jsx';
+import RescueUpdateStatusPage from '../../pages/rescuer/RescueUpdateStatusPage.jsx';
 
 // Manager
 import ManagerDashboard from '../../pages/manager/ManagerDashboard.jsx';
@@ -53,6 +54,7 @@ import AssetsManagementPage from '../../pages/manager/AssetsManagementPage.jsx';
 // Admin
 import AdminDashboard from '../../pages/admin/AdminDashboard.jsx';
 import UserManagementPage from '../../pages/admin/UserManagementPage.jsx';
+import AdminTeamAssetPage from '../../pages/admin/AdminTeamAssetPage.jsx';
 
 /* =========================
    5) Route tree
@@ -266,6 +268,18 @@ export default function AppRoutes() {
                     </RequireAuth>
                 }
             />
+            <Route
+                path={RESCUER_ROUTES.UPDATE_STATUS}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['RESCUER']}>
+                            <RootLayout>
+                                <RescueUpdateStatusPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
 
             {/* -------- MANAGER (Private) -------- */}
             <Route
@@ -337,6 +351,18 @@ export default function AppRoutes() {
                         <RequireRole allow={['ADMIN']}>
                             <RootLayout>
                                 <UserManagementPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={ADMIN_ROUTES.TEAMS_ASSETS}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['ADMIN']}>
+                            <RootLayout>
+                                <AdminTeamAssetPage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>

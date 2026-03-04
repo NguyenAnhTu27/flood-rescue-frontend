@@ -99,8 +99,21 @@ async function httpClient(url, options = {}) {
         headers.Authorization = `Bearer ${token}`;
     }
 
-    // Build full URL
-    const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+    // Build full URL + query params (axios-like `params` support)
+    const { params, ...fetchOptions } = options || {};
+    let fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+
+    if (params && typeof params === 'object' && !Array.isArray(params)) {
+        const usp = new URLSearchParams();
+        for (const [k, v] of Object.entries(params)) {
+            if (v === undefined || v === null || v === '') continue;
+            usp.append(k, String(v));
+        }
+        const qs = usp.toString();
+        if (qs) {
+            fullUrl = fullUrl.includes('?') ? `${fullUrl}&${qs}` : `${fullUrl}?${qs}`;
+        }
+    }
 
     // Log request in development
     if (import.meta.env.DEV) {
@@ -116,7 +129,7 @@ async function httpClient(url, options = {}) {
 
     try {
         const response = await fetch(fullUrl, {
-            ...options,
+            ...fetchOptions,
             headers,
             signal: controller.signal,
         });

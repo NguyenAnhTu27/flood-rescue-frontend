@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     List,
@@ -6,17 +6,12 @@ import {
     RefreshCw,
     Users,
     Ship,
-    MapPin,
-    Clock,
-    Zap,
     Layers,
     ZoomIn,
     ZoomOut,
     Navigation,
-    AlertCircle,
-    CheckCircle2,
-    XCircle,
 } from 'lucide-react';
+
 import GoogleMap from '../../features/map/components/GoogleMap.jsx';
 import PriorityBadge from '../../features/rescue/components/PriorityBadge.jsx';
 import Button from '../../shared/ui/Button.jsx';
@@ -25,7 +20,7 @@ import Badge from '../../shared/ui/Badge.jsx';
 import { getCoordinatorDashboard } from '../../features/coordinator/api.js';
 import { COORDINATOR_ROUTES } from '../../app/routes/route.constants.js';
 
-export default function CoordinatorDashboard() {
+export default function CoordinatorDashboardPage() {
     const navigate = useNavigate();
     const [syncTime, setSyncTime] = useState(new Date());
     const [searchQuery, setSearchQuery] = useState('');
@@ -66,6 +61,7 @@ export default function CoordinatorDashboard() {
 
     useEffect(() => {
         loadDashboard();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const formatSyncTime = (date) => {
@@ -80,6 +76,7 @@ export default function CoordinatorDashboard() {
         const statusMap = {
             AVAILABLE: { label: 'RẢNH', color: 'bg-green-100 text-green-700 border-green-200' },
             BUSY: { label: 'BẬN', color: 'bg-orange-100 text-orange-700 border-orange-200' },
+            ON_MISSION: { label: 'ĐANG NHIỆM VỤ', color: 'bg-amber-100 text-amber-800 border-amber-200' },
             MAINTENANCE: { label: 'BẢO TRÌ', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
             PENDING: { label: 'Chờ xử lý', color: 'bg-slate-100 text-slate-700 border-slate-200' },
         };
@@ -87,9 +84,10 @@ export default function CoordinatorDashboard() {
     };
 
     const getVehicleIcon = (type) => {
-        switch (type) {
+        switch ((type || '').toLowerCase()) {
             case 'cano':
             case 'boat':
+            case 'ship':
                 return <Ship className="h-4 w-4" />;
             case 'helicopter':
                 return <Navigation className="h-4 w-4" />;
@@ -102,9 +100,9 @@ export default function CoordinatorDashboard() {
         ? requests.filter((r) => (r.code || '').toLowerCase().includes(searchQuery.toLowerCase()))
         : requests;
 
-    const newRequestsCount = filteredRequests.filter(r => r.status === 'PENDING').length;
-    const onlineTeamsCount = teams.filter(t => t.online).length;
-    const activeVehiclesCount = vehicles.filter(v => v.online).length;
+    const newRequestsCount = filteredRequests.filter((r) => r.status === 'PENDING').length;
+    const onlineTeamsCount = teams.filter((t) => t.online).length;
+    const activeVehiclesCount = vehicles.filter((v) => v.online).length;
 
     return (
         <div className="h-[calc(100vh-8rem)] flex gap-4 pb-6">
@@ -147,9 +145,17 @@ export default function CoordinatorDashboard() {
                                     <div
                                         key={request.id}
                                         className="group p-3 rounded-lg border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer bg-white"
-                                        onClick={() => {
-                                            // Điều hướng sang trang xác minh, truyền toàn bộ request
+                                        onClick={(e) => {
+                                            // Nếu click vào request, mở trang xác minh
+                                            // Nếu muốn phân công trực tiếp, có thể thêm option khác
                                             navigate(COORDINATOR_ROUTES.VERIFY_REQUEST, {
+                                                state: { request },
+                                            });
+                                        }}
+                                        onDoubleClick={(e) => {
+                                            // Double click để phân công trực tiếp
+                                            e.stopPropagation();
+                                            navigate(COORDINATOR_ROUTES.ASSIGN_RESCUE, {
                                                 state: { request },
                                             });
                                         }}
@@ -167,14 +173,8 @@ export default function CoordinatorDashboard() {
                                                 </div>
                                             </div>
                                             <div className="col-span-5 text-right">
-                                                <div className="text-xs text-slate-500 mb-1">
-                                                    {request.timeAgo}
-                                                </div>
-                                                <Badge
-                                                    outline
-                                                    size="sm"
-                                                    className={statusInfo.color}
-                                                >
+                                                <div className="text-xs text-slate-500 mb-1">{request.timeAgo}</div>
+                                                <Badge outline size="sm" className={statusInfo.color}>
                                                     {statusInfo.label}
                                                 </Badge>
                                             </div>
@@ -186,7 +186,7 @@ export default function CoordinatorDashboard() {
                     </div>
                 </div>
 
-                {/* Auto Dispatch Button */}
+                {/* Assign button */}
                 <div className="p-4 border-t border-slate-200 bg-slate-50/60">
                     <Button
                         type="button"
@@ -194,9 +194,20 @@ export default function CoordinatorDashboard() {
                         fullWidth
                         size="md"
                         disabled={loading}
+                        onClick={() => {
+                            // Truyền tất cả requests PENDING hiện tại để phân công
+                            const pendingRequests = filteredRequests.filter(r =>
+                                !r.status || r.status === 'PENDING' || r.status === 'pending'
+                            );
+                            navigate(COORDINATOR_ROUTES.ASSIGN_RESCUE, {
+                                state: {
+                                    requests: pendingRequests.length > 0 ? pendingRequests : filteredRequests,
+                                },
+                            });
+                        }}
                     >
-                        <Zap className="h-4 w-4" />
-                        Điều phối Tự động (AI)
+                        <Users className="h-4 w-4" />
+                        Phân công đội &amp; Phương tiện
                     </Button>
                 </div>
             </Card>
@@ -216,14 +227,7 @@ export default function CoordinatorDashboard() {
                                 className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500"
                             />
                         </div>
-                        <Button
-                            type="button"
-                            variant="primary"
-                            size="md"
-                            onClick={() => {
-                                loadDashboard();
-                            }}
-                        >
+                        <Button type="button" variant="primary" size="md" onClick={loadDashboard}>
                             <RefreshCw className="h-4 w-4" />
                             Cập nhật bản đồ
                         </Button>
@@ -237,10 +241,7 @@ export default function CoordinatorDashboard() {
 
                 {/* Map Area */}
                 <div className="flex-1 relative">
-                    <GoogleMap
-                        center={mapCenter}
-                        zoom={mapZoom}
-                    />
+                    <GoogleMap center={mapCenter} zoom={mapZoom} />
 
                     {/* Map Controls */}
                     <div className="absolute bottom-4 right-4 flex flex-col gap-2 bg-white/95 backdrop-blur rounded-xl shadow-lg border border-slate-200 p-1.5">
@@ -253,7 +254,7 @@ export default function CoordinatorDashboard() {
                         </button>
                         <button
                             type="button"
-                            onClick={() => setMapZoom(prev => Math.min(prev + 1, 20))}
+                            onClick={() => setMapZoom((prev) => Math.min(prev + 1, 20))}
                             className="p-2 hover:bg-slate-50 rounded-lg transition"
                             title="Zoom in"
                         >
@@ -261,7 +262,7 @@ export default function CoordinatorDashboard() {
                         </button>
                         <button
                             type="button"
-                            onClick={() => setMapZoom(prev => Math.max(prev - 1, 1))}
+                            onClick={() => setMapZoom((prev) => Math.max(prev - 1, 1))}
                             className="p-2 hover:bg-slate-50 rounded-lg transition"
                             title="Zoom out"
                         >
@@ -274,28 +275,6 @@ export default function CoordinatorDashboard() {
                         >
                             <Navigation className="h-4 w-4 text-slate-600" />
                         </button>
-                    </div>
-
-                    {/* Team Markers Info (overlay) */}
-                    <div className="absolute top-4 left-4 space-y-2">
-                        {teams.filter(t => t.online).slice(0, 2).map((team) => {
-                            const statusInfo = getStatusBadge(team.status);
-                            return (
-                                <Card
-                                    key={team.id}
-                                    variant="elevated"
-                                    className="p-3 min-w-[200px] bg-white/95 backdrop-blur"
-                                >
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <div className={`h-3 w-3 rounded-full ${team.online ? 'bg-green-500' : 'bg-slate-400'}`} />
-                                        <span className="font-semibold text-sm text-slate-900">{team.name}</span>
-                                    </div>
-                                    <div className="text-xs text-slate-500">
-                                        Cập nhật: {team.lastUpdate}
-                                    </div>
-                                </Card>
-                            );
-                        })}
                     </div>
                 </div>
             </Card>
@@ -313,7 +292,9 @@ export default function CoordinatorDashboard() {
                         </div>
                         <div className="flex items-center justify-between text-xs text-slate-500">
                             <span>LẦN CUỐI: {formatSyncTime(syncTime)}</span>
-                            <span className="font-semibold text-blue-600">{onlineTeamsCount}/{teams.length} Trực tuyến</span>
+                            <span className="font-semibold text-blue-600">
+                                {onlineTeamsCount}/{teams.length} Trực tuyến
+                            </span>
                         </div>
                     </div>
 
@@ -326,8 +307,10 @@ export default function CoordinatorDashboard() {
                                     variant="outlined"
                                     className="p-3 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer"
                                     onClick={() => {
-                                        setMapCenter({ lat: team.lat, lng: team.lng });
-                                        setMapZoom(15);
+                                        if (team.lat && team.lng) {
+                                            setMapCenter({ lat: team.lat, lng: team.lng });
+                                            setMapZoom(15);
+                                        }
                                     }}
                                 >
                                     <div className="flex items-start justify-between mb-2">
@@ -335,26 +318,16 @@ export default function CoordinatorDashboard() {
                                             <Users className="h-4 w-4 text-blue-600" />
                                             <span className="font-semibold text-sm text-slate-900">{team.name}</span>
                                         </div>
-                                        <div className={`h-2 w-2 rounded-full ${team.online ? 'bg-green-500' : 'bg-slate-400'}`} />
-                                    </div>
-                                    <div className="text-xs text-slate-600 mb-2">
-                                        Khu vực: {team.area}
+                                        <div
+                                            className={`h-2 w-2 rounded-full ${team.online ? 'bg-green-500' : 'bg-slate-400'}`}
+                                        />
                                     </div>
                                     <div className="flex items-center justify-between mb-2">
-                                        <Badge
-                                            outline
-                                            size="sm"
-                                            className={statusInfo.color}
-                                        >
+                                        <Badge outline size="sm" className={statusInfo.color}>
                                             {statusInfo.label}
                                         </Badge>
-                                        <div className="text-xs text-slate-500">
-                                            {team.distance}km tới mục tiêu
-                                        </div>
                                     </div>
-                                    <div className="text-xs text-slate-400">
-                                        {team.lastUpdate}
-                                    </div>
+                                    {team.lastUpdate && <div className="text-xs text-slate-400">{team.lastUpdate}</div>}
                                 </Card>
                             );
                         })}
@@ -387,44 +360,18 @@ export default function CoordinatorDashboard() {
                                 >
                                     <div className="flex items-start justify-between mb-2">
                                         <div className="flex items-center gap-2">
-                                            <div className="text-blue-600">
-                                                {getVehicleIcon(vehicle.type)}
-                                            </div>
+                                            <div className="text-blue-600">{getVehicleIcon(vehicle.type)}</div>
                                             <span className="font-semibold text-sm text-slate-900">{vehicle.name}</span>
                                         </div>
-                                        <div className={`h-2 w-2 rounded-full ${vehicle.online ? 'bg-green-500' : 'bg-slate-400'}`} />
+                                        <div
+                                            className={`h-2 w-2 rounded-full ${vehicle.online ? 'bg-green-500' : 'bg-slate-400'}`}
+                                        />
                                     </div>
-                                    {vehicle.capacity && (
-                                        <div className="text-xs text-slate-600 mb-1">
-                                            Tải trọng: {vehicle.capacity} người
-                                        </div>
-                                    )}
-                                    {vehicle.location && (
-                                        <div className="text-xs text-slate-600 mb-1">
-                                            Bãi đáp: {vehicle.location}
-                                        </div>
-                                    )}
                                     <div className="flex items-center justify-between mb-2">
-                                        <Badge
-                                            outline
-                                            size="sm"
-                                            className={statusInfo.color}
-                                        >
+                                        <Badge outline size="sm" className={statusInfo.color}>
                                             {statusInfo.label}
                                         </Badge>
-                                        <div className="text-xs text-slate-500">
-                                            {vehicle.distance}km tới mục tiêu
-                                        </div>
                                     </div>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        fullWidth
-                                        className="mt-2 text-xs"
-                                    >
-                                        Chi tiết
-                                    </Button>
                                 </Card>
                             );
                         })}
@@ -434,3 +381,4 @@ export default function CoordinatorDashboard() {
         </div>
     );
 }
+

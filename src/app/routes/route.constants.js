@@ -73,6 +73,7 @@ export const PUBLIC_ROUTES = {
     SYSTEM_SETTINGS: '/admin/cau-hinh-he-thong',
     NOTIFICATION_TEMPLATES: '/admin/mau-thong-bao',
     AUDIT_LOGS: '/admin/nhat-ky-he-thong',
+    TEAMS_ASSETS: '/admin/doi-va-phuong-tien',
   };
   
   // -------- ALL PRIVATE ROUTES (OPTIONAL HELPER) --------
