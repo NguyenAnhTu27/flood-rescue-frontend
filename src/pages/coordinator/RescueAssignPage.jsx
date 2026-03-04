@@ -13,6 +13,7 @@ import {
     getCoordinatorRescueQueue,
     changeRescueRequestStatus,
 } from '../../features/coordinator/api.js';
+import { COORDINATOR_ROUTES } from '../../app/routes/route.constants.js';
 
 export default function RescueAssignPage() {
     const location = useLocation();
@@ -332,7 +333,10 @@ export default function RescueAssignPage() {
             }
 
             window.alert('Phân công nhiệm vụ (gộp đội & phương tiện) thành công!');
-            navigate(-1);
+            // Quay về dashboard của điều phối viên và reload dữ liệu
+            navigate(COORDINATOR_ROUTES.DASHBOARD, {
+                state: { refresh: true }, // Signal để dashboard reload
+            });
         } catch (error) {
             console.error('[RescueAssignPage] Error assigning task:', error);
             window.alert('Không thể phân công nhiệm vụ. Vui lòng thử lại sau.');

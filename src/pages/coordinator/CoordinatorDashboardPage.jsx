@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
     List,
     Search,
@@ -17,11 +17,12 @@ import PriorityBadge from '../../features/rescue/components/PriorityBadge.jsx';
 import Button from '../../shared/ui/Button.jsx';
 import Card from '../../shared/ui/Card.jsx';
 import Badge from '../../shared/ui/Badge.jsx';
-import { getCoordinatorDashboard } from '../../features/coordinator/api.js';
+import { getCoordinatorDashboard, getCoordinatorRescueQueue } from '../../features/coordinator/api.js';
 import { COORDINATOR_ROUTES } from '../../app/routes/route.constants.js';
 
 export default function CoordinatorDashboardPage() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [syncTime, setSyncTime] = useState(new Date());
     const [searchQuery, setSearchQuery] = useState('');
     const [mapCenter, setMapCenter] = useState({ lat: 16.0544, lng: 108.2022 }); // Da Nang
@@ -39,7 +40,42 @@ export default function CoordinatorDashboardPage() {
             setLoading(true);
             setError(null);
             const data = await getCoordinatorDashboard();
-            setRequests(data?.requests || []);
+
+            // Lấy requests từ dashboard (có thể chỉ có PENDING)
+            const dashboardRequests = data?.requests || [];
+
+            // Lấy thêm IN_PROGRESS requests để đảm bảo hiển thị đầy đủ
+            let inProgressRequests = [];
+            try {
+                const inProgressData = await getCoordinatorRescueQueue({
+                    status: 'IN_PROGRESS',
+                    page: 0,
+                    size: 100,
+                });
+                // Parse response format
+                if (Array.isArray(inProgressData)) {
+                    inProgressRequests = inProgressData;
+                } else if (inProgressData?.content && Array.isArray(inProgressData.content)) {
+                    inProgressRequests = inProgressData.content;
+                } else if (inProgressData?.data) {
+                    inProgressRequests = Array.isArray(inProgressData.data)
+                        ? inProgressData.data
+                        : inProgressData.data?.content || [];
+                }
+            } catch (err) {
+                console.warn('[CoordinatorDashboard] Could not load IN_PROGRESS requests:', err);
+            }
+
+            // Merge và loại bỏ duplicate dựa trên ID
+            const allRequestsMap = new Map();
+            [...dashboardRequests, ...inProgressRequests].forEach(req => {
+                if (req && req.id) {
+                    allRequestsMap.set(req.id, req);
+                }
+            });
+            const allRequests = Array.from(allRequestsMap.values());
+
+            setRequests(allRequests);
             setTeams(data?.teams || []);
             setVehicles(data?.vehicles || []);
             setSyncTime(new Date());
@@ -64,6 +100,16 @@ export default function CoordinatorDashboardPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // Reload dashboard khi quay lại từ trang phân công
+    useEffect(() => {
+        if (location.state?.refresh) {
+            loadDashboard();
+            // Clear refresh flag để không reload lại lần sau
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [location.state?.refresh]);
+
     const formatSyncTime = (date) => {
         return date.toLocaleTimeString('vi-VN', {
             hour: '2-digit',
@@ -79,6 +125,8 @@ export default function CoordinatorDashboardPage() {
             ON_MISSION: { label: 'ĐANG NHIỆM VỤ', color: 'bg-amber-100 text-amber-800 border-amber-200' },
             MAINTENANCE: { label: 'BẢO TRÌ', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
             PENDING: { label: 'Chờ xử lý', color: 'bg-slate-100 text-slate-700 border-slate-200' },
+            IN_PROGRESS: { label: 'Đang xử lí', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+            INPROGRESS: { label: 'Đang xử lí', color: 'bg-blue-100 text-blue-700 border-blue-200' },
         };
         return statusMap[status] || statusMap.PENDING;
     };
