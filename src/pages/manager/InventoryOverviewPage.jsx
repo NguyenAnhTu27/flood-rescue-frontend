@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Info } from 'lucide-react';
+import { Plus, Search, Info, Tag, RefreshCw } from 'lucide-react';
 import { MANAGER_ROUTES } from '../../app/routes/route.constants.js';
+import { getInventoryStock, getManagerDashboard, listInventoryReceipts, listInventoryIssues, getItemCategories } from '../../features/relief/api.js';
 
 const mockStats = [
     { id: 'total-items', label: 'TỔNG MẶT HÀNG', value: '24', color: 'text-slate-800' },
@@ -20,17 +21,295 @@ const mockInventory = [
 
 export default function InventoryOverviewPage() {
     const [searchQuery, setSearchQuery] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [inventory, setInventory] = useState([]);
+    const [stats, setStats] = useState(mockStats);
+
+    // Load dữ liệu tồn kho từ backend
+    const loadInventory = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            let inventoryData = [];
+            let statsData = mockStats;
+
+            // Strategy 1: Thử lấy từ API tồn kho trực tiếp (/api/inventory/stock)
+            // API này đọc từ bảng stock_balances, chỉ có dữ liệu khi có phiếu nhập status = DONE
+            let stockDataLoaded = false;
+            try {
+                console.log('[InventoryOverviewPage] Trying getInventoryStock (from stock_balances table)...');
+                const stockData = await getInventoryStock();
+                console.log('[InventoryOverviewPage] getInventoryStock response:', stockData);
+
+                // Parse response (có thể là array hoặc { data: [], content: [] })
+                if (Array.isArray(stockData)) {
+                    inventoryData = stockData;
+                } else if (Array.isArray(stockData?.data)) {
+                    inventoryData = stockData.data;
+                } else if (Array.isArray(stockData?.content)) {
+                    inventoryData = stockData.content;
+                } else if (Array.isArray(stockData?.items)) {
+                    inventoryData = stockData.items;
+                } else if (Array.isArray(stockData?.inventoryItems)) {
+                    inventoryData = stockData.inventoryItems;
+                } else if (Array.isArray(stockData?.lines)) {
+                    inventoryData = stockData.lines;
+                }
+
+                // Nếu API trả về mảng rỗng [], có nghĩa là chưa có phiếu nhập nào được approve (DONE)
+                // → Fallback sang strategy khác để tính tồn kho từ receipts - issues
+                if (inventoryData.length === 0) {
+                    console.log('[InventoryOverviewPage] stock_balances is empty (no DONE receipts yet), falling back to calculate from receipts-issues');
+                    stockDataLoaded = false; // Đánh dấu để fallback
+                } else {
+                    stockDataLoaded = true; // Có dữ liệu từ stock_balances
+                    console.log('[InventoryOverviewPage] Loaded', inventoryData.length, 'items from stock_balances');
+                }
+
+                // Cập nhật stats nếu có
+                if (stockData?.summary || stockData?.stats) {
+                    const summary = stockData.summary || stockData.stats;
+                    if (Array.isArray(summary)) {
+                        statsData = summary.map((s, idx) => ({
+                            ...(mockStats[idx] || mockStats[0]),
+                            value: String(s.value ?? s.total ?? (mockStats[idx]?.value || '0')),
+                            label: s.label || s.name || (mockStats[idx]?.label || ''),
+                        }));
+                    }
+                }
+            } catch (stockErr) {
+                console.warn('[InventoryOverviewPage] getInventoryStock failed, trying dashboard:', stockErr);
+                stockDataLoaded = false;
+            }
+
+            // Nếu Strategy 1 không có dữ liệu (mảng rỗng hoặc lỗi), thử Strategy 2 và 3
+            if (!stockDataLoaded || inventoryData.length === 0) {
+
+                // Strategy 2: Lấy từ dashboard
+                try {
+                    console.log('[InventoryOverviewPage] Trying getManagerDashboard...');
+                    const dashboardData = await getManagerDashboard();
+                    console.log('[InventoryOverviewPage] getManagerDashboard response:', dashboardData);
+                    const payload = dashboardData?.data || dashboardData;
+
+                    if (Array.isArray(payload?.inventoryItems)) {
+                        inventoryData = payload.inventoryItems;
+                    } else if (Array.isArray(payload?.items)) {
+                        inventoryData = payload.items;
+                    }
+
+                    // Nếu dashboard có dữ liệu, dùng luôn
+                    if (inventoryData.length > 0) {
+                        console.log('[InventoryOverviewPage] Loaded', inventoryData.length, 'items from dashboard');
+                    } else {
+                        throw new Error('Dashboard has no inventory data');
+                    }
+
+                    if (payload?.inventorySummary) {
+                        const summary = payload.inventorySummary;
+                        if (Array.isArray(summary)) {
+                            statsData = summary.map((s, idx) => ({
+                                ...(mockStats[idx] || mockStats[0]),
+                                value: String(s.value ?? (mockStats[idx]?.value || '0')),
+                                label: s.label || s.name || (mockStats[idx]?.label || ''),
+                            }));
+                        }
+                    }
+                } catch (dashboardErr) {
+                    console.warn('[InventoryOverviewPage] getManagerDashboard failed or empty, trying receipts:', dashboardErr);
+
+                    // Strategy 3: Tính tồn kho từ phiếu nhập (DONE) - phiếu xuất (DONE)
+                    // Lưu ý: Chỉ phiếu nhập status = DONE mới được cập nhật vào stock_balances
+                    try {
+                        console.log('[InventoryOverviewPage] Calculating stock from receipts - issues...');
+
+                        // Lấy danh sách item categories để map thông tin
+                        let categoriesMap = new Map();
+                        try {
+                            const categoriesResponse = await getItemCategories();
+                            let categories = [];
+                            if (Array.isArray(categoriesResponse)) {
+                                categories = categoriesResponse;
+                            } else if (Array.isArray(categoriesResponse?.data)) {
+                                categories = categoriesResponse.data;
+                            } else if (Array.isArray(categoriesResponse?.content)) {
+                                categories = categoriesResponse.content;
+                            }
+
+                            categories.forEach((cat) => {
+                                if (cat.id) {
+                                    categoriesMap.set(cat.id, {
+                                        code: cat.code || `#CAT-${cat.id}`,
+                                        name: cat.name || 'Danh mục',
+                                        unit: cat.unit || 'Đơn vị',
+                                    });
+                                }
+                            });
+                            console.log('[InventoryOverviewPage] Loaded categories map:', categoriesMap);
+                        } catch (catErr) {
+                            console.warn('[InventoryOverviewPage] Could not load categories:', catErr);
+                        }
+
+                        // Lấy tất cả phiếu nhập
+                        const receiptsResponse = await listInventoryReceipts({});
+                        console.log('[InventoryOverviewPage] listInventoryReceipts response:', receiptsResponse);
+
+                        // Parse receipts
+                        let receipts = [];
+                        if (Array.isArray(receiptsResponse)) {
+                            receipts = receiptsResponse;
+                        } else if (Array.isArray(receiptsResponse?.content)) {
+                            receipts = receiptsResponse.content;
+                        } else if (Array.isArray(receiptsResponse?.data)) {
+                            receipts = receiptsResponse.data;
+                        }
+
+                        // Lọc chỉ lấy phiếu nhập đã duyệt (status = DONE)
+                        // Lưu ý: Chỉ phiếu nhập status = DONE mới được cập nhật vào stock_balances
+                        // APPROVED chưa đủ, phải là DONE
+                        const approvedReceipts = receipts.filter(
+                            (r) => r.status === 'DONE'
+                        );
+                        console.log('[InventoryOverviewPage] DONE receipts (will update stock_balances):', approvedReceipts.length);
+
+                        // Lấy tất cả phiếu xuất
+                        let issues = [];
+                        try {
+                            const issuesResponse = await listInventoryIssues({});
+                            console.log('[InventoryOverviewPage] listInventoryIssues response:', issuesResponse);
+
+                            if (Array.isArray(issuesResponse)) {
+                                issues = issuesResponse;
+                            } else if (Array.isArray(issuesResponse?.content)) {
+                                issues = issuesResponse.content;
+                            } else if (Array.isArray(issuesResponse?.data)) {
+                                issues = issuesResponse.data;
+                            }
+                        } catch (issuesErr) {
+                            console.warn('[InventoryOverviewPage] Could not load issues, assuming 0:', issuesErr);
+                            issues = [];
+                        }
+
+                        // Lọc chỉ lấy phiếu xuất đã duyệt (status = DONE)
+                        // Tương tự, chỉ phiếu xuất DONE mới được trừ khỏi stock_balances
+                        const approvedIssues = issues.filter(
+                            (i) => i.status === 'DONE'
+                        );
+                        console.log('[InventoryOverviewPage] DONE issues (will reduce stock_balances):', approvedIssues.length);
+
+                        // Aggregate: Tính tổng nhập - tổng xuất theo itemCategoryId
+                        const itemMap = new Map();
+
+                        // Cộng từ phiếu nhập
+                        approvedReceipts.forEach((receipt) => {
+                            const lines = receipt.lines || receipt.lineItems || [];
+                            lines.forEach((line) => {
+                                const itemCategoryId = line.itemCategoryId || line.itemId;
+                                if (!itemCategoryId) return;
+
+                                const categoryInfo = categoriesMap.get(itemCategoryId) || {};
+                                const existing = itemMap.get(itemCategoryId) || {
+                                    id: itemCategoryId,
+                                    itemCategoryId: itemCategoryId,
+                                    code: categoryInfo.code || line.itemCode || `#ITEM-${itemCategoryId}`,
+                                    name: categoryInfo.name || line.itemName || line.itemCategoryName || 'Mặt hàng',
+                                    category: categoryInfo.name || line.itemCategoryName || 'Khác',
+                                    unit: categoryInfo.unit || line.unit || 'Đơn vị',
+                                    qty: 0,
+                                };
+                                existing.qty += Number(line.qty || line.quantity || 0);
+                                itemMap.set(itemCategoryId, existing);
+                            });
+                        });
+
+                        // Trừ từ phiếu xuất
+                        approvedIssues.forEach((issue) => {
+                            const lines = issue.lines || issue.lineItems || [];
+                            lines.forEach((line) => {
+                                const itemCategoryId = line.itemCategoryId || line.itemId;
+                                if (!itemCategoryId) return;
+
+                                const existing = itemMap.get(itemCategoryId);
+                                if (existing) {
+                                    existing.qty -= Number(line.qty || line.quantity || 0);
+                                    // Đảm bảo không âm
+                                    if (existing.qty < 0) existing.qty = 0;
+                                }
+                            });
+                        });
+
+                        inventoryData = Array.from(itemMap.values());
+                        console.log('[InventoryOverviewPage] Calculated stock (DONE receipts - DONE issues):', inventoryData);
+                    } catch (receiptsErr) {
+                        console.error('[InventoryOverviewPage] All APIs failed:', receiptsErr);
+                        inventoryData = [];
+                    }
+                }
+            }
+
+            // Normalize inventory data
+            // Hỗ trợ nhiều format từ API stock_balances hoặc từ tính toán receipts-issues
+            const normalizedInventory = inventoryData.map((item, idx) => {
+                // Parse số lượng từ nhiều field khác nhau
+                const qty = typeof item.qty === 'number'
+                    ? item.qty
+                    : typeof item.quantity === 'number'
+                        ? item.quantity
+                        : typeof item.stockQty === 'number'
+                            ? item.stockQty
+                            : typeof item.stockQuantity === 'number'
+                                ? item.stockQuantity
+                                : typeof item.balance === 'number'
+                                    ? item.balance
+                                    : Number(item.qty || item.quantity || item.stockQty || item.stockQuantity || item.balance || 0);
+
+                // Parse itemCategoryId từ nhiều field
+                const itemCategoryId = item.itemCategoryId || item.itemId || item.categoryId || item.id;
+
+                return {
+                    id: itemCategoryId || item.id || `item-${idx}`,
+                    code: item.code || item.itemCode || item.categoryCode || `#ITEM-${String(idx + 1).padStart(3, '0')}`,
+                    name: item.name || item.itemName || item.itemCategoryName || item.categoryName || 'Mặt hàng',
+                    category: item.category || item.categoryName || item.itemCategoryName || 'Khác',
+                    unit: item.unit || item.uom || item.unitOfMeasure || 'Đơn vị',
+                    qty: qty,
+                    status: item.status || (qty > 0 ? 'Ổn định' : 'Hết hàng'),
+                    statusType: item.statusType || (qty > 0 && qty < 100 ? 'low' : 'stable'),
+                };
+            });
+
+            console.log('[InventoryOverviewPage] Normalized inventory:', normalizedInventory);
+            // Chỉ set data từ backend, không fallback về mock nếu không có data
+            setInventory(normalizedInventory);
+            setStats(statsData);
+        } catch (err) {
+            console.error('[InventoryOverviewPage] loadInventory error:', err);
+            setError(err?.message || 'Không thể tải dữ liệu tồn kho');
+            // Không set mock data khi có lỗi - để hiển thị empty state
+            setInventory([]);
+            // Giữ stats mặc định nếu có lỗi
+            setStats(mockStats);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadInventory();
+    }, []);
 
     const filteredInventory = useMemo(() => {
-        if (!searchQuery.trim()) return mockInventory;
+        if (!searchQuery.trim()) return inventory;
         const q = searchQuery.toLowerCase();
-        return mockInventory.filter(
+        return inventory.filter(
             (item) =>
                 item.code.toLowerCase().includes(q) ||
                 item.name.toLowerCase().includes(q) ||
                 item.category.toLowerCase().includes(q)
         );
-    }, [searchQuery]);
+    }, [inventory, searchQuery]);
 
     return (
         <div className="space-y-6">
@@ -65,7 +344,7 @@ export default function InventoryOverviewPage() {
 
             {/* ===== METRIC CARDS ===== */}
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                {mockStats.map((stat) => (
+                {stats.map((stat) => (
                     <div
                         key={stat.id}
                         className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
@@ -73,7 +352,7 @@ export default function InventoryOverviewPage() {
                         <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
                             {stat.label}
                         </p>
-                        <p className={`mt-1 text-2xl font-bold ${stat.color}`}>
+                        <p className={`mt-1 text-2xl font-bold ${stat.color || 'text-slate-800'}`}>
                             {stat.value}
                         </p>
                     </div>
@@ -86,94 +365,118 @@ export default function InventoryOverviewPage() {
                     <h2 className="text-lg font-semibold text-slate-900">
                         Bảng tồn kho hiện có
                     </h2>
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="Tìm kiếm mặt hàng..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-4 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100 sm:w-64"
-                        />
+                    <div className="flex items-center gap-2">
+                        <Link
+                            to={MANAGER_ROUTES.ITEM_CATEGORIES}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+                        >
+                            <Tag className="h-3.5 w-3.5" />
+                            Quản lý danh mục hàng
+                        </Link>
+                        <button
+                            type="button"
+                            onClick={loadInventory}
+                            disabled={loading}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
+                        >
+                            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+                            Làm mới
+                        </button>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="Tìm kiếm mặt hàng..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-4 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100 sm:w-64"
+                            />
+                        </div>
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full min-w-[600px]">
-                        <thead>
-                            <tr className="border-b border-slate-200">
-                                <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                    Mã hàng
-                                </th>
-                                <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                    Tên mặt hàng
-                                </th>
-                                <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                    Phân loại
-                                </th>
-                                <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                    Đơn vị
-                                </th>
-                                <th className="pb-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                    Số lượng tồn
-                                </th>
-                                <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                    Trạng thái
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredInventory.map((item) => (
-                                <tr
-                                    key={item.id}
-                                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50"
-                                >
-                                    <td className="py-3 text-sm font-medium text-slate-900">
-                                        {item.code}
-                                    </td>
-                                    <td className="py-3 text-sm text-slate-700">
-                                        {item.name}
-                                    </td>
-                                    <td className="py-3 text-sm text-slate-600">
-                                        {item.category}
-                                    </td>
-                                    <td className="py-3 text-sm text-slate-600">
-                                        {item.unit}
-                                    </td>
-                                    <td
-                                        className={`py-3 text-right text-sm font-medium ${
-                                            item.statusType === 'low'
+                {error && (
+                    <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                        {error}
+                    </div>
+                )}
+
+                {loading ? (
+                    <div className="py-10 text-center text-sm text-slate-500">
+                        <RefreshCw className="mx-auto h-6 w-6 animate-spin text-slate-400" />
+                        <p className="mt-2">Đang tải dữ liệu tồn kho...</p>
+                    </div>
+                ) : filteredInventory.length === 0 ? (
+                    <div className="py-10 text-center text-sm text-slate-500">
+                        Chưa có hàng tồn kho. Hãy tạo phiếu nhập để thêm hàng vào kho.
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[600px]">
+                            <thead>
+                                <tr className="border-b border-slate-200">
+                                    <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                        Mã hàng
+                                    </th>
+                                    <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                        Tên mặt hàng
+                                    </th>
+                                    <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                        Phân loại
+                                    </th>
+                                    <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                        Đơn vị
+                                    </th>
+                                    <th className="pb-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                        Số lượng tồn
+                                    </th>
+                                    <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                        Trạng thái
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredInventory.map((item) => (
+                                    <tr
+                                        key={item.id}
+                                        className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50"
+                                    >
+                                        <td className="py-3 text-sm font-medium text-slate-900">
+                                            {item.code}
+                                        </td>
+                                        <td className="py-3 text-sm text-slate-700">
+                                            {item.name}
+                                        </td>
+                                        <td className="py-3 text-sm text-slate-600">
+                                            {item.category}
+                                        </td>
+                                        <td className="py-3 text-sm text-slate-600">
+                                            {item.unit}
+                                        </td>
+                                        <td
+                                            className={`py-3 text-right text-sm font-medium ${item.statusType === 'low'
                                                 ? 'text-red-600'
                                                 : 'text-slate-900'
-                                        }`}
-                                    >
-                                        {item.qty.toLocaleString()}
-                                    </td>
-                                    <td className="py-3">
-                                        <span
-                                            className={`inline-flex rounded-full px-3 py-0.5 text-xs font-medium ${
-                                                item.statusType === 'low'
-                                                    ? 'bg-red-100 text-red-700'
-                                                    : 'text-green-700'
-                                            }`}
+                                                }`}
                                         >
-                                            {item.status}
-                                        </span>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-
-                <div className="mt-4 text-center">
-                    <Link
-                        to={MANAGER_ROUTES.ITEM_CATEGORIES}
-                        className="text-sm font-medium text-blue-600 underline hover:text-blue-700"
-                    >
-                        Xem toàn bộ danh sách hàng hóa
-                    </Link>
-                </div>
+                                            {item.qty.toLocaleString()}
+                                        </td>
+                                        <td className="py-3">
+                                            <span
+                                                className={`inline-flex rounded-full px-3 py-0.5 text-xs font-medium ${item.statusType === 'low'
+                                                    ? 'bg-red-100 text-red-700'
+                                                    : 'bg-green-100 text-green-700'
+                                                    }`}
+                                            >
+                                                {item.status}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
 
             {/* ===== COORDINATION NOTE ===== */}

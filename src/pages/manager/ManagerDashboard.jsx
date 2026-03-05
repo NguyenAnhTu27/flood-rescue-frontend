@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
     Warehouse,
@@ -18,14 +18,15 @@ import {
     RefreshCw,
 } from 'lucide-react';
 import { MANAGER_ROUTES } from '../../app/routes/route.constants.js';
+import { getManagerDashboard } from '../../features/relief/api.js';
 
 const mockStats = [
     {
-        id: 'warehouses',
-        label: 'Tổng kho hàng',
-        value: '12',
+        id: 'central-warehouse',
+        label: 'Kho Trung tâm',
+        value: '1',
         unit: 'Kho',
-        sub: 'Đang hoạt động: 12 kho',
+        sub: 'Hệ thống chỉ sử dụng 1 kho trung tâm',
         icon: Warehouse,
         color: 'slate',
         trend: null,
@@ -96,7 +97,7 @@ const managementCards = [
         description:
             'Tối ưu kế hoạch phân phối vận tải đến các địa phương, tạo lịch phát, trích nguồn lực từ các kho.',
         image: 'https://images.unsplash.com/photo-1469571486292-0ba58a3f068b?w=400&h=250&fit=crop',
-        route: MANAGER_ROUTES.DISTRIBUTION_PLAN,
+        route: MANAGER_ROUTES.RELIEF_REQUEST_DASHBOARD,
     },
 ];
 
@@ -140,8 +141,8 @@ const mockTransactions = [
 ];
 
 const inventorySummary = [
-    { id: 'total', label: 'Số kho vận', value: '24' },
-    { id: 'current', label: 'Tổn kho hiện tại', value: '12,450' },
+    { id: 'central-warehouse', label: 'Kho Trung tâm', value: '1' },
+    { id: 'current', label: 'Tồn kho hiện tại', value: '12,450' },
     {
         id: 'imports',
         label: 'Nhập trong ngày',
@@ -209,6 +210,13 @@ const inventoryItems = [
 export default function ManagerDashboard() {
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    const [stats, setStats] = useState(mockStats);
+    const [transactions, setTransactions] = useState(mockTransactions);
+    const [inventorySummaryState, setInventorySummaryState] = useState(inventorySummary);
+    const [inventoryItemsState, setInventoryItemsState] = useState(inventoryItems);
     const now = new Date();
     const timeStr = now.toLocaleTimeString('vi-VN', {
         hour: '2-digit',
@@ -220,6 +228,109 @@ export default function ManagerDashboard() {
         month: '2-digit',
         year: 'numeric',
     });
+
+    useEffect(() => {
+        const loadDashboard = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+
+                const data = await getManagerDashboard();
+                const payload = data?.data || data; // phòng trường hợp BE bọc trong data
+
+                // --------- Tổng quan (stats) ---------
+                // Kỳ vọng payload.overview hoặc payload.stats là mảng
+                let apiStats = payload?.overview || payload?.stats || [];
+                if (!Array.isArray(apiStats) || apiStats.length === 0) {
+                    apiStats = mockStats;
+                } else {
+                    apiStats = apiStats.map((item, idx) => {
+                        const base = mockStats[idx] || mockStats[0];
+                        return {
+                            id: item.id || base.id || `stat-${idx}`,
+                            label: item.label || item.name || base.label,
+                            value: String(item.value ?? item.total ?? base.value),
+                            unit: item.unit || base.unit || '',
+                            sub: item.sub || item.description || base.sub || '',
+                            icon: base.icon, // dùng icon tĩnh để đỡ phức tạp
+                            color: base.color || 'slate',
+                            trend: item.trend || base.trend || null,
+                            highlighted: item.highlighted ?? base.highlighted ?? false,
+                        };
+                    });
+                }
+
+                // --------- Giao dịch gần đây ---------
+                // Kỳ vọng payload.recentTransactions hoặc payload.transactions
+                let apiTransactions =
+                    payload?.recentTransactions || payload?.transactions || [];
+                if (!Array.isArray(apiTransactions) || apiTransactions.length === 0) {
+                    apiTransactions = mockTransactions;
+                } else {
+                    apiTransactions = apiTransactions.map((tx) => ({
+                        id: tx.code || tx.id || '#TX-' + (tx.index || Math.random().toString(36).slice(2, 7)),
+                        type: tx.typeLabel || tx.type || 'Giao dịch',
+                        typeColor: tx.typeColor || 'blue',
+                        destination: tx.destination || tx.warehouseName || tx.location || '',
+                        time: tx.time || tx.createdTime || tx.createdAt || '',
+                        status: tx.statusLabel || tx.status || 'Đang xử lý',
+                        statusColor: tx.statusColor || 'blue',
+                    }));
+                }
+
+                // --------- Tóm tắt tồn kho ---------
+                // Kỳ vọng payload.inventorySummary
+                let apiInvSummary = payload?.inventorySummary || [];
+                if (!Array.isArray(apiInvSummary) || apiInvSummary.length === 0) {
+                    apiInvSummary = inventorySummary;
+                } else {
+                    apiInvSummary = apiInvSummary.map((item, idx) => {
+                        const base = inventorySummary[idx] || inventorySummary[0];
+                        return {
+                            id: item.id || base.id || `inv-summary-${idx}`,
+                            label: item.label || item.name || base.label,
+                            value:
+                                typeof item.value === 'number'
+                                    ? item.value.toLocaleString()
+                                    : item.value || base.value,
+                            color: item.color || base.color,
+                            icon: base.icon || item.icon,
+                        };
+                    });
+                }
+
+                // --------- Danh sách hàng tồn ---------
+                // Kỳ vọng payload.inventoryItems hoặc payload.items
+                let apiInvItems = payload?.inventoryItems || payload?.items || [];
+                if (!Array.isArray(apiInvItems) || apiInvItems.length === 0) {
+                    apiInvItems = inventoryItems;
+                } else {
+                    apiInvItems = apiInvItems.map((item) => ({
+                        code: item.code || item.itemCode || '#ITEM',
+                        name: item.name || item.itemName || 'Mặt hàng',
+                        category: item.category || item.categoryName || 'Khác',
+                        unit: item.unit || item.uom || 'Đơn vị',
+                        qty: typeof item.qty === 'number' ? item.qty : Number(item.quantity || 0),
+                        status: item.statusLabel || item.status || 'Còn hàng',
+                        statusColor: item.statusColor || 'green',
+                    }));
+                }
+
+                setStats(apiStats);
+                setTransactions(apiTransactions);
+                setInventorySummaryState(apiInvSummary);
+                setInventoryItemsState(apiInvItems);
+            } catch (err) {
+                console.error('[ManagerDashboard] loadDashboard error:', err);
+                setError(err?.message || 'Không thể tải dữ liệu dashboard cứu trợ');
+                // Giữ nguyên mock data nếu có lỗi
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadDashboard();
+    }, []);
 
     return (
         <div className="space-y-6">
@@ -248,32 +359,29 @@ export default function ManagerDashboard() {
 
             {/* ===== STATS CARDS ===== */}
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-                {mockStats.map((stat) => {
+                {stats.map((stat) => {
                     const Icon = stat.icon;
                     const isHighlighted = stat.highlighted;
                     return (
                         <div
                             key={stat.id}
-                            className={`relative overflow-hidden rounded-xl border p-4 shadow-sm transition hover:shadow-md ${
-                                isHighlighted
-                                    ? 'border-blue-200 bg-blue-600 text-white'
-                                    : 'border-slate-200 bg-white'
-                            }`}
+                            className={`relative overflow-hidden rounded-xl border p-4 shadow-sm transition hover:shadow-md ${isHighlighted
+                                ? 'border-blue-200 bg-blue-600 text-white'
+                                : 'border-slate-200 bg-white'
+                                }`}
                         >
                             <div className="flex items-start justify-between">
                                 <div
-                                    className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                                        isHighlighted
-                                            ? 'bg-white/20'
-                                            : 'bg-slate-100'
-                                    }`}
+                                    className={`flex h-10 w-10 items-center justify-center rounded-lg ${isHighlighted
+                                        ? 'bg-white/20'
+                                        : 'bg-slate-100'
+                                        }`}
                                 >
                                     <Icon
-                                        className={`h-5 w-5 ${
-                                            isHighlighted
-                                                ? 'text-white'
-                                                : 'text-slate-600'
-                                        }`}
+                                        className={`h-5 w-5 ${isHighlighted
+                                            ? 'text-white'
+                                            : 'text-slate-600'
+                                            }`}
                                     />
                                 </div>
                                 {isHighlighted && (
@@ -289,21 +397,19 @@ export default function ManagerDashboard() {
                                         {stat.value}
                                     </span>
                                     <span
-                                        className={`text-sm font-medium ${
-                                            isHighlighted
-                                                ? 'text-blue-100'
-                                                : 'text-slate-500'
-                                        }`}
+                                        className={`text-sm font-medium ${isHighlighted
+                                            ? 'text-blue-100'
+                                            : 'text-slate-500'
+                                            }`}
                                     >
                                         {stat.unit}
                                     </span>
                                 </div>
                                 <p
-                                    className={`mt-0.5 text-xs ${
-                                        isHighlighted
-                                            ? 'text-blue-100'
-                                            : 'text-slate-500'
-                                    }`}
+                                    className={`mt-0.5 text-xs ${isHighlighted
+                                        ? 'text-blue-100'
+                                        : 'text-slate-500'
+                                        }`}
                                 >
                                     {stat.label}
                                 </p>
@@ -311,11 +417,10 @@ export default function ManagerDashboard() {
 
                             {stat.sub && (
                                 <p
-                                    className={`mt-2 text-[11px] ${
-                                        isHighlighted
-                                            ? 'text-blue-100'
-                                            : 'text-slate-400'
-                                    }`}
+                                    className={`mt-2 text-[11px] ${isHighlighted
+                                        ? 'text-blue-100'
+                                        : 'text-slate-400'
+                                        }`}
                                 >
                                     {stat.sub}
                                 </p>
@@ -383,7 +488,7 @@ export default function ManagerDashboard() {
                         </h2>
                         <span className="flex items-center gap-1 text-xs text-slate-400">
                             <Clock className="h-3.5 w-3.5" />
-                            Cập nhật lúc {timeStr}
+                            {loading ? 'Đang tải...' : `Cập nhật lúc ${timeStr}`}
                         </span>
                     </div>
 
@@ -399,7 +504,7 @@ export default function ManagerDashboard() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {mockTransactions.map((tx) => (
+                                {transactions.map((tx) => (
                                     <tr
                                         key={tx.id}
                                         className="transition hover:bg-slate-50"
@@ -459,7 +564,7 @@ export default function ManagerDashboard() {
 
                     {/* Inventory mini-stats */}
                     <div className="grid grid-cols-4 divide-x divide-slate-100 border-b border-slate-100">
-                        {inventorySummary.map((item) => {
+                        {inventorySummaryState.map((item) => {
                             const Icon = item.icon;
                             return (
                                 <div key={item.id} className="px-4 py-3 text-center">
@@ -467,9 +572,8 @@ export default function ManagerDashboard() {
                                         {item.label}
                                     </p>
                                     <p
-                                        className={`mt-0.5 text-lg font-bold ${
-                                            item.color || 'text-slate-900'
-                                        }`}
+                                        className={`mt-0.5 text-lg font-bold ${item.color || 'text-slate-900'
+                                            }`}
                                     >
                                         {item.value}
                                     </p>
@@ -491,7 +595,7 @@ export default function ManagerDashboard() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {inventoryItems.map((item) => (
+                                {inventoryItemsState.map((item) => (
                                     <tr
                                         key={item.code}
                                         className="transition hover:bg-slate-50"
@@ -548,16 +652,7 @@ export default function ManagerDashboard() {
                 </div>
             </div>
 
-            {/* ===== FOOTER ===== */}
-            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-5 py-3">
-                <p className="text-xs text-slate-500">
-                    © 2024 ReliefLogistics Management System. Tất cả các quyền được bảo lưu.
-                </p>
-                <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    <span>Cập nhật lúc {timeStr}</span>
-                </div>
-            </div>
+
         </div>
     );
 }
@@ -570,9 +665,8 @@ function TypeBadge({ color, label }) {
     };
     return (
         <span
-            className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                colorMap[color] || 'bg-slate-100 text-slate-700'
-            }`}
+            className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${colorMap[color] || 'bg-slate-100 text-slate-700'
+                }`}
         >
             {label}
         </span>
@@ -594,14 +688,12 @@ function StatusBadge({ color, label }) {
     };
     return (
         <span
-            className={`inline-flex items-center gap-1.5 text-xs font-medium ${
-                colorMap[color] || 'text-slate-600'
-            }`}
+            className={`inline-flex items-center gap-1.5 text-xs font-medium ${colorMap[color] || 'text-slate-600'
+                }`}
         >
             <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                    dotMap[color] || 'bg-slate-400'
-                }`}
+                className={`h-1.5 w-1.5 rounded-full ${dotMap[color] || 'bg-slate-400'
+                    }`}
             />
             {label}
         </span>

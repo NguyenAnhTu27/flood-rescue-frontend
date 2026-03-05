@@ -1,5 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Sailboat, Truck, Zap, MapPin, FileText, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MANAGER_ROUTES } from '../../app/routes/route.constants.js';
+import { getAssets } from '../../features/assets/api.js';
 
 const STATUS_FILTERS = [
     { id: 'all', label: 'Tất cả', value: null },
@@ -38,12 +41,48 @@ const mockAssets = [
 const ITEMS_PER_PAGE = 6;
 
 export default function AssetsManagementPage() {
+    const navigate = useNavigate();
     const [statusFilter, setStatusFilter] = useState(null);
     const [typeFilter, setTypeFilter] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
+    const [assets, setAssets] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    // Load assets from API
+    useEffect(() => {
+        const loadAssets = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                const data = await getAssets();
+                // Parse response format
+                let assetsList = [];
+                if (Array.isArray(data)) {
+                    assetsList = data;
+                } else if (Array.isArray(data?.content)) {
+                    assetsList = data.content;
+                } else if (Array.isArray(data?.data)) {
+                    assetsList = data.data;
+                } else if (Array.isArray(data?.items)) {
+                    assetsList = data.items;
+                }
+                // Nếu API trả về rỗng, dùng mock data
+                setAssets(assetsList.length > 0 ? assetsList : mockAssets);
+            } catch (e) {
+                console.warn('[AssetsManagementPage] Could not load assets, using mock data:', e);
+                // Nếu API fail, dùng mock data
+                setAssets(mockAssets);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadAssets();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const filteredAssets = useMemo(() => {
-        let list = [...mockAssets];
+        let list = [...assets];
         if (statusFilter) {
             list = list.filter((a) => a.status === statusFilter);
         }
@@ -51,7 +90,7 @@ export default function AssetsManagementPage() {
             list = list.filter((a) => a.type === typeFilter);
         }
         return list;
-    }, [statusFilter, typeFilter]);
+    }, [assets, statusFilter, typeFilter]);
 
     const paginatedAssets = useMemo(() => {
         const start = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -61,7 +100,7 @@ export default function AssetsManagementPage() {
     const totalPages = Math.max(1, Math.ceil(filteredAssets.length / ITEMS_PER_PAGE));
 
     const handleAddNew = () => {
-        // TODO: Navigate to add asset form
+        navigate(MANAGER_ROUTES.CREATE_ASSET);
     };
 
     const handleViewDetail = (asset) => {
@@ -88,16 +127,22 @@ export default function AssetsManagementPage() {
             {/* ===== FILTER & ACTION BAR ===== */}
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-wrap items-center gap-2">
+                    <button
+                        onClick={() => navigate(MANAGER_ROUTES.ASSIGN_ASSET_TO_TASK)}
+                        className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
+                    >
+                        <Plus className="h-4 w-4" />
+                        Gán Phương Tiện
+                    </button>
                     {/* Status filters */}
                     {STATUS_FILTERS.map((f) => (
                         <button
                             key={f.id}
                             onClick={() => setStatusFilter(f.value)}
-                            className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
-                                statusFilter === f.value
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                            }`}
+                            className={`rounded-lg px-4 py-2 text-sm font-medium transition ${statusFilter === f.value
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                }`}
                         >
                             {f.label}
                         </button>
@@ -110,9 +155,8 @@ export default function AssetsManagementPage() {
                             <button
                                 key={f.id}
                                 onClick={() => setTypeFilter(typeFilter === f.value ? null : f.value)}
-                                className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${
-                                    isActive ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                                }`}
+                                className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${isActive ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                    }`}
                             >
                                 <Icon className="h-4 w-4" />
                                 {f.label}
@@ -130,63 +174,72 @@ export default function AssetsManagementPage() {
             </div>
 
             {/* ===== ASSET CARDS GRID ===== */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {paginatedAssets.map((asset) => {
-                    const config = TYPE_CONFIG[asset.type];
-                    const statusInfo = STATUS_LABELS[asset.status];
-                    const Icon = config.Icon;
-                    const canDispatch = asset.status === 'available';
-                    return (
-                        <div
-                            key={asset.id}
-                            className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md"
-                        >
-                            <div className="flex items-start justify-between gap-3">
-                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${config.iconBg} ${config.iconColor}`}>
-                                    <Icon className="h-5 w-5" />
+            {loading ? (
+                <div className="rounded-xl border border-slate-200 bg-white p-12 text-center">
+                    <p className="text-slate-500">Đang tải danh sách phương tiện...</p>
+                </div>
+            ) : error ? (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 p-12 text-center">
+                    <p className="text-rose-600">{error}</p>
+                </div>
+            ) : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {paginatedAssets.map((asset) => {
+                        const config = TYPE_CONFIG[asset.type] || TYPE_CONFIG.canoe;
+                        const statusInfo = STATUS_LABELS[asset.status] || STATUS_LABELS.available;
+                        const Icon = config?.Icon || Sailboat;
+                        const canDispatch = asset.status === 'available';
+                        return (
+                            <div
+                                key={asset.id}
+                                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${config.iconBg} ${config.iconColor}`}>
+                                        <Icon className="h-5 w-5" />
+                                    </div>
+                                    <span className={`rounded-full px-3 py-0.5 text-xs font-medium ${statusInfo.color}`}>
+                                        {statusInfo.label}
+                                    </span>
                                 </div>
-                                <span className={`rounded-full px-3 py-0.5 text-xs font-medium ${statusInfo.color}`}>
-                                    {statusInfo.label}
-                                </span>
-                            </div>
-                            <h3 className="mt-3 font-semibold text-slate-900">{asset.name}</h3>
-                            <p className="text-xs uppercase tracking-wide text-slate-500">{asset.desc}</p>
-                            <div className="mt-3 space-y-2">
-                                <div className="flex items-center gap-2 text-sm text-slate-600">
-                                    <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
-                                    <span className="line-clamp-1">{asset.location}</span>
+                                <h3 className="mt-3 font-semibold text-slate-900">{asset.name}</h3>
+                                <p className="text-xs uppercase tracking-wide text-slate-500">{asset.desc}</p>
+                                <div className="mt-3 space-y-2">
+                                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                                        <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
+                                        <span className="line-clamp-1">{asset.location}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                                        <FileText className="h-4 w-4 shrink-0 text-slate-400" />
+                                        <span className="line-clamp-1">{asset.task}</span>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-2 text-sm text-slate-600">
-                                    <FileText className="h-4 w-4 shrink-0 text-slate-400" />
-                                    <span className="line-clamp-1">{asset.task}</span>
-                                </div>
-                            </div>
-                            <div className="mt-4 flex gap-2">
-                                <button
-                                    onClick={() => handleViewDetail(asset)}
-                                    className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                                >
-                                    Xem chi tiết
-                                </button>
-                                <button
-                                    onClick={() => handleDispatch(asset)}
-                                    disabled={!canDispatch}
-                                    className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                                        canDispatch
+                                <div className="mt-4 flex gap-2">
+                                    <button
+                                        onClick={() => handleViewDetail(asset)}
+                                        className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                                    >
+                                        Xem chi tiết
+                                    </button>
+                                    <button
+                                        onClick={() => handleDispatch(asset)}
+                                        disabled={!canDispatch}
+                                        className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${canDispatch
                                             ? 'bg-green-600 text-white hover:bg-green-700'
                                             : 'cursor-not-allowed bg-slate-100 text-slate-400'
-                                    }`}
-                                >
-                                    Điều phối
-                                </button>
+                                            }`}
+                                    >
+                                        Điều phối
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    );
-                })}
-            </div>
+                        );
+                    })}
+                </div>
+            )}
 
             {/* Empty state */}
-            {paginatedAssets.length === 0 && (
+            {!loading && !error && paginatedAssets.length === 0 && (
                 <div className="rounded-xl border border-slate-200 bg-white p-12 text-center">
                     <p className="text-slate-500">Không có phương tiện nào phù hợp với bộ lọc.</p>
                 </div>
@@ -212,9 +265,8 @@ export default function AssetsManagementPage() {
                             <button
                                 key={page}
                                 onClick={() => setCurrentPage(page)}
-                                className={`h-9 w-9 rounded-lg text-sm font-medium transition ${
-                                    isActive ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                                }`}
+                                className={`h-9 w-9 rounded-lg text-sm font-medium transition ${isActive ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                    }`}
                             >
                                 {page}
                             </button>
