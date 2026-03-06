@@ -5,8 +5,8 @@ import { Users, Car, MapPin, CheckCircle2, X, Target, Plus, Minus } from 'lucide
 import GoogleMap from '../../features/map/components/GoogleMap.jsx';
 import Button from '../../shared/ui/Button.jsx';
 import Badge from '../../shared/ui/Badge.jsx';
-import { getTeams } from '../../features/admin/api.js';
-import { getAssets } from '../../features/admin/api.js';
+import { getTeams } from '../../features/teams/api.js';
+import { getAssets } from '../../features/assets/api.js';
 import {
     assignTaskGroup,
     createTaskGroup,
@@ -14,6 +14,16 @@ import {
     changeRescueRequestStatus,
 } from '../../features/coordinator/api.js';
 import { COORDINATOR_ROUTES } from '../../app/routes/route.constants.js';
+
+// Mock assets data từ AssetsManagementPage
+const mockAssets = [
+    { id: '1', code: '#CN-042', name: 'Cano Cứu Hộ #CN-042', licensePlate: '#CN-042', type: 'canoe', assetType: 'BOAT', status: 'AVAILABLE', location: 'Bến Chương Dương, Quận 1', capacity: 8 },
+    { id: '2', code: '#AM-108', name: 'Xe Lội Nước #AM-108', licensePlate: '#AM-108', type: 'water-vehicle', assetType: 'TRUCK', status: 'AVAILABLE', location: 'Huyện Bình Chánh, TPHCM', capacity: 12 },
+    { id: '3', code: '#GEN-22', name: 'Máy Phát Điện #GEN-22', licensePlate: '#GEN-22', type: 'generator', assetType: 'GENERATOR', status: 'AVAILABLE', location: 'Kho Tổng Thủ Đức', capacity: 0 },
+    { id: '4', code: '#CN-091', name: 'Cano Phao #CN-091', licensePlate: '#CN-091', type: 'canoe', assetType: 'BOAT', status: 'AVAILABLE', location: 'Bến Ninh Kiều, Cần Thơ', capacity: 10 },
+    { id: '5', code: '#AM-202', name: 'Xe Lội Nước #AM-202', licensePlate: '#AM-202', type: 'water-vehicle', assetType: 'TRUCK', status: 'AVAILABLE', location: 'Kho Tổng Thủ Đức', capacity: 15 },
+    { id: '6', code: '#GEN-07', name: 'Máy Phát Điện #GEN-07', licensePlate: '#GEN-07', type: 'generator', assetType: 'GENERATOR', status: 'AVAILABLE', location: 'Trạm y tế xã Phong Nha', capacity: 0 },
+];
 
 export default function RescueAssignPage() {
     const location = useLocation();
@@ -176,30 +186,95 @@ export default function RescueAssignPage() {
         }
     }, [initialRequests, availableRequests.length]);
 
-    // Load teams và assets từ DB
+    // Load teams và assets từ DB (giống như AssetsManagementPage)
     useEffect(() => {
         const loadData = async () => {
             try {
                 setLoading(true);
-                const [teamsData, assetsData] = await Promise.all([
-                    getTeams().catch((e) => {
-                        console.error('[RescueAssignPage] Error loading teams:', e);
-                        return [];
-                    }),
-                    getAssets().catch((e) => {
-                        console.error('[RescueAssignPage] Error loading assets:', e);
-                        return [];
-                    }),
-                ]);
+                console.log('[RescueAssignPage] Loading teams and assets...');
 
-                // Handle response format
-                const teamsList = Array.isArray(teamsData) ? teamsData : teamsData?.data || teamsData?.content || [];
-                const assetsList = Array.isArray(assetsData) ? assetsData : assetsData?.data || assetsData?.content || [];
+                // Load teams
+                let teamsList = [];
+                try {
+                    const teamsData = await getTeams();
+                    console.log('[RescueAssignPage] Teams response:', teamsData);
+
+                    if (Array.isArray(teamsData)) {
+                        teamsList = teamsData;
+                    } else if (Array.isArray(teamsData?.data)) {
+                        teamsList = teamsData.data;
+                    } else if (Array.isArray(teamsData?.content)) {
+                        teamsList = teamsData.content;
+                    } else if (Array.isArray(teamsData?.items)) {
+                        teamsList = teamsData.items;
+                    }
+                    console.log('[RescueAssignPage] Parsed teams:', teamsList.length);
+                } catch (e) {
+                    console.error('[RescueAssignPage] Error loading teams:', e);
+                }
+
+                // Load assets từ API (giống hệt AssetsManagementPage)
+                let assetsList = [];
+                try {
+                    // Gọi API không filter để lấy tất cả (giống AssetsManagementPage)
+                    const assetsData = await getAssets();
+                    console.log('[RescueAssignPage] Assets API response:', assetsData);
+
+                    // Parse response format (giống hệt AssetsManagementPage)
+                    if (Array.isArray(assetsData)) {
+                        assetsList = assetsData;
+                    } else if (Array.isArray(assetsData?.content)) {
+                        assetsList = assetsData.content;
+                    } else if (Array.isArray(assetsData?.data)) {
+                        assetsList = assetsData.data;
+                    } else if (Array.isArray(assetsData?.items)) {
+                        assetsList = assetsData.items;
+                    }
+
+                    console.log('[RescueAssignPage] Parsed assets from API:', assetsList.length);
+
+                    // Map dữ liệu từ API để đảm bảo có đủ field cho UI
+                    if (assetsList.length > 0) {
+                        assetsList = assetsList.map((asset) => ({
+                            ...asset,
+                            id: asset.id,
+                            code: asset.code || asset.assetCode || asset.licensePlate || `#PT-${asset.id}`,
+                            name: asset.name || asset.typeLabel || asset.type || 'Phương tiện',
+                            licensePlate: asset.licensePlate || asset.code || asset.assetCode || 'N/A',
+                            status: asset.status || 'AVAILABLE',
+                            assetType: asset.assetType || asset.type?.toUpperCase() || asset.category,
+                            capacity: asset.capacity || asset.capacityPercent || 0,
+                        }));
+                    }
+                } catch (e) {
+                    console.warn('[RescueAssignPage] Could not load assets from API:', e);
+                    // Nếu API fail, dùng mock data (giống AssetsManagementPage)
+                    assetsList = [];
+                }
+
+                // Nếu không có assets từ API, dùng mock data (giống AssetsManagementPage)
+                if (assetsList.length === 0) {
+                    console.warn('[RescueAssignPage] No assets from API, using mock data');
+                    assetsList = mockAssets.map((asset) => ({
+                        ...asset,
+                        id: asset.id,
+                        code: asset.code || asset.licensePlate,
+                        name: asset.name || 'Phương tiện',
+                        licensePlate: asset.licensePlate || asset.code,
+                        status: asset.status || 'AVAILABLE',
+                        assetType: asset.assetType || asset.type?.toUpperCase(),
+                        capacity: asset.capacity || 0,
+                    }));
+                }
 
                 setTeams(teamsList);
                 setAssets(assetsList);
+
+                console.log('[RescueAssignPage] Final assets list:', assetsList.length, assetsList);
             } catch (error) {
                 console.error('[RescueAssignPage] Error loading data:', error);
+                // Fallback: dùng mock data nếu có lỗi
+                setAssets(mockAssets);
             } finally {
                 setLoading(false);
             }

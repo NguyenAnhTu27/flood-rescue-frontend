@@ -50,11 +50,20 @@ import ManagerDashboard from '../../pages/manager/ManagerDashboard.jsx';
 import InventoryOverviewPage from '../../pages/manager/InventoryOverviewPage.jsx';
 import DistributionPlanPage from '../../pages/manager/DistributionPlanPage.jsx';
 import AssetsManagementPage from '../../pages/manager/AssetsManagementPage.jsx';
+import AssetCreatePage from '../../pages/manager/AssetCreatePage.jsx';
+import AssetsAssignToTask from '../../features/assets/components/AssetsAssignToTask.jsx';
+import ReceiptCreatePage from '../../pages/manager/ReceiptCreatePage.jsx';
+import ReceiptApprovalPage from '../../pages/manager/ReceiptApprovalPage.jsx';
+import IssueCreatePage from '../../pages/manager/IssueCreatePage.jsx';
+import ItemCategoriesPage from '../../pages/manager/ItemCategoriesPage.jsx';
+import ReliefRequestDashboardPage from '../../pages/manager/ReliefRequestDashboardPage.jsx';
+import ReliefRequestCreatePage from '../../pages/manager/ReliefRequestCreatePage.jsx';
 
 // Admin
 import AdminDashboard from '../../pages/admin/AdminDashboard.jsx';
 import UserManagementPage from '../../pages/admin/UserManagementPage.jsx';
-import AdminTeamAssetPage from '../../pages/admin/AdminTeamAssetPage.jsx';
+import TeamsManagementPage from '../../pages/admin/TeamsManagementPage.jsx';
+import TeamCreatePage from '../../pages/admin/TeamCreatePage.jsx';
 
 /* =========================
    5) Route tree
@@ -307,6 +316,78 @@ export default function AppRoutes() {
                 }
             />
             <Route
+                path={MANAGER_ROUTES.ITEM_CATEGORIES}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['MANAGER']}>
+                            <RootLayout>
+                                <ItemCategoriesPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={MANAGER_ROUTES.CREATE_RECEIPT}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['MANAGER']}>
+                            <RootLayout>
+                                <ReceiptCreatePage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={MANAGER_ROUTES.RECEIPT_APPROVAL}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['MANAGER']}>
+                            <RootLayout>
+                                <ReceiptApprovalPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={MANAGER_ROUTES.CREATE_ISSUE}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['MANAGER']}>
+                            <RootLayout>
+                                <IssueCreatePage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={MANAGER_ROUTES.RELIEF_REQUEST_CREATE}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['MANAGER']}>
+                            <RootLayout>
+                                <ReliefRequestCreatePage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={MANAGER_ROUTES.RELIEF_REQUEST_DASHBOARD}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['MANAGER']}>
+                            <RootLayout>
+                                <ReliefRequestDashboardPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
                 path={MANAGER_ROUTES.DISTRIBUTION_PLAN}
                 element={
                     <RequireAuth>
@@ -326,6 +407,28 @@ export default function AppRoutes() {
                             <RootLayout>
                                 <AssetsManagementPage />
                             </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={MANAGER_ROUTES.CREATE_ASSET}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['MANAGER']}>
+                            <RootLayout>
+                                <AssetCreatePage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={MANAGER_ROUTES.ASSIGN_ASSET_TO_TASK}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['MANAGER']}>
+                            <AssetsAssignToTask />
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -357,12 +460,24 @@ export default function AppRoutes() {
                 }
             />
             <Route
-                path={ADMIN_ROUTES.TEAMS_ASSETS}
+                path={ADMIN_ROUTES.TEAMS_MANAGEMENT}
                 element={
                     <RequireAuth>
                         <RequireRole allow={['ADMIN']}>
                             <RootLayout>
-                                <AdminTeamAssetPage />
+                                <TeamsManagementPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={ADMIN_ROUTES.CREATE_TEAM}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['ADMIN']}>
+                            <RootLayout>
+                                <TeamCreatePage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
