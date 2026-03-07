@@ -57,10 +57,13 @@ export const PUBLIC_ROUTES = {
     CREATE_RECEIPT: '/quan-ly/phieu-nhap',
     CREATE_ISSUE: '/quan-ly/phieu-xuat',
     RELIEF_REQUEST_CREATE: '/quan-ly/tao-yeu-cau-cuu-tro',
+    RELIEF_REQUEST_DASHBOARD: '/quan-ly/danh-sach-yeu-cau-cuu-tro',
     RELIEF_APPROVE: '/quan-ly/xac-minh-cuu-tro',
     DISTRIBUTION_PLAN: '/quan-ly/phan-phoi',
     DISTRIBUTION_TRACKING: '/quan-ly/theo-doi-phan-phoi',
     ASSETS_MANAGEMENT: '/quan-ly/phuong-tien',
+    CREATE_ASSET: '/quan-ly/tao-phuong-tien',
+    ASSIGN_ASSET_TO_TASK: '/quan-ly/gan-phuong-tien',
     REPORTS: '/quan-ly/bao-cao',
   };
   
@@ -68,6 +71,8 @@ export const PUBLIC_ROUTES = {
   export const ADMIN_ROUTES = {
     DASHBOARD: '/admin',
     USERS_MANAGEMENT: '/admin/nguoi-dung',
+    TEAMS_MANAGEMENT: '/admin/doi-cuu-ho',
+    CREATE_TEAM: '/admin/tao-doi-cuu-ho',
     ROLES_PERMISSIONS: '/admin/phan-quyen',
     SYSTEM_CATALOG: '/admin/danh-muc-he-thong',
     SYSTEM_SETTINGS: '/admin/cau-hinh-he-thong',
