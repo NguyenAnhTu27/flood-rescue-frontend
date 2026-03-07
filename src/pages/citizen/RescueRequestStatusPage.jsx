@@ -1,6 +1,41 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle2, Clock, MapPin, Users, AlertTriangle, Info } from 'lucide-react';
+
+import { getRescueRequest, getRescueRequestStatus } from '../../features/rescue/api.js';
+import { getMyRescueRequests } from '../../features/citizen/api.js';
+
+function pickFirstTruthy(...vals) {
+    for (const v of vals) {
+        if (v !== undefined && v !== null && String(v).trim() !== '') return v;
+    }
+    return null;
+}
+
+function normalizeStatus(s) {
+    return String(s || '').toUpperCase();
+}
+
+function statusToActiveStepIndex(statusRaw) {
+    const s = normalizeStatus(statusRaw);
+    // 1: submitted, 2: verified, 3: enroute, 4: on-scene/working, 5: done
+    if (!s) return 2;
+    if (['DONE', 'COMPLETED', 'FINISHED', 'RESCUED'].includes(s)) return 5;
+    if (['IN_PROGRESS', 'WORKING', 'PROCESSING', 'ON_SITE', 'AT_SCENE', 'ARRIVED'].includes(s)) return 4;
+    if (['ASSIGNED', 'DEPARTED', 'EN_ROUTE', 'ON_THE_WAY', 'ONWAY'].includes(s)) return 3;
+    if (['VERIFIED', 'CONFIRMED', 'APPROVED'].includes(s)) return 2;
+    if (['PENDING', 'NEW', 'CREATED', 'SUBMITTED', 'RECEIVED'].includes(s)) return 1;
+    return 2;
+}
+
+function statusToHeaderLabel(statusRaw) {
+    const s = normalizeStatus(statusRaw);
+    if (['DONE', 'COMPLETED', 'FINISHED', 'RESCUED'].includes(s)) return 'HOÀN THÀNH';
+    if (['IN_PROGRESS', 'WORKING', 'PROCESSING', 'ON_SITE', 'AT_SCENE', 'ARRIVED'].includes(s)) return 'ĐANG XỬ LÝ';
+    if (['ASSIGNED', 'DEPARTED', 'EN_ROUTE', 'ON_THE_WAY', 'ONWAY'].includes(s)) return 'ĐANG DI CHUYỂN';
+    if (['VERIFIED', 'CONFIRMED', 'APPROVED'].includes(s)) return 'ĐÃ XÁC MINH';
+    return 'ĐANG XỬ LÝ';
+}
 
 export default function RescueRequestStatusPage() {
     const location = useLocation();
@@ -21,7 +56,13 @@ export default function RescueRequestStatusPage() {
         createdAt: new Date().toISOString(),
     };
 
-    const data = request || demoRequest;
+    const requestId = Number(pickFirstTruthy(request?.id, location.state?.requestId, 0)) || 0;
+    const [liveRequest, setLiveRequest] = useState(request || null);
+    const [statusRaw, setStatusRaw] = useState(pickFirstTruthy(request?.status, 'PENDING'));
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const data = liveRequest || request || demoRequest;
 
     const formatPriority = (priority) => {
         switch (priority) {
@@ -36,43 +77,115 @@ export default function RescueRequestStatusPage() {
 
     const priorityMeta = formatPriority(data.priority);
 
-    const steps = [
+    const activeStepIndex = useMemo(() => statusToActiveStepIndex(statusRaw), [statusRaw]);
+    const headerLabel = useMemo(() => statusToHeaderLabel(statusRaw), [statusRaw]);
+
+    const steps = useMemo(() => ([
         {
             id: 1,
             title: 'Yêu cầu đã gửi',
             description: 'Hệ thống đã nhận được yêu cầu cứu hộ từ vị trí của bạn.',
-            timeLabel: 'Vừa xong',
-            status: 'done',
+            timeLabel: 'Đã ghi nhận',
+            status: activeStepIndex >= 1 ? 'done' : 'pending',
         },
         {
             id: 2,
             title: 'Đã xác minh',
             description: 'Điều phối viên đang đánh giá mức độ khẩn cấp của yêu cầu.',
-            timeLabel: 'Đang chờ',
-            status: 'current',
+            timeLabel: activeStepIndex >= 2 ? 'Đã xác minh' : 'Đang chờ',
+            status: activeStepIndex > 2 ? 'done' : activeStepIndex === 2 ? 'current' : 'pending',
         },
         {
             id: 3,
             title: 'Đội cứu hộ đang đến',
             description: 'Đội cứu hộ gần nhất sẽ được điều tới vị trí của bạn.',
-            timeLabel: 'Dự kiến sớm',
-            status: 'pending',
+            timeLabel: activeStepIndex >= 3 ? 'Đang di chuyển' : 'Dự kiến sớm',
+            status: activeStepIndex > 3 ? 'done' : activeStepIndex === 3 ? 'current' : 'pending',
         },
         {
             id: 4,
             title: 'Đã đến hiện trường',
             description: 'Đội cứu hộ đã có mặt và đang triển khai hỗ trợ.',
-            timeLabel: 'Chờ cập nhật',
-            status: 'pending',
+            timeLabel: activeStepIndex >= 4 ? 'Đang xử lý' : 'Chờ cập nhật',
+            status: activeStepIndex > 4 ? 'done' : activeStepIndex === 4 ? 'current' : 'pending',
         },
         {
             id: 5,
             title: 'Hoàn thành',
             description: 'Công tác cứu hộ kết thúc an toàn.',
-            timeLabel: 'Chờ xác nhận',
-            status: 'pending',
+            timeLabel: activeStepIndex >= 5 ? 'Hoàn thành' : 'Chờ xác nhận',
+            status: activeStepIndex === 5 ? 'done' : 'pending',
         },
-    ];
+    ]), [activeStepIndex]);
+
+    useEffect(() => {
+        let mounted = true;
+        let intervalId = null;
+
+        async function load() {
+            try {
+                if (mounted) {
+                    setLoading(true);
+                    setError('');
+                }
+                if (requestId) {
+                    // Fetch detail + status for specific request
+                    const [detailRes, statusRes] = await Promise.allSettled([
+                        getRescueRequest(String(requestId)),
+                        getRescueRequestStatus(String(requestId)),
+                    ]);
+
+                    if (!mounted) return;
+
+                    if (detailRes.status === 'fulfilled') {
+                        setLiveRequest(detailRes.value);
+                        const s0 = pickFirstTruthy(detailRes.value?.status, detailRes.value?.requestStatus);
+                        if (s0) setStatusRaw(s0);
+                    }
+
+                    if (statusRes.status === 'fulfilled') {
+                        const sObj = statusRes.value;
+                        const s1 = pickFirstTruthy(
+                            sObj?.status,
+                            sObj?.requestStatus,
+                            sObj?.state,
+                            sObj?.data?.status,
+                            sObj?.data?.requestStatus
+                        );
+                        if (s1) setStatusRaw(s1);
+                    }
+                } else {
+                    // Không có requestId cụ thể: lấy yêu cầu mới nhất giống dashboard citizen
+                    const resp = await getMyRescueRequests({ page: 1, limit: 1 });
+                    let list = [];
+                    if (Array.isArray(resp)) list = resp;
+                    else if (resp?.data && Array.isArray(resp.data)) list = resp.data;
+                    else if (resp?.content && Array.isArray(resp.content)) list = resp.content;
+                    else if (resp?.items && Array.isArray(resp.items)) list = resp.items;
+
+                    const latest = list.length > 0 ? list[0] : null;
+                    if (latest) {
+                        setLiveRequest(latest);
+                        const s0 = pickFirstTruthy(latest.status, latest.requestStatus);
+                        if (s0) setStatusRaw(s0);
+                    }
+                }
+            } catch (e) {
+                if (!mounted) return;
+                setError(e?.message || 'Không thể cập nhật trạng thái. Vui lòng thử lại.');
+            } finally {
+                if (mounted) setLoading(false);
+            }
+        }
+
+        load();
+        intervalId = window.setInterval(load, 10000);
+
+        return () => {
+            mounted = false;
+            if (intervalId) window.clearInterval(intervalId);
+        };
+    }, [requestId]);
 
     const handleBackToList = () => {
         navigate('/cong-dan/yeu-cau-cuu-ho');
@@ -91,7 +204,7 @@ export default function RescueRequestStatusPage() {
                             </span>
                         </h1>
                         <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                            ĐANG XỬ LÝ
+                            {headerLabel}
                         </span>
                     </div>
                     <p className="mt-1 text-xs text-slate-500">
@@ -126,7 +239,7 @@ export default function RescueRequestStatusPage() {
                             </div>
                         </div>
                         <div className="rounded-full bg-slate-50 px-3 py-1 text-[11px] text-slate-500">
-                            Cập nhật gần nhất: vài giây trước
+                            {loading ? 'Đang cập nhật...' : error ? `Lỗi: ${error}` : 'Cập nhật gần nhất: vừa xong'}
                         </div>
                     </div>
 

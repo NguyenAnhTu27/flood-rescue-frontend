@@ -19,7 +19,21 @@ export async function getCitizenDashboard() {
  * @returns {Promise} List of rescue requests
  */
 export async function getMyRescueRequests(params = {}) {
-    const response = await httpClient.get('/rescue/citizen/requests', { params });
+    // Normalize pagination params across FE (page/limit) vs BE (page/size)
+    // Many Spring-style APIs are 0-based: page=0 is first page.
+    const normalized = { ...(params || {}) };
+
+    if (normalized.limit !== undefined && normalized.size === undefined) {
+        normalized.size = normalized.limit;
+        delete normalized.limit;
+    }
+
+    if (typeof normalized.page === 'number' && normalized.page >= 1) {
+        // FE previously used 1-based. Convert to 0-based to avoid "empty list" regressions.
+        normalized.page = normalized.page - 1;
+    }
+
+    const response = await httpClient.get('/rescue/citizen/requests', { params: normalized });
     return response;
 }
 
