@@ -26,44 +26,35 @@ import RegisterPage from '../../pages/auth/RegisterPage.jsx';
 
 // Citizen
 import CitizenDashboard from '../../pages/citizen/CItizenDashboard.jsx';
-import RescueDetailRequestPage from '../../pages/citizen/RescueDetailRequestPage.jsx';
 import RescueRequestCreatePage from '../../pages/citizen/RescueRequestCreatePage.jsx';
 import RescueRequestStatusPage from '../../pages/citizen/RescueRequestStatusPage.jsx';
-import MyRescueRequestsPage from '../../pages/citizen/MyRescueRequestsPage.jsx';
-import RescueRequestUpdatePage from '../../pages/citizen/RescueRequestUpdatePage.jsx';
+import FeedbackPage from '../../pages/citizen/FeedbackPage.jsx';
 
 // Coordinator
 import CoordinatorDashboard from '../../pages/coordinator/CoordinatorDashboardPage.jsx';
 import RescueQueuePage from '../../pages/coordinator/RescueQueuePage.jsx';
 import RescueVerifyPage from '../../pages/coordinator/RescueVerifyPage.jsx';
-import RescuePrioritizePage from '../../pages/coordinator/RescuePrioritizePage.jsx';
 import RescueAssignPage from '../../pages/coordinator/RescueAssignPage.jsx';
+import RescueRequestHandle from '../../pages/coordinator/RescueRequestHandle.jsx';
+import RescueRequestMerge from '../../pages/coordinator/RescueRequestMerge.jsx';
 import TeamWorkloadPage from '../../pages/coordinator/TeamWorkloadPage.jsx';
 
 // Rescuer
 import RescuerDashboard from '../../pages/rescuer/RescuerDashboard.jsx';
 import MyAssignmentsPage from '../../pages/rescuer/MyAssignmentsPage.jsx';
+import AssignmentDetailPage from '../../pages/rescuer/AssignmentDetailPage.jsx';
 import RescueUpdateStatusPage from '../../pages/rescuer/RescueUpdateStatusPage.jsx';
+import DeliveryConfirmPage from '../../pages/rescuer/DeliveryConfirmPage.jsx';
 
 // Manager
 import ManagerDashboard from '../../pages/manager/ManagerDashboard.jsx';
 import InventoryOverviewPage from '../../pages/manager/InventoryOverviewPage.jsx';
 import DistributionPlanPage from '../../pages/manager/DistributionPlanPage.jsx';
 import AssetsManagementPage from '../../pages/manager/AssetsManagementPage.jsx';
-import AssetCreatePage from '../../pages/manager/AssetCreatePage.jsx';
-import AssetsAssignToTask from '../../features/assets/components/AssetsAssignToTask.jsx';
-import ReceiptCreatePage from '../../pages/manager/ReceiptCreatePage.jsx';
-import ReceiptApprovalPage from '../../pages/manager/ReceiptApprovalPage.jsx';
-import IssueCreatePage from '../../pages/manager/IssueCreatePage.jsx';
-import ItemCategoriesPage from '../../pages/manager/ItemCategoriesPage.jsx';
-import ReliefRequestDashboardPage from '../../pages/manager/ReliefRequestDashboardPage.jsx';
-import ReliefRequestCreatePage from '../../pages/manager/ReliefRequestCreatePage.jsx';
 
 // Admin
 import AdminDashboard from '../../pages/admin/AdminDashboard.jsx';
 import UserManagementPage from '../../pages/admin/UserManagementPage.jsx';
-import TeamsManagementPage from '../../pages/admin/TeamsManagementPage.jsx';
-import TeamCreatePage from '../../pages/admin/TeamCreatePage.jsx';
 
 /* =========================
    5) Route tree
@@ -74,8 +65,7 @@ export default function AppRoutes() {
             {/* -------- PUBLIC -------- */}
             <Route
                 path={PUBLIC_ROUTES.HOME}
-                element={
-                    <HomePage />}
+                element={<HomePage />}
             />
             <Route
                 path={PUBLIC_ROUTES.EMERGENCY_GUIDE}
@@ -130,18 +120,6 @@ export default function AppRoutes() {
                 }
             />
             <Route
-                path={CITIZEN_ROUTES.RESCUE_DETAIL}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['CITIZEN']}>
-                            <RootLayout>
-                                <RescueDetailRequestPage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
                 path={CITIZEN_ROUTES.RESCUE_REQUEST_STATUS}
                 element={
                     <RequireAuth>
@@ -154,24 +132,12 @@ export default function AppRoutes() {
                 }
             />
             <Route
-                path={CITIZEN_ROUTES.MY_RESCUE_REQUESTS}
+                path={CITIZEN_ROUTES.FEEDBACK}
                 element={
                     <RequireAuth>
                         <RequireRole allow={['CITIZEN']}>
                             <RootLayout>
-                                <MyRescueRequestsPage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
-                path={CITIZEN_ROUTES.UPDATE_RESCUE_REQUEST}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['CITIZEN']}>
-                            <RootLayout>
-                                <RescueRequestUpdatePage />
+                                <FeedbackPage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -216,24 +182,36 @@ export default function AppRoutes() {
                 }
             />
             <Route
-                path={COORDINATOR_ROUTES.PRIORITIZE_REQUEST}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['COORDINATOR']}>
-                            <RootLayout>
-                                <RescuePrioritizePage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
                 path={COORDINATOR_ROUTES.ASSIGN_RESCUE}
                 element={
                     <RequireAuth>
                         <RequireRole allow={['COORDINATOR']}>
                             <RootLayout>
                                 <RescueAssignPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={COORDINATOR_ROUTES.TASK_MONITOR}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['COORDINATOR']}>
+                            <RootLayout>
+                                <RescueRequestHandle />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={COORDINATOR_ROUTES.MERGE_REQUESTS}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['COORDINATOR']}>
+                            <RootLayout>
+                                <RescueRequestMerge />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -278,12 +256,36 @@ export default function AppRoutes() {
                 }
             />
             <Route
-                path={RESCUER_ROUTES.UPDATE_STATUS}
+                path={RESCUER_ROUTES.ASSIGNMENT_DETAIL}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['RESCUER']}>
+                            <RootLayout>
+                                <AssignmentDetailPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={RESCUER_ROUTES.UPDATE_RESCUE_STATUS}
                 element={
                     <RequireAuth>
                         <RequireRole allow={['RESCUER']}>
                             <RootLayout>
                                 <RescueUpdateStatusPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={RESCUER_ROUTES.DELIVERY_CONFIRM}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['RESCUER']}>
+                            <RootLayout>
+                                <DeliveryConfirmPage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -316,78 +318,6 @@ export default function AppRoutes() {
                 }
             />
             <Route
-                path={MANAGER_ROUTES.ITEM_CATEGORIES}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['MANAGER']}>
-                            <RootLayout>
-                                <ItemCategoriesPage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
-                path={MANAGER_ROUTES.CREATE_RECEIPT}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['MANAGER']}>
-                            <RootLayout>
-                                <ReceiptCreatePage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
-                path={MANAGER_ROUTES.RECEIPT_APPROVAL}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['MANAGER']}>
-                            <RootLayout>
-                                <ReceiptApprovalPage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
-                path={MANAGER_ROUTES.CREATE_ISSUE}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['MANAGER']}>
-                            <RootLayout>
-                                <IssueCreatePage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
-                path={MANAGER_ROUTES.RELIEF_REQUEST_CREATE}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['MANAGER']}>
-                            <RootLayout>
-                                <ReliefRequestCreatePage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
-                path={MANAGER_ROUTES.RELIEF_REQUEST_DASHBOARD}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['MANAGER']}>
-                            <RootLayout>
-                                <ReliefRequestDashboardPage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
                 path={MANAGER_ROUTES.DISTRIBUTION_PLAN}
                 element={
                     <RequireAuth>
@@ -407,28 +337,6 @@ export default function AppRoutes() {
                             <RootLayout>
                                 <AssetsManagementPage />
                             </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
-                path={MANAGER_ROUTES.CREATE_ASSET}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['MANAGER']}>
-                            <RootLayout>
-                                <AssetCreatePage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
-                path={MANAGER_ROUTES.ASSIGN_ASSET_TO_TASK}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['MANAGER']}>
-                            <AssetsAssignToTask />
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -454,30 +362,6 @@ export default function AppRoutes() {
                         <RequireRole allow={['ADMIN']}>
                             <RootLayout>
                                 <UserManagementPage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
-                path={ADMIN_ROUTES.TEAMS_MANAGEMENT}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['ADMIN']}>
-                            <RootLayout>
-                                <TeamsManagementPage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
-                path={ADMIN_ROUTES.CREATE_TEAM}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['ADMIN']}>
-                            <RootLayout>
-                                <TeamCreatePage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
