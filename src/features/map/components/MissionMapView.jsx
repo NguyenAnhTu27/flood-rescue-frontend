@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { GOOGLE_MAPS_API_KEY } from '../../../app/config/env.js';
+import mapboxgl from 'mapbox-gl';
+import { MAPBOX_ACCESS_TOKEN } from '../../../app/config/env.js';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 /**
  * Mission Map View - Read-only map for displaying mission location
@@ -14,86 +16,55 @@ export default function MissionMapView({
     zoom = 15
 }) {
     const mapRef = useRef(null);
-    const [map, setMap] = useState(null);
-    const [marker, setMarker] = useState(null);
+    const mapInstanceRef = useRef(null);
+    const markerRef = useRef(null);
     const [isLoaded, setIsLoaded] = useState(false);
 
-    // Load Google Maps script
+    // Initialize Mapbox map (read-only)
     useEffect(() => {
-        if (window.google && window.google.maps) {
-            setIsLoaded(true);
+        if (!mapRef.current) return;
+
+        if (!MAPBOX_ACCESS_TOKEN) {
+            console.warn('Mapbox access token not found. Please set VITE_MAPBOX_ACCESS_TOKEN in .env');
             return;
         }
 
-        const apiKey = GOOGLE_MAPS_API_KEY || import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+        mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
 
-        if (!apiKey) {
-            console.warn('Google Maps API key not found');
-        }
+        const initialPosition = markerPosition || center;
 
-        const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geocoding&language=vi&region=VN`;
-        script.async = true;
-        script.defer = true;
+        const map = new mapboxgl.Map({
+            container: mapRef.current,
+            style: 'mapbox://styles/mapbox/streets-v12',
+            center: [initialPosition.lng, initialPosition.lat],
+            zoom,
+            interactive: false,
+        });
 
-        script.onload = () => {
-            setIsLoaded(true);
+        const marker = new mapboxgl.Marker({ draggable: false })
+            .setLngLat([initialPosition.lng, initialPosition.lat])
+            .addTo(map);
+
+        mapInstanceRef.current = map;
+        markerRef.current = marker;
+
+        map.on('load', () => setIsLoaded(true));
+
+        return () => {
+            marker.remove();
+            map.remove();
         };
-
-        script.onerror = () => {
-            console.error('Failed to load Google Maps script');
-        };
-
-        document.head.appendChild(script);
     }, []);
-
-    // Initialize map
-    useEffect(() => {
-        if (!isLoaded || !window.google || !mapRef.current) return;
-
-        const mapInstance = new window.google.maps.Map(mapRef.current, {
-            center: markerPosition || center,
-            zoom: zoom,
-            mapTypeControl: false,
-            streetViewControl: false,
-            fullscreenControl: false,
-            zoomControl: false,
-            draggable: false,
-            scrollwheel: false,
-            disableDoubleClickZoom: true,
-            styles: [
-                {
-                    featureType: 'poi',
-                    elementType: 'labels',
-                    stylers: [{ visibility: 'off' }]
-                }
-            ]
-        });
-
-        setMap(mapInstance);
-
-        // Create marker (not draggable, read-only)
-        const position = markerPosition || center;
-        const markerInstance = new window.google.maps.Marker({
-            position: position,
-            map: mapInstance,
-            draggable: false,
-            animation: window.google.maps.Animation.DROP,
-            title: 'Vị trí nhiệm vụ'
-        });
-
-        setMarker(markerInstance);
-
-    }, [isLoaded, center, markerPosition, zoom]);
 
     // Update marker position when prop changes
     useEffect(() => {
+        const map = mapInstanceRef.current;
+        const marker = markerRef.current;
         if (!map || !marker || !markerPosition) return;
 
-        const position = new window.google.maps.LatLng(markerPosition.lat, markerPosition.lng);
-        marker.setPosition(position);
-        map.panTo(position);
-    }, [markerPosition, map, marker]);
+        marker.setLngLat([markerPosition.lng, markerPosition.lat]);
+        map.easeTo({ center: [markerPosition.lng, markerPosition.lat], duration: 500 });
+    }, [markerPosition]);
 
     return (
         <div className="relative w-full h-full">
@@ -101,7 +72,7 @@ export default function MissionMapView({
             {!isLoaded && (
                 <div className="absolute inset-0 flex items-center justify-center bg-slate-100">
                     <div className="text-center">
-                        <div className="inline-block h-6 w-6 animate-spin rounded-full border-3 border-solid border-blue-600 border-r-transparent"></div>
+                        <div className="inline-block h-6 w-6 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
                         <p className="mt-1 text-[10px] text-slate-600">Đang tải...</p>
                     </div>
                 </div>

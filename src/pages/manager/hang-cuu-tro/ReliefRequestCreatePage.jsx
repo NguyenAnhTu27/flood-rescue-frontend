@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MANAGER_ROUTES } from '../../app/routes/route.constants.js';
+import { MANAGER_ROUTES } from '../../../app/routes/route.constants.js';
 import {
     createReliefRequest,
     saveReliefRequestDraft,
     generateReliefRequestCode,
     getAreas,
-} from '../../features/relief/api.js';
-import { getItemCategories } from '../../features/relief/api.js';
+} from '../../../features/relief/api.js';
+import { getItemCategories } from '../../../features/relief/api.js';
 
 export default function ReliefRequestCreatePage() {
     const navigate = useNavigate();
@@ -359,24 +359,24 @@ export default function ReliefRequestCreatePage() {
             </div>
 
             {/* Danh sách hàng cứu trợ */}
-            <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-6">
-                <div className="mb-2 flex items-center justify-between">
+            <div className="space-y-4 overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="mb-1 flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
                     <div className="flex items-center gap-2">
                         <h2 className="text-base font-semibold text-slate-900">Danh sách hàng cứu trợ</h2>
                     </div>
                     <button
                         type="button"
                         onClick={handleAddItem}
-                        className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
                     >
                         + Thêm vật phẩm
                     </button>
                 </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                        <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
+                    <table className="w-full min-w-[780px] text-sm">
+                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                             <tr>
-                                <th className="px-4 py-3 text-left">LOẠI HÀNG</th>
+                                <th className="px-4 py-3 text-left">TÊN MẶT HÀNG</th>
                                 <th className="px-4 py-3 text-right">SỐ LƯỢNG</th>
                                 <th className="px-4 py-3 text-left">ĐƠN VỊ</th>
                                 <th className="px-4 py-3 text-left">GHI CHÚ</th>
@@ -385,15 +385,15 @@ export default function ReliefRequestCreatePage() {
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {items.map((item, index) => (
-                                <tr key={item.id} className="hover:bg-slate-50">
+                                <tr key={item.id} className="transition hover:bg-blue-50/40">
                                     <td className="px-4 py-3">
                                         {itemCategories.length > 0 ? (
                                             <select
                                                 value={item.itemCategoryId}
                                                 onChange={(e) => handleChangeItem(index, 'itemCategoryId', e.target.value)}
-                                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                             >
-                                                <option value="">Chọn loại hàng</option>
+                                                <option value="">Chọn tên mặt hàng</option>
                                                 {itemCategories.map((cat) => (
                                                     <option key={cat.id} value={cat.id}>
                                                         {cat.name || cat.categoryName || cat.code}
@@ -405,7 +405,7 @@ export default function ReliefRequestCreatePage() {
                                                 type="text"
                                                 value={item.category}
                                                 onChange={(e) => handleChangeItem(index, 'category', e.target.value)}
-                                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                                 placeholder="Gạo trắng..."
                                             />
                                         )}
@@ -417,7 +417,7 @@ export default function ReliefRequestCreatePage() {
                                             step="0.01"
                                             value={item.quantity}
                                             onChange={(e) => handleChangeItem(index, 'quantity', e.target.value)}
-                                            className="w-24 rounded-lg border border-slate-200 px-3 py-2 text-right text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                            className="h-10 w-28 rounded-lg border border-slate-200 bg-white px-3 text-right text-sm font-medium text-slate-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                         />
                                     </td>
                                     <td className="px-4 py-3">
@@ -425,7 +425,7 @@ export default function ReliefRequestCreatePage() {
                                             type="text"
                                             value={item.unit}
                                             onChange={(e) => handleChangeItem(index, 'unit', e.target.value)}
-                                            className="w-20 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                            className="h-10 w-24 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                             placeholder="kg, thùng..."
                                         />
                                     </td>
@@ -434,7 +434,7 @@ export default function ReliefRequestCreatePage() {
                                             type="text"
                                             value={item.note}
                                             onChange={(e) => handleChangeItem(index, 'note', e.target.value)}
-                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                            className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                             placeholder="Ghi chú chi tiết..."
                                         />
                                     </td>
@@ -442,7 +442,7 @@ export default function ReliefRequestCreatePage() {
                                         <button
                                             type="button"
                                             onClick={() => handleRemoveItem(index)}
-                                            className="text-xs font-medium text-rose-600 hover:text-rose-700"
+                                            className="rounded-lg px-2 py-1 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 hover:text-rose-700"
                                         >
                                             Xóa
                                         </button>
@@ -452,8 +452,8 @@ export default function ReliefRequestCreatePage() {
                         </tbody>
                     </table>
                 </div>
-                <p className="mt-2 text-right text-xs text-slate-500">
-                    Tổng số loại hàng: {items.length}
+                <p className="mt-2 text-right text-xs font-medium text-slate-500">
+                    Tổng số mặt hàng: {items.length}
                 </p>
             </div>
 

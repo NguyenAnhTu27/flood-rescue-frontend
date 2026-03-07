@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Filter, Download, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
-import { MANAGER_ROUTES } from '../../app/routes/route.constants.js';
-import { listReliefRequests, getAreas, getItemCategories } from '../../features/relief/api.js';
+import { MANAGER_ROUTES } from '../../../app/routes/route.constants.js';
+import { listReliefRequests, getAreas, getItemCategories } from '../../../features/relief/api.js';
 
 const STATUS_FILTERS = [
     { id: 'all', label: 'Tất cả', value: null, count: 128 },
@@ -15,6 +15,16 @@ const STATUS_BADGES = {
     PENDING: { label: 'Chờ duyệt', className: 'bg-yellow-100 text-yellow-700' },
     APPROVED: { label: 'Đã duyệt', className: 'bg-green-100 text-green-700' },
     REJECTED: { label: 'Từ chối', className: 'bg-red-100 text-red-700' },
+};
+
+const PENDING_STATUSES = new Set(['PENDING', 'PENDING_APPROVAL', 'WAITING_APPROVAL', 'CHO_DUYET']);
+
+const normalizeStatus = (status) => {
+    const normalized = String(status || '').trim().toUpperCase();
+    if (PENDING_STATUSES.has(normalized)) return 'PENDING';
+    if (normalized === 'APPROVED') return 'APPROVED';
+    if (normalized === 'REJECTED') return 'REJECTED';
+    return normalized || 'PENDING';
 };
 
 // Mock data - sẽ được thay thế bằng API
@@ -213,7 +223,7 @@ export default function ReliefRequestDashboardPage() {
 
     const filteredRequests = useMemo(() => {
         if (!statusFilter) return requests;
-        return requests.filter((req) => req.status === statusFilter);
+        return requests.filter((req) => normalizeStatus(req.status) === statusFilter);
     }, [requests, statusFilter]);
 
     const totalPages = Math.max(1, Math.ceil((statusFilter ? filteredRequests.length : stats.all) / ITEMS_PER_PAGE));
@@ -332,8 +342,10 @@ export default function ReliefRequestDashboardPage() {
                                 </thead>
                                 <tbody className="divide-y divide-slate-200 bg-white">
                                     {paginatedRequests.map((request) => {
-                                        const statusBadge = STATUS_BADGES[request.status] || STATUS_BADGES.PENDING;
-                                        const isPending = request.status === 'PENDING';
+                                        const normalizedStatus = normalizeStatus(request.status);
+                                        const statusKey = STATUS_BADGES[normalizedStatus] ? normalizedStatus : 'PENDING';
+                                        const statusBadge = STATUS_BADGES[statusKey];
+                                        const isPending = statusKey === 'PENDING';
                                         return (
                                             <tr key={request.id} className="hover:bg-slate-50">
                                                 <td className="whitespace-nowrap px-6 py-4">

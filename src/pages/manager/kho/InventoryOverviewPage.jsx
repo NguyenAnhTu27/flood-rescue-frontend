@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Info, Tag, RefreshCw } from 'lucide-react';
-import { MANAGER_ROUTES } from '../../app/routes/route.constants.js';
-import { getInventoryStock, getManagerDashboard, listInventoryReceipts, listInventoryIssues, getItemCategories } from '../../features/relief/api.js';
+import { MANAGER_ROUTES } from '../../../app/routes/route.constants.js';
+import { getInventoryStock, getManagerDashboard, listInventoryReceipts, listInventoryIssues, getItemCategories } from '../../../features/relief/api.js';
 
 const mockStats = [
     { id: 'total-items', label: 'TỔNG MẶT HÀNG', value: '24', color: 'text-slate-800' },
@@ -19,6 +19,28 @@ const mockInventory = [
     { id: '5', code: '#ITEM-005', name: 'Thuốc hạ sốt & Sơ cứu', category: 'Y tế', unit: 'Bộ', qty: 500, status: 'Ổn định', statusType: 'stable' },
 ];
 
+function parseNumber(value) {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    if (typeof value === 'string') {
+        const cleaned = value.replace(/,/g, '').trim();
+        const parsed = Number(cleaned);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+    return 0;
+}
+
+function parseArrayResponse(payload) {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.content)) return payload.content;
+    if (Array.isArray(payload?.items)) return payload.items;
+    if (Array.isArray(payload?.inventoryItems)) return payload.inventoryItems;
+    if (Array.isArray(payload?.lines)) return payload.lines;
+    if (Array.isArray(payload?.stocks)) return payload.stocks;
+    if (Array.isArray(payload?.results)) return payload.results;
+    return [];
+}
+
 export default function InventoryOverviewPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(false);
@@ -34,6 +56,26 @@ export default function InventoryOverviewPage() {
 
             let inventoryData = [];
             let statsData = mockStats;
+            let categoriesMap = new Map();
+
+            // Luôn load danh mục trước để map "Phân loại" từ itemCategoryId
+            try {
+                const categoriesResponse = await getItemCategories();
+                const categories = parseArrayResponse(categoriesResponse);
+                categories.forEach((cat) => {
+                    const catId = cat?.id ?? cat?.itemCategoryId ?? cat?.categoryId;
+                    if (catId == null) return;
+                    categoriesMap.set(String(catId), {
+                        code: cat.code || cat.categoryCode || `#CAT-${catId}`,
+                        name: cat.name || cat.categoryName || 'Khác',
+                        unit: cat.unit || cat.uom || cat.unitOfMeasure || 'Đơn vị',
+                    });
+                });
+                console.log('[InventoryOverviewPage] Loaded categories:', categoriesMap.size);
+            } catch (catErr) {
+                console.warn('[InventoryOverviewPage] Could not load categories for mapping:', catErr);
+                categoriesMap = new Map();
+            }
 
             // Strategy 1: Thử lấy từ API tồn kho trực tiếp (/api/inventory/stock)
             // API này đọc từ bảng stock_balances, chỉ có dữ liệu khi có phiếu nhập status = DONE
@@ -44,19 +86,7 @@ export default function InventoryOverviewPage() {
                 console.log('[InventoryOverviewPage] getInventoryStock response:', stockData);
 
                 // Parse response (có thể là array hoặc { data: [], content: [] })
-                if (Array.isArray(stockData)) {
-                    inventoryData = stockData;
-                } else if (Array.isArray(stockData?.data)) {
-                    inventoryData = stockData.data;
-                } else if (Array.isArray(stockData?.content)) {
-                    inventoryData = stockData.content;
-                } else if (Array.isArray(stockData?.items)) {
-                    inventoryData = stockData.items;
-                } else if (Array.isArray(stockData?.inventoryItems)) {
-                    inventoryData = stockData.inventoryItems;
-                } else if (Array.isArray(stockData?.lines)) {
-                    inventoryData = stockData.lines;
-                }
+                inventoryData = parseArrayResponse(stockData);
 
                 // Nếu API trả về mảng rỗng [], có nghĩa là chưa có phiếu nhập nào được approve (DONE)
                 // → Fallback sang strategy khác để tính tồn kho từ receipts - issues
@@ -94,11 +124,7 @@ export default function InventoryOverviewPage() {
                     console.log('[InventoryOverviewPage] getManagerDashboard response:', dashboardData);
                     const payload = dashboardData?.data || dashboardData;
 
-                    if (Array.isArray(payload?.inventoryItems)) {
-                        inventoryData = payload.inventoryItems;
-                    } else if (Array.isArray(payload?.items)) {
-                        inventoryData = payload.items;
-                    }
+                    inventoryData = parseArrayResponse(payload);
 
                     // Nếu dashboard có dữ liệu, dùng luôn
                     if (inventoryData.length > 0) {
@@ -125,46 +151,13 @@ export default function InventoryOverviewPage() {
                     try {
                         console.log('[InventoryOverviewPage] Calculating stock from receipts - issues...');
 
-                        // Lấy danh sách item categories để map thông tin
-                        let categoriesMap = new Map();
-                        try {
-                            const categoriesResponse = await getItemCategories();
-                            let categories = [];
-                            if (Array.isArray(categoriesResponse)) {
-                                categories = categoriesResponse;
-                            } else if (Array.isArray(categoriesResponse?.data)) {
-                                categories = categoriesResponse.data;
-                            } else if (Array.isArray(categoriesResponse?.content)) {
-                                categories = categoriesResponse.content;
-                            }
-
-                            categories.forEach((cat) => {
-                                if (cat.id) {
-                                    categoriesMap.set(cat.id, {
-                                        code: cat.code || `#CAT-${cat.id}`,
-                                        name: cat.name || 'Danh mục',
-                                        unit: cat.unit || 'Đơn vị',
-                                    });
-                                }
-                            });
-                            console.log('[InventoryOverviewPage] Loaded categories map:', categoriesMap);
-                        } catch (catErr) {
-                            console.warn('[InventoryOverviewPage] Could not load categories:', catErr);
-                        }
-
                         // Lấy tất cả phiếu nhập
                         const receiptsResponse = await listInventoryReceipts({});
                         console.log('[InventoryOverviewPage] listInventoryReceipts response:', receiptsResponse);
 
                         // Parse receipts
                         let receipts = [];
-                        if (Array.isArray(receiptsResponse)) {
-                            receipts = receiptsResponse;
-                        } else if (Array.isArray(receiptsResponse?.content)) {
-                            receipts = receiptsResponse.content;
-                        } else if (Array.isArray(receiptsResponse?.data)) {
-                            receipts = receiptsResponse.data;
-                        }
+                        receipts = parseArrayResponse(receiptsResponse);
 
                         // Lọc chỉ lấy phiếu nhập đã duyệt (status = DONE)
                         // Lưu ý: Chỉ phiếu nhập status = DONE mới được cập nhật vào stock_balances
@@ -180,13 +173,7 @@ export default function InventoryOverviewPage() {
                             const issuesResponse = await listInventoryIssues({});
                             console.log('[InventoryOverviewPage] listInventoryIssues response:', issuesResponse);
 
-                            if (Array.isArray(issuesResponse)) {
-                                issues = issuesResponse;
-                            } else if (Array.isArray(issuesResponse?.content)) {
-                                issues = issuesResponse.content;
-                            } else if (Array.isArray(issuesResponse?.data)) {
-                                issues = issuesResponse.data;
-                            }
+                            issues = parseArrayResponse(issuesResponse);
                         } catch (issuesErr) {
                             console.warn('[InventoryOverviewPage] Could not load issues, assuming 0:', issuesErr);
                             issues = [];
@@ -209,7 +196,7 @@ export default function InventoryOverviewPage() {
                                 const itemCategoryId = line.itemCategoryId || line.itemId;
                                 if (!itemCategoryId) return;
 
-                                const categoryInfo = categoriesMap.get(itemCategoryId) || {};
+                                const categoryInfo = categoriesMap.get(String(itemCategoryId)) || {};
                                 const existing = itemMap.get(itemCategoryId) || {
                                     id: itemCategoryId,
                                     itemCategoryId: itemCategoryId,
@@ -219,7 +206,7 @@ export default function InventoryOverviewPage() {
                                     unit: categoryInfo.unit || line.unit || 'Đơn vị',
                                     qty: 0,
                                 };
-                                existing.qty += Number(line.qty || line.quantity || 0);
+                                existing.qty += parseNumber(line.qty ?? line.quantity ?? line.balance ?? 0);
                                 itemMap.set(itemCategoryId, existing);
                             });
                         });
@@ -233,7 +220,7 @@ export default function InventoryOverviewPage() {
 
                                 const existing = itemMap.get(itemCategoryId);
                                 if (existing) {
-                                    existing.qty -= Number(line.qty || line.quantity || 0);
+                                    existing.qty -= parseNumber(line.qty ?? line.quantity ?? line.balance ?? 0);
                                     // Đảm bảo không âm
                                     if (existing.qty < 0) existing.qty = 0;
                                 }
@@ -253,27 +240,35 @@ export default function InventoryOverviewPage() {
             // Hỗ trợ nhiều format từ API stock_balances hoặc từ tính toán receipts-issues
             const normalizedInventory = inventoryData.map((item, idx) => {
                 // Parse số lượng từ nhiều field khác nhau
-                const qty = typeof item.qty === 'number'
-                    ? item.qty
-                    : typeof item.quantity === 'number'
-                        ? item.quantity
-                        : typeof item.stockQty === 'number'
-                            ? item.stockQty
-                            : typeof item.stockQuantity === 'number'
-                                ? item.stockQuantity
-                                : typeof item.balance === 'number'
-                                    ? item.balance
-                                    : Number(item.qty || item.quantity || item.stockQty || item.stockQuantity || item.balance || 0);
+                const qty = parseNumber(
+                    item.qty ??
+                    item.quantity ??
+                    item.stockQty ??
+                    item.stockQuantity ??
+                    item.balance ??
+                    item.availableQty ??
+                    item.onHandQty ??
+                    item.totalQty ??
+                    0
+                );
 
                 // Parse itemCategoryId từ nhiều field
                 const itemCategoryId = item.itemCategoryId || item.itemId || item.categoryId || item.id;
+                const categoryInfo = categoriesMap.get(String(itemCategoryId)) || {};
+                const categoryName = item.category || item.categoryName || item.itemCategoryName || categoryInfo.name || 'Khác';
+                const unitValue = item.unit || item.uom || item.unitOfMeasure || categoryInfo.unit || 'Đơn vị';
 
                 return {
                     id: itemCategoryId || item.id || `item-${idx}`,
-                    code: item.code || item.itemCode || item.categoryCode || `#ITEM-${String(idx + 1).padStart(3, '0')}`,
-                    name: item.name || item.itemName || item.itemCategoryName || item.categoryName || 'Mặt hàng',
-                    category: item.category || item.categoryName || item.itemCategoryName || 'Khác',
-                    unit: item.unit || item.uom || item.unitOfMeasure || 'Đơn vị',
+                    code:
+                        item.code ||
+                        item.itemCode ||
+                        item.categoryCode ||
+                        categoryInfo.code ||
+                        `#ITEM-${String(idx + 1).padStart(3, '0')}`,
+                    name: item.name || item.itemName || item.productName || item.itemCategoryName || item.categoryName || 'Mặt hàng',
+                    category: categoryName,
+                    unit: unitValue,
                     qty: qty,
                     status: item.status || (qty > 0 ? 'Ổn định' : 'Hết hàng'),
                     statusType: item.statusType || (qty > 0 && qty < 100 ? 'low' : 'stable'),

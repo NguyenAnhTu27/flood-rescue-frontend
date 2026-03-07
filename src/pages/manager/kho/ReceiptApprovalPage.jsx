@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, CheckCircle2, XCircle, Eye, RefreshCw, Filter, ChevronDown, ChevronUp } from 'lucide-react';
-import { MANAGER_ROUTES } from '../../app/routes/route.constants.js';
+import { MANAGER_ROUTES } from '../../../app/routes/route.constants.js';
 import {
     listInventoryReceipts,
     approveInventoryReceipt,
     cancelInventoryReceipt,
     getInventoryReceipt,
-} from '../../features/relief/api.js';
+} from '../../../features/relief/api.js';
 
 const STATUS_OPTIONS = [
     { value: '', label: 'Tất cả trạng thái' },
@@ -537,219 +537,6 @@ export default function ReceiptApprovalPage() {
                                                 </td>
                                             </tr>
                                             {/* Expandable row hiển thị form duyệt */}
-                                            {isExpanded && (
-                                                <tr className="bg-slate-50">
-                                                    <td colSpan="8" className="px-4 py-4">
-                                                        <div className="rounded-lg border border-slate-200 bg-white p-6">
-                                                            <h3 className="mb-4 text-lg font-semibold text-slate-900">
-                                                                Form duyệt phiếu nhập
-                                                            </h3>
-
-                                                            {receiptDetail ? (
-                                                                <div className="space-y-4">
-                                                                    {/* Thông tin phiếu nhập */}
-                                                                    <div className="grid grid-cols-2 gap-4">
-                                                                        <div>
-                                                                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                                                                Mã phiếu
-                                                                            </p>
-                                                                            <p className="mt-1 text-sm font-medium text-slate-900">
-                                                                                {receiptDetail.code || `#${receiptDetail.id}`}
-                                                                            </p>
-                                                                        </div>
-                                                                        <div>
-                                                                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                                                                Trạng thái
-                                                                            </p>
-                                                                            <p className="mt-1">
-                                                                                <span
-                                                                                    className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[receiptDetail.status] ||
-                                                                                        'bg-slate-100 text-slate-700 border-slate-200'
-                                                                                        }`}
-                                                                                >
-                                                                                    {STATUS_LABELS[receiptDetail.status] ||
-                                                                                        receiptDetail.status}
-                                                                                </span>
-                                                                            </p>
-                                                                        </div>
-                                                                        <div>
-                                                                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                                                                Nguồn hàng
-                                                                            </p>
-                                                                            <p className="mt-1">
-                                                                                <span
-                                                                                    className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${getSourceTypeColor(
-                                                                                        receiptDetail.sourceType
-                                                                                    )}`}
-                                                                                >
-                                                                                    {getSourceTypeLabel(receiptDetail.sourceType)}
-                                                                                </span>
-                                                                            </p>
-                                                                        </div>
-                                                                        <div>
-                                                                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                                                                Ngày tạo
-                                                                            </p>
-                                                                            <p className="mt-1 text-sm text-slate-700">
-                                                                                {receiptDetail.createdAt
-                                                                                    ? new Date(
-                                                                                        receiptDetail.createdAt
-                                                                                    ).toLocaleString('vi-VN')
-                                                                                    : '-'}
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    {receiptDetail.note && (
-                                                                        <div>
-                                                                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                                                                Ghi chú
-                                                                            </p>
-                                                                            <p className="mt-1 text-sm text-slate-700">
-                                                                                {receiptDetail.note}
-                                                                            </p>
-                                                                        </div>
-                                                                    )}
-
-                                                                    {/* Danh sách mặt hàng */}
-                                                                    <div>
-                                                                        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                                                            Danh sách mặt hàng
-                                                                        </p>
-                                                                        <div className="overflow-x-auto rounded-lg border border-slate-200">
-                                                                            <table className="w-full">
-                                                                                <thead className="bg-slate-50">
-                                                                                    <tr>
-                                                                                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                                                                            Mặt hàng
-                                                                                        </th>
-                                                                                        <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                                                                            Số lượng
-                                                                                        </th>
-                                                                                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                                                                            Đơn vị
-                                                                                        </th>
-                                                                                    </tr>
-                                                                                </thead>
-                                                                                <tbody>
-                                                                                    {receiptDetail.lines &&
-                                                                                        receiptDetail.lines.length > 0 ? (
-                                                                                        receiptDetail.lines.map(
-                                                                                            (line, idx) => (
-                                                                                                <tr
-                                                                                                    key={idx}
-                                                                                                    className="border-b border-slate-100 last:border-0"
-                                                                                                >
-                                                                                                    <td className="px-4 py-2 text-sm text-slate-700">
-                                                                                                        {line.itemName ||
-                                                                                                            line.itemCategoryName ||
-                                                                                                            `Mặt hàng ${idx + 1}`}
-                                                                                                    </td>
-                                                                                                    <td className="px-4 py-2 text-right text-sm font-medium text-slate-900">
-                                                                                                        {line.qty || 0}
-                                                                                                    </td>
-                                                                                                    <td className="px-4 py-2 text-sm text-slate-600">
-                                                                                                        {line.unit || '-'}
-                                                                                                    </td>
-                                                                                                </tr>
-                                                                                            )
-                                                                                        )
-                                                                                    ) : (
-                                                                                        <tr>
-                                                                                            <td
-                                                                                                colSpan="3"
-                                                                                                className="px-4 py-4 text-center text-sm text-slate-500"
-                                                                                            >
-                                                                                                Không có mặt hàng nào
-                                                                                            </td>
-                                                                                        </tr>
-                                                                                    )}
-                                                                                </tbody>
-                                                                            </table>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    {/* Thông báo và nút duyệt */}
-                                                                    <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
-                                                                        <p className="text-sm text-blue-800">
-                                                                            <strong>Lưu ý:</strong> Sau khi duyệt, tồn kho sẽ được cập nhật tự động với số lượng mặt hàng trong phiếu nhập này.
-                                                                        </p>
-                                                                    </div>
-
-                                                                    <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => toggleExpandRow(receipt.id)}
-                                                                            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                                                                        >
-                                                                            Đóng
-                                                                        </button>
-                                                                        {(() => {
-                                                                            const isDraft =
-                                                                                receiptDetail.status === 'DRAFT' ||
-                                                                                receiptDetail.status === 'Nháp' ||
-                                                                                receiptDetail.status === 'Draft' ||
-                                                                                receiptDetail.status === 'draft' ||
-                                                                                (typeof receiptDetail.status === 'string' &&
-                                                                                    receiptDetail.status.toUpperCase() === 'DRAFT');
-
-                                                                            if (isDraft) {
-                                                                                return (
-                                                                                    <button
-                                                                                        type="button"
-                                                                                        onClick={() => {
-                                                                                            if (
-                                                                                                window.confirm(
-                                                                                                    `Bạn có chắc chắn muốn duyệt phiếu nhập "${receiptDetail.code || `#${receiptDetail.id}`}"?\n\nSau khi duyệt, tồn kho sẽ được cập nhật tự động.`
-                                                                                                )
-                                                                                            ) {
-                                                                                                handleApprove(
-                                                                                                    receiptDetail.id,
-                                                                                                    receiptDetail.code ||
-                                                                                                    `#${receiptDetail.id}`
-                                                                                                );
-                                                                                            }
-                                                                                        }}
-                                                                                        disabled={
-                                                                                            isActionLoading('approve', receiptDetail.id) ||
-                                                                                            loading
-                                                                                        }
-                                                                                        className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                                                                                    >
-                                                                                        {isActionLoading('approve', receiptDetail.id) ? (
-                                                                                            <>
-                                                                                                <RefreshCw className="h-4 w-4 animate-spin" />
-                                                                                                Đang duyệt...
-                                                                                            </>
-                                                                                        ) : (
-                                                                                            <>
-                                                                                                <CheckCircle2 className="h-4 w-4" />
-                                                                                                Xác nhận duyệt
-                                                                                            </>
-                                                                                        )}
-                                                                                    </button>
-                                                                                );
-                                                                            }
-                                                                            return (
-                                                                                <span className="px-4 py-2 text-sm text-slate-500">
-                                                                                    Phiếu này đã được duyệt hoặc không thể duyệt
-                                                                                </span>
-                                                                            );
-                                                                        })()}
-                                                                    </div>
-                                                                </div>
-                                                            ) : (
-                                                                <div className="flex items-center justify-center py-8">
-                                                                    <RefreshCw className="h-5 w-5 animate-spin text-slate-400" />
-                                                                    <span className="ml-2 text-sm text-slate-500">
-                                                                        Đang tải chi tiết...
-                                                                    </span>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            )}
                                         </React.Fragment>
                                     );
                                 })
@@ -925,7 +712,7 @@ export default function ReceiptApprovalPage() {
                                                                         `Mặt hàng ${idx + 1}`}
                                                                 </td>
                                                                 <td className="px-4 py-2 text-right text-sm font-medium text-slate-900">
-                                                                    {line.qty || 0}
+                                                                    {line.qty ?? line.quantity ?? 0}
                                                                 </td>
                                                                 <td className="px-4 py-2 text-sm text-slate-600">
                                                                     {line.unit || '-'}
@@ -949,7 +736,53 @@ export default function ReceiptApprovalPage() {
                                 </div>
                             )}
                         </div>
-                        <div className="flex justify-end border-t border-slate-200 px-6 py-4">
+                        <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+                            {/* Nút Duyệt */}
+                            {(() => {
+                                const isDraft =
+                                    selectedReceipt.status === 'DRAFT' ||
+                                    selectedReceipt.status === 'Nháp' ||
+                                    selectedReceipt.status === 'Draft' ||
+                                    selectedReceipt.status === 'draft' ||
+                                    (typeof selectedReceipt.status === 'string' &&
+                                        selectedReceipt.status.toUpperCase() === 'DRAFT');
+
+                                if (!isDraft) return null;
+
+                                return (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (
+                                                window.confirm(
+                                                    `Bạn có chắc chắn muốn duyệt phiếu nhập "${selectedReceipt.code || `#${selectedReceipt.id}`}"?\n\nSau khi duyệt, tồn kho sẽ được cập nhật tự động.`
+                                                )
+                                            ) {
+                                                handleApprove(
+                                                    selectedReceipt.id,
+                                                    selectedReceipt.code || `#${selectedReceipt.id}`
+                                                );
+                                            }
+                                        }}
+                                        disabled={isActionLoading('approve', selectedReceipt.id)}
+                                        className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {isActionLoading('approve', selectedReceipt.id) ? (
+                                            <>
+                                                <RefreshCw className="h-4 w-4 animate-spin" />
+                                                Đang duyệt...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <CheckCircle2 className="h-4 w-4" />
+                                                Duyệt
+                                            </>
+                                        )}
+                                    </button>
+                                );
+                            })()}
+
+                            {/* Nút Đóng */}
                             <button
                                 type="button"
                                 onClick={() => {
@@ -1091,7 +924,7 @@ export default function ReceiptApprovalPage() {
                                                                         `Mặt hàng ${idx + 1}`}
                                                                 </td>
                                                                 <td className="px-4 py-2 text-right text-sm font-medium text-slate-900">
-                                                                    {line.qty || 0}
+                                                                    {line.qty ?? line.quantity ?? 0}
                                                                 </td>
                                                                 <td className="px-4 py-2 text-sm text-slate-600">
                                                                     {line.unit || '-'}

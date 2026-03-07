@@ -61,74 +61,48 @@ export default function RescueRequestCreatePage() {
         }));
     };
 
-    // Helper function to wait for Google Maps to be ready
-    const waitForGoogleMaps = async (maxRetries = 20, delay = 300) => {
-        for (let i = 0; i < maxRetries; i++) {
-            if (window.google && window.google.maps && window.google.maps.Geocoder) {
-                return true;
-            }
-            await new Promise(resolve => setTimeout(resolve, delay));
-        }
-        return false;
+    // Parse full address into 2 fields: address + ward/area
+    const splitAddressFields = (fullAddress = '') => {
+        const addressParts = fullAddress.split(',').map((part) => part.trim()).filter(Boolean);
+
+        // Swap mapping: first part -> ward, remaining parts -> detailed address
+        const firstPart = addressParts[0] || '';
+        const remaining = addressParts.slice(1).join(', ');
+
+        return {
+            address: remaining || fullAddress || '',
+            ward: firstPart,
+        };
     };
 
-    // Helper function to reverse geocode coordinates to address
+    // Reverse geocode coordinates to address using Mapbox
     const reverseGeocodeAddress = async (lat, lng) => {
-        // Wait for Google Maps to be ready
-        const isReady = await waitForGoogleMaps();
-        if (!isReady) {
-            console.warn('Google Maps not loaded yet, cannot geocode');
-            return null;
-        }
-
-        const geocoder = new window.google.maps.Geocoder();
-        const latlng = { lat, lng };
-
         try {
-            const results = await new Promise((resolve, reject) => {
-                geocoder.geocode(
-                    {
-                        location: latlng,
-                        language: 'vi', // Vietnamese language
-                        region: 'vn' // Vietnam region
-                    },
-                    (results, status) => {
-                        if (status === 'OK') {
-                            resolve(results);
-                        } else {
-                            reject(new Error(`Geocoding failed: ${status}`));
-                        }
-                    }
-                );
-            });
+            const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+            if (!token) {
+                console.warn('Missing VITE_MAPBOX_ACCESS_TOKEN, cannot reverse geocode');
+                return null;
+            }
 
-            if (results && results[0]) {
-                const address = results[0].formatted_address;
-                const addressParts = address.split(',');
+            const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?language=vi&country=vn&access_token=${token}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            const fullAddress = data?.features?.[0]?.place_name || null;
 
-                // Update form with address
+            if (fullAddress) {
+                const parsed = splitAddressFields(fullAddress);
                 setForm((prev) => ({
                     ...prev,
-                    address: addressParts[0]?.trim() || address,
-                    ward: addressParts.slice(1).join(',').trim() || '',
+                    address: parsed.address,
+                    ward: parsed.ward,
                 }));
-
-                console.log('[Geocoding Success]', {
-                    lat,
-                    lng,
-                    fullAddress: address,
-                    addressField: addressParts[0]?.trim() || address,
-                    wardField: addressParts.slice(1).join(',').trim() || ''
-                });
-
-                return address;
             }
+
+            return fullAddress;
         } catch (error) {
             console.error('Reverse geocoding error:', error);
-            // Still update coordinates even if geocoding fails
+            return null;
         }
-
-        return null;
     };
 
     // Get user's current location on mount
@@ -231,26 +205,19 @@ export default function RescueRequestCreatePage() {
         // Update marker position (this will update the map)
         setMarkerPosition({ lat: location.lat, lng: location.lng });
 
-        // Update address if geocoding succeeded from map
+        // Always auto-fill both fields when address is available
         if (location.address) {
-            // Try to extract address components
-            const addressParts = location.address.split(',');
-            if (addressParts.length >= 2) {
-                setForm((prev) => ({
-                    ...prev,
-                    address: addressParts[0].trim(),
-                    ward: addressParts.slice(1).join(',').trim(),
-                }));
-            } else {
-                setForm((prev) => ({
-                    ...prev,
-                    address: location.address,
-                }));
-            }
-        } else {
-            // If no address from map, manually reverse geocode
-            await reverseGeocodeAddress(location.lat, location.lng);
+            const parsed = splitAddressFields(location.address);
+            setForm((prev) => ({
+                ...prev,
+                address: parsed.address,
+                ward: parsed.ward,
+            }));
+            return;
         }
+
+        // If no address from map callback, fallback to reverse geocode
+        await reverseGeocodeAddress(location.lat, location.lng);
     };
 
     const goNext = () => {
@@ -299,6 +266,10 @@ export default function RescueRequestCreatePage() {
                 description: form.description,
                 addressText: addressText,
                 priority: form.level, // "HIGH" | "MEDIUM" | "LOW"
+                latitude: form.latitude,
+                longitude: form.longitude,
+                lat: form.latitude,
+                lng: form.longitude,
                 attachments,
             };
 

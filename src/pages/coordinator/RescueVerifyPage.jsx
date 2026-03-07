@@ -34,6 +34,37 @@ export default function RescueVerifyPage() {
     // Request được truyền từ hàng đợi (CoordinatorDashboard) qua location.state
     const rawRequest = location.state?.request || null;
 
+    const toValidNumber = (value) => {
+        const num = Number(value);
+        return Number.isFinite(num) ? num : null;
+    };
+
+    const getCoordinate = (obj, type) => {
+        if (!obj) return null;
+
+        const latKeys = ['latitude', 'lat', 'gpsLat', 'locationLat'];
+        const lngKeys = ['longitude', 'lng', 'lon', 'gpsLng', 'gpsLon', 'locationLng', 'locationLon'];
+        const keys = type === 'lat' ? latKeys : lngKeys;
+
+        // flat keys
+        for (const key of keys) {
+            const value = toValidNumber(obj[key]);
+            if (value !== null) return value;
+        }
+
+        // nested keys
+        const nestedSources = [obj.location, obj.coordinates, obj.geo, obj.position, obj.coordinate];
+        for (const source of nestedSources) {
+            if (!source) continue;
+            for (const key of keys) {
+                const value = toValidNumber(source[key]);
+                if (value !== null) return value;
+            }
+        }
+
+        return null;
+    };
+
     const initialRequest = rawRequest
         ? {
             id: rawRequest.id,
@@ -42,8 +73,8 @@ export default function RescueVerifyPage() {
             priority: rawRequest.priority || 'MEDIUM',
             peopleCount: rawRequest.peopleCount ?? 1,
             addressText: rawRequest.addressText || rawRequest.address || 'Chưa có địa chỉ chi tiết',
-            latitude: rawRequest.latitude ?? rawRequest.lat ?? 10.768579,
-            longitude: rawRequest.longitude ?? rawRequest.lng ?? 106.697389,
+            latitude: getCoordinate(rawRequest, 'lat'),
+            longitude: getCoordinate(rawRequest, 'lng'),
             description: rawRequest.description || '',
             createdAt: rawRequest.timeAgo || rawRequest.createdAt || '',
             attachments: rawRequest.attachments || rawRequest.images || rawRequest.evidences || [],
@@ -69,6 +100,11 @@ export default function RescueVerifyPage() {
     const [address, setAddress] = useState(initialRequest.addressText || '');
     const [longitude, setLongitude] = useState(initialRequest.longitude ?? '');
     const [latitude, setLatitude] = useState(initialRequest.latitude ?? '');
+
+    const DEFAULT_COORDINATES = {
+        lat: 10.768579,
+        lng: 106.697389,
+    };
     const [note, setNote] = useState(initialRequest.description || '');
     const [attachments, setAttachments] = useState(initialRequest.attachments || []);
     const [loadingDetail, setLoadingDetail] = useState(false);
@@ -100,11 +136,14 @@ export default function RescueVerifyPage() {
                 if (detail.addressText || detail.address) {
                     setAddress(detail.addressText || detail.address || '');
                 }
-                if (detail.longitude !== undefined || detail.lng !== undefined) {
-                    setLongitude(String(detail.longitude ?? detail.lng ?? ''));
+                const detailLongitude = getCoordinate(detail, 'lng');
+                const detailLatitude = getCoordinate(detail, 'lat');
+
+                if (detailLongitude !== null) {
+                    setLongitude(String(detailLongitude));
                 }
-                if (detail.latitude !== undefined || detail.lat !== undefined) {
-                    setLatitude(String(detail.latitude ?? detail.lat ?? ''));
+                if (detailLatitude !== null) {
+                    setLatitude(String(detailLatitude));
                 }
                 if (detail.description) {
                     setNote(detail.description);
@@ -124,9 +163,12 @@ export default function RescueVerifyPage() {
         fetchDetail();
     }, [rawRequest?.id]);
 
+    const parsedLatitude = toValidNumber(latitude);
+    const parsedLongitude = toValidNumber(longitude);
+
     const mapCenter = {
-        lat: latitude || 10.768579,
-        lng: longitude || 106.697389,
+        lat: parsedLatitude ?? DEFAULT_COORDINATES.lat,
+        lng: parsedLongitude ?? DEFAULT_COORDINATES.lng,
     };
 
     const handleChangePeople = (delta) => {

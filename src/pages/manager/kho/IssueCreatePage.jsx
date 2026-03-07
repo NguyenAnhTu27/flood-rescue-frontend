@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Pencil, X, Check, FileText, List, BarChart3, Info } from 'lucide-react';
-import { MANAGER_ROUTES } from '../../app/routes/route.constants.js';
+import { MANAGER_ROUTES } from '../../../app/routes/route.constants.js';
 import {
     createInventoryIssue,
     approveInventoryIssue,
     getInventoryStock,
     getItemCategories,
-} from '../../features/relief/api.js';
-import { listReliefRequests } from '../../features/relief/api.js';
-import { getTeams } from '../../features/teams/api.js';
-import { getAssets } from '../../features/assets/api.js';
+} from '../../../features/relief/api.js';
+import { listReliefRequests } from '../../../features/relief/api.js';
+import { getTeams } from '../../../features/teams/api.js';
+import { getAssets } from '../../../features/assets/api.js';
 
 const INITIAL_ITEMS = [
     {

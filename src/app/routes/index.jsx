@@ -47,17 +47,18 @@ import RescueUpdateStatusPage from '../../pages/rescuer/RescueUpdateStatusPage.j
 
 // Manager
 import ManagerDashboard from '../../pages/manager/ManagerDashboard.jsx';
-import InventoryOverviewPage from '../../pages/manager/InventoryOverviewPage.jsx';
-import DistributionPlanPage from '../../pages/manager/DistributionPlanPage.jsx';
-import AssetsManagementPage from '../../pages/manager/AssetsManagementPage.jsx';
-import AssetCreatePage from '../../pages/manager/AssetCreatePage.jsx';
+import InventoryOverviewPage from '../../pages/manager/kho/InventoryOverviewPage.jsx';
+import DistributionPlanPage from '../../pages/manager/hang-cuu-tro/DistributionPlanPage.jsx';
+import AssetsManagementPage from '../../pages/manager/phuong-tien/AssetsManagementPage.jsx';
+import AssetCreatePage from '../../pages/manager/phuong-tien/AssetCreatePage.jsx';
 import AssetsAssignToTask from '../../features/assets/components/AssetsAssignToTask.jsx';
-import ReceiptCreatePage from '../../pages/manager/ReceiptCreatePage.jsx';
-import ReceiptApprovalPage from '../../pages/manager/ReceiptApprovalPage.jsx';
-import IssueCreatePage from '../../pages/manager/IssueCreatePage.jsx';
-import ItemCategoriesPage from '../../pages/manager/ItemCategoriesPage.jsx';
-import ReliefRequestDashboardPage from '../../pages/manager/ReliefRequestDashboardPage.jsx';
-import ReliefRequestCreatePage from '../../pages/manager/ReliefRequestCreatePage.jsx';
+import ReceiptCreatePage from '../../pages/manager/kho/ReceiptCreatePage.jsx';
+import ReceiptApprovalPage from '../../pages/manager/kho/ReceiptApprovalPage.jsx';
+import IssueCreatePage from '../../pages/manager/kho/IssueCreatePage.jsx';
+import ItemCategoriesPage from '../../pages/manager/kho/ItemCategoriesPage.jsx';
+import ReliefRequestDashboardPage from '../../pages/manager/hang-cuu-tro/ReliefRequestDashboardPage.jsx';
+import ReliefRequestCreatePage from '../../pages/manager/hang-cuu-tro/ReliefRequestCreatePage.jsx';
+import ReliefRequestVerifyPage from '../../pages/manager/hang-cuu-tro/ReliefRequestVerifyPage.jsx';
 
 // Admin
 import AdminDashboard from '../../pages/admin/AdminDashboard.jsx';
@@ -382,6 +383,18 @@ export default function AppRoutes() {
                         <RequireRole allow={['MANAGER']}>
                             <RootLayout>
                                 <ReliefRequestDashboardPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={MANAGER_ROUTES.RELIEF_APPROVE}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['MANAGER']}>
+                            <RootLayout>
+                                <ReliefRequestVerifyPage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>

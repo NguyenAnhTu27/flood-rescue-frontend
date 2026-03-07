@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sailboat, Truck, Zap, MapPin, FileText, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
-import { MANAGER_ROUTES } from '../../app/routes/route.constants.js';
-import { getAssets } from '../../features/assets/api.js';
+import { MANAGER_ROUTES } from '../../../app/routes/route.constants.js';
+import { getAssets } from '../../../features/assets/api.js';
 
 const STATUS_FILTERS = [
     { id: 'all', label: 'Tất cả', value: null },
