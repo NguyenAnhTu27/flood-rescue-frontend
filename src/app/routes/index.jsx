@@ -31,7 +31,7 @@ import RescueRequestStatusPage from '../../pages/citizen/RescueRequestStatusPage
 import FeedbackPage from '../../pages/citizen/FeedbackPage.jsx';
 
 // Coordinator
-import CoordinatorDashboard from '../../pages/coordinator/CoordinatorDashboard.jsx';
+import CoordinatorDashboard from '../../pages/coordinator/CoordinatorDashboardPage.jsx';
 import RescueQueuePage from '../../pages/coordinator/RescueQueuePage.jsx';
 import RescueVerifyPage from '../../pages/coordinator/RescueVerifyPage.jsx';
 import RescueAssignPage from '../../pages/coordinator/RescueAssignPage.jsx';

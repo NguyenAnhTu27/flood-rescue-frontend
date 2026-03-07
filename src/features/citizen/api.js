@@ -64,6 +64,21 @@ export async function updateRescueRequest(id, data) {
 }
 
 /**
+ * Upload rescue request attachments (images)
+ * @param {File[]} files
+ * @returns {Promise<Array<{fileUrl: string, fileType: string}>>}
+ */
+export async function uploadRescueAttachments(files) {
+    const formData = new FormData();
+    files.forEach((file) => {
+        formData.append('files', file);
+    });
+
+    const response = await httpClient.post('/rescue/citizen/attachments', formData);
+    return response;
+}
+
+/**
  * Cancel rescue request
  * @param {string} id - Request ID
  * @returns {Promise}

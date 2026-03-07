@@ -1,16 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FileText, Camera, Info, Save, X, Upload } from 'lucide-react';
+import { FileText, Camera, Info, Save, X } from 'lucide-react';
 import { CITIZEN_ROUTES } from '../../app/routes/route.constants.js';
-import { updateRescueRequest } from '../../features/citizen/api.js';
+import { getRescueRequestById, updateRescueRequest, uploadRescueAttachments } from '../../features/citizen/api.js';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '');
+
+function resolveAttachmentUrl(fileUrl) {
+    if (!fileUrl) return '';
+    if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) return fileUrl;
+    if (fileUrl.startsWith('/')) return `${BACKEND_ORIGIN}${fileUrl}`;
+    return `${BACKEND_ORIGIN}/${fileUrl}`;
+}
 
 export default function RescueRequestUpdatePage() {
     const navigate = useNavigate();
     const location = useLocation();
-    const request = location.state?.request || null;
+    const requestFromState = location.state?.request || null;
 
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoadingRequest, setIsLoadingRequest] = useState(false);
     const [error, setError] = useState(null);
+    const [request, setRequest] = useState(requestFromState);
     const [form, setForm] = useState({
         additionalDescription: '',
         newImages: [],
@@ -26,6 +38,27 @@ export default function RescueRequestUpdatePage() {
             }));
         }
     }, [request]);
+
+    useEffect(() => {
+        if (!requestFromState?.id) {
+            return;
+        }
+
+        const loadDetail = async () => {
+            try {
+                setIsLoadingRequest(true);
+                const detailedRequest = await getRescueRequestById(requestFromState.id);
+                setRequest(detailedRequest || requestFromState);
+            } catch (err) {
+                console.error('Load request detail error:', err);
+                setRequest(requestFromState);
+            } finally {
+                setIsLoadingRequest(false);
+            }
+        };
+
+        loadDetail();
+    }, [requestFromState]);
 
     // Redirect if no request data
     useEffect(() => {
@@ -88,43 +121,52 @@ export default function RescueRequestUpdatePage() {
         e.preventDefault();
         setError(null);
 
-        if (!form.additionalDescription.trim() && form.newImages.length === 0 && form.existingImages.length === 0) {
-            setError('Vui lòng nhập mô tả bổ sung hoặc thêm ảnh');
+        if (!form.additionalDescription.trim() && form.newImages.length === 0) {
+            setError('Vui lòng nhập mô tả bổ sung hoặc thêm ảnh mới');
             return;
         }
 
         try {
             setIsSubmitting(true);
 
-            // Prepare FormData for multipart/form-data
-            const formData = new FormData();
+            const uploadedAttachments = form.newImages.length > 0
+                ? await uploadRescueAttachments(form.newImages)
+                : [];
 
-            if (form.additionalDescription.trim()) {
-                formData.append('additionalDescription', form.additionalDescription);
+            const keptExistingAttachments = form.existingImages
+                .filter((img) => (img.fileUrl || img.url))
+                .map((img) => ({
+                    fileUrl: img.fileUrl || img.url,
+                    fileType: img.fileType || 'IMAGE',
+                }));
+
+            const mergedAttachments = [
+                ...keptExistingAttachments,
+                ...(Array.isArray(uploadedAttachments) ? uploadedAttachments : []),
+            ];
+
+            const existingDescription = (request.description || '').trim();
+            const additionalDescription = form.additionalDescription.trim();
+            const description = additionalDescription
+                ? (existingDescription
+                    ? `${existingDescription}\n\n[Cập nhật ${new Date().toLocaleString('vi-VN')}]\n${additionalDescription}`
+                    : additionalDescription)
+                : existingDescription;
+
+            const payload = {
+                description,
+            };
+            const shouldSendAttachments = Array.isArray(request.attachments) || form.newImages.length > 0;
+            if (shouldSendAttachments) {
+                payload.attachments = mergedAttachments;
             }
 
-            // Add new images
-            form.newImages.forEach((file) => {
-                formData.append('attachments', file);
-            });
-
-            // Note: Backend may need to handle existing images separately
-            // For now, we only send new images and additional description
-            // If backend requires existing image URLs, uncomment below:
-            // if (form.existingImages.length > 0) {
-            //     form.existingImages.forEach((img, index) => {
-            //         if (img.fileUrl) {
-            //             formData.append(`existingAttachments[${index}]`, img.fileUrl);
-            //         }
-            //     });
-            // }
-
-            await updateRescueRequest(request.id, formData);
+            const updatedRequest = await updateRescueRequest(request.id, payload);
 
             // Navigate back to detail page or list
             navigate(CITIZEN_ROUTES.RESCUE_DETAIL, {
                 state: {
-                    request: { ...request, updated: true },
+                    request: updatedRequest || { ...request, updated: true },
                     successMessage: 'Thông tin yêu cầu đã được cập nhật thành công!'
                 },
             });
@@ -142,10 +184,6 @@ export default function RescueRequestUpdatePage() {
         });
     };
 
-    if (!request) {
-        return null; // Will redirect in useEffect
-    }
-
     // Create preview URLs for new images
     const newImagePreviews = form.newImages.map(file => ({
         file,
@@ -158,6 +196,18 @@ export default function RescueRequestUpdatePage() {
             newImagePreviews.forEach(preview => URL.revokeObjectURL(preview.url));
         };
     }, [form.newImages]);
+
+    if (!request) {
+        return null; // Will redirect in useEffect
+    }
+
+    if (isLoadingRequest) {
+        return (
+            <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-600">
+                Đang tải chi tiết yêu cầu...
+            </div>
+        );
+    }
 
     const totalImages = form.existingImages.length + form.newImages.length;
     const canAddMore = totalImages < 10;
@@ -223,7 +273,7 @@ export default function RescueRequestUpdatePage() {
                                         className="group relative aspect-square overflow-hidden rounded-lg border-2 border-slate-200 bg-slate-100 shadow-sm"
                                     >
                                         <img
-                                            src={img.fileUrl || img.url || ''}
+                                            src={resolveAttachmentUrl(img.fileUrl || img.url || '')}
                                             alt={`Existing ${index + 1}`}
                                             className="h-full w-full object-cover"
                                         />
