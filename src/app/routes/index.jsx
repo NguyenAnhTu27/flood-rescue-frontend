@@ -53,6 +53,11 @@ import AssetsManagementPage from '../../pages/manager/AssetsManagementPage.jsx';
 // Admin
 import AdminDashboard from '../../pages/admin/AdminDashboard.jsx';
 import UserManagementPage from '../../pages/admin/UserManagementPage.jsx';
+import RolesPermissionsPage from '../../pages/admin/RolesPermissionsPage.jsx';
+import SystemCatalogPage from '../../pages/admin/SystemCatalogPage.jsx';
+import NotificationTemplatesPage from '../../pages/admin/NotificationTemplatesPage.jsx';
+import SystemSettingsPage from '../../pages/admin/SystemSettingsPage.jsx';
+import AuditLogsPage from '../../pages/admin/AuditLogsPage.jsx';
 
 /* =========================
    5) Route tree
@@ -337,6 +342,66 @@ export default function AppRoutes() {
                         <RequireRole allow={['ADMIN']}>
                             <RootLayout>
                                 <UserManagementPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={ADMIN_ROUTES.ROLES_PERMISSIONS}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['ADMIN']}>
+                            <RootLayout>
+                                <RolesPermissionsPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={ADMIN_ROUTES.SYSTEM_CATALOG}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['ADMIN']}>
+                            <RootLayout>
+                                <SystemCatalogPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={ADMIN_ROUTES.NOTIFICATION_TEMPLATES}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['ADMIN']}>
+                            <RootLayout>
+                                <NotificationTemplatesPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={ADMIN_ROUTES.SYSTEM_SETTINGS}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['ADMIN']}>
+                            <RootLayout>
+                                <SystemSettingsPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={ADMIN_ROUTES.AUDIT_LOGS}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['ADMIN']}>
+                            <RootLayout>
+                                <AuditLogsPage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>

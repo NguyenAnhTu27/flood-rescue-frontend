@@ -1,293 +1,148 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { Bell, Settings, ShieldCheck, Users, Boxes, ScrollText, FileText, ArrowRight } from "lucide-react";
+import { ADMIN_ROUTES } from "../../app/routes/route.constants.js";
 
 export default function AdminDashboard() {
+  const API = "http://localhost:8080/api/admin";
+  const token = localStorage.getItem("token");
 
-    const token = localStorage.getItem("token");
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    activeUsers: 0,
+    lockedUsers: 0,
+  });
+  const [error, setError] = useState("");
 
-    const [users, setUsers] = useState({});
-    const [message, setMessage] = useState("");
-    const [showPassword, setShowPassword] = useState(false);
-    const [resetPasswords, setResetPasswords] = useState({});
-
-    const [form, setForm] = useState({
-        fullName: "",
-        email: "",
-        phone: "",
-        password: "",
-        roleId: 3
-    });
-
-    const API = "http://localhost:8080/api/admin";
-
-    // =========================
-    // ICONS
-    // =========================
-
-    const EyeIcon = () => (
-        <svg width="20" height="20" viewBox="0 0 24 24">
-            <path
-                fill="currentColor"
-                d="M12 5C6 5 2 12 2 12s4 7 10 7s10-7 10-7s-4-7-10-7Zm0 11a4 4 0 1 1 0-8a4 4 0 0 1 0 8Z"
-            />
-        </svg>
-    );
-
-    const EyeSlashIcon = () => (
-        <svg width="20" height="20" viewBox="0 0 24 24">
-            <path
-                fill="currentColor"
-                d="M2 5l2-2l18 18l-2 2l-4.2-4.2A10.6 10.6 0 0 1 12 19c-6 0-10-7-10-7a21.8 21.8 0 0 1 5.2-5.8L2 5Zm20 7s-4-7-10-7c-1.4 0-2.7.3-4 .8l1.6 1.6A4 4 0 0 1 16.6 14L22 12Z"
-            />
-        </svg>
-    );
-
-    // =========================
-    // CREATE USER
-    // =========================
-
-    const createUser = async () => {
-
-        const res = await fetch(`${API}/create-user`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + token
-            },
-            body: JSON.stringify(form)
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch(`${API}/stats`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
-
-        const data = await res.text();
-        setMessage(data);
-
-        getUsers();
-    };
-
-    // =========================
-    // GET USERS
-    // =========================
-
-    const getUsers = async () => {
-
-        const res = await fetch(`${API}/users-by-role`, {
-            headers: {
-                "Authorization": "Bearer " + token
-            }
-        });
-
-        const data = await res.json();
-
-        delete data.ADMIN;
-
-        setUsers(data || {});
-    };
-
-    // =========================
-    // DELETE USER
-    // =========================
-
-    const deleteUser = async (id) => {
-
-        const res = await fetch(`${API}/delete-user/${id}`, {
-            method: "DELETE",
-            headers: {
-                "Authorization": "Bearer " + token
-            }
-        });
-
-        const data = await res.text();
-        setMessage(data);
-
-        getUsers();
-    };
-
-    // =========================
-    // RESET PASSWORD
-    // =========================
-
-    const resetPassword = async (id) => {
-
-        const password = resetPasswords[id];
-
-        if (!password) {
-            setMessage("Nhập password mới");
-            return;
+        const contentType = res.headers.get("content-type") || "";
+        const data = contentType.includes("application/json") ? await res.json() : await res.text();
+        if (!res.ok) {
+          throw new Error(typeof data === "string" ? data : data?.message || "Không thể tải thống kê");
         }
-
-        const res = await fetch(`${API}/reset-password/${id}`, {
-            method: "PUT",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + token
-            },
-            body: JSON.stringify({ password })
+        setStats({
+          totalUsers: data.totalUsers || 0,
+          activeUsers: data.activeUsers || 0,
+          lockedUsers: data.lockedUsers || 0,
         });
-
-        const data = await res.text();
-
-        setMessage(data);
-
-        setResetPasswords({
-            ...resetPasswords,
-            [id]: ""
-        });
+      } catch (e) {
+        setError(e.message);
+      }
     };
 
-    return (
-        <div className="rounded-xl border bg-white p-6 space-y-6">
+    fetchStats();
+  }, [token]);
 
-            <h1 className="text-2xl font-semibold">
-                Admin Dashboard
-            </h1>
+  const modules = useMemo(
+    () => [
+      {
+        title: "Quản lý Người dùng",
+        description: "Quản lý tài khoản, thông tin cá nhân và trạng thái hoạt động.",
+        to: ADMIN_ROUTES.USERS_MANAGEMENT,
+        icon: Users,
+      },
+      {
+        title: "Vai trò & Phân quyền",
+        description: "Thiết lập nhóm quyền và kiểm soát truy cập hệ thống.",
+        to: ADMIN_ROUTES.ROLES_PERMISSIONS,
+        icon: ShieldCheck,
+      },
+      {
+        title: "Danh mục hệ thống",
+        description: "Cấu hình các danh mục dữ liệu nền (tỉnh thành, đơn vị...).",
+        to: ADMIN_ROUTES.SYSTEM_CATALOG,
+        icon: Boxes,
+      },
+      {
+        title: "Mẫu thông báo",
+        description: "Quản lý các nội dung thông báo đẩy và email cảnh báo.",
+        to: ADMIN_ROUTES.NOTIFICATION_TEMPLATES,
+        icon: Bell,
+      },
+      {
+        title: "Cấu hình hệ thống",
+        description: "Cài đặt tham số vận hành và tham số kỹ thuật.",
+        to: ADMIN_ROUTES.SYSTEM_SETTINGS,
+        icon: Settings,
+      },
+      {
+        title: "Nhật ký hệ thống",
+        description: "Theo dõi lịch sử truy cập và các thay đổi dữ liệu.",
+        to: ADMIN_ROUTES.AUDIT_LOGS,
+        icon: ScrollText,
+      },
+    ],
+    []
+  );
 
-            {/* CREATE USER */}
-
-            <div className="border p-4 rounded-lg space-y-3">
-
-                <h2 className="font-semibold">
-                    Tạo Account
-                </h2>
-
-                <div className="flex flex-wrap gap-2">
-
-                    <input
-                        className="border p-2"
-                        placeholder="Full name"
-                        onChange={(e)=>setForm({...form, fullName:e.target.value})}
-                    />
-
-                    <input
-                        className="border p-2"
-                        placeholder="Email"
-                        onChange={(e)=>setForm({...form, email:e.target.value})}
-                    />
-
-                    <input
-                        className="border p-2"
-                        placeholder="Phone"
-                        onChange={(e)=>setForm({...form, phone:e.target.value})}
-                    />
-
-                    {/* PASSWORD */}
-
-                    <div className="flex items-center border rounded">
-
-                        <input
-                            className="p-2 outline-none"
-                            placeholder="Password"
-                            type={showPassword ? "text" : "password"}
-                            onChange={(e)=>setForm({...form, password:e.target.value})}
-                        />
-
-                        <button
-                            type="button"
-                            onClick={()=>setShowPassword(!showPassword)}
-                            className="px-2 text-gray-500"
-                        >
-                            {showPassword ? <EyeSlashIcon/> : <EyeIcon/>}
-                        </button>
-
-                    </div>
-
-                    {/* ROLE */}
-
-                    <select
-                        className="border p-2"
-                        onChange={(e)=>setForm({...form, roleId:Number(e.target.value)})}
-                    >
-                        <option value="3">RESCUER</option>
-                        <option value="2">COORDINATOR</option>
-                        <option value="4">MANAGER</option>
-                        <option value="1">CITIZEN</option>
-                    </select>
-
-                    <button
-                        onClick={createUser}
-                        className="bg-blue-500 text-white px-4 py-2 rounded"
-                    >
-                        Tạo
-                    </button>
-
-                </div>
-
-            </div>
-
-
-            {/* VIEW USERS */}
-
-            <button
-                onClick={getUsers}
-                className="bg-green-500 text-white px-4 py-2 rounded"
-            >
-                Xem account
-            </button>
-
-
-            {/* USER TABLE */}
-
-            {Object.keys(users).length > 0 && Object.keys(users).map(role => (
-
-                <div key={role} className="border rounded">
-
-                    <div className="bg-gray-100 px-4 py-2 font-semibold">
-                        {role}
-                    </div>
-
-                    {users[role].map(user => (
-
-                        <div
-                            key={user.id}
-                            className="flex items-center justify-between px-4 py-2 border-t"
-                        >
-
-                            <div className="text-sm">
-                                {user.id} | {user.fullName} | {user.email}
-                            </div>
-
-                            <div className="flex items-center gap-2">
-
-                                <input
-                                    className="border p-1 text-sm"
-                                    placeholder="new password"
-                                    type="password"
-                                    value={resetPasswords[user.id] || ""}
-                                    onChange={(e)=>
-                                        setResetPasswords({
-                                            ...resetPasswords,
-                                            [user.id]: e.target.value
-                                        })
-                                    }
-                                />
-
-                                <button
-                                    onClick={()=>resetPassword(user.id)}
-                                    className="bg-yellow-500 text-white px-2 py-1 rounded text-sm"
-                                >
-                                    Reset
-                                </button>
-
-                                <button
-                                    onClick={()=>deleteUser(user.id)}
-                                    className="text-red-500"
-                                >
-                                    Xoá
-                                </button>
-
-                            </div>
-
-                        </div>
-
-                    ))}
-
-                </div>
-
-            ))}
-
-            {message && (
-                <div className="text-blue-600">
-                    {message}
-                </div>
-            )}
-
+  return (
+    <div className="space-y-6">
+      <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100 p-8">
+        <div className="flex flex-wrap items-start justify-between gap-5">
+          <div>
+            <h1 className="text-5xl font-black tracking-tight text-slate-900">Quản trị hệ thống</h1>
+            <p className="mt-3 text-2xl text-slate-600">Quản lý người dùng, phân quyền, cấu hình và dữ liệu nền</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-right shadow-sm">
+            <p className="text-xs uppercase tracking-wide text-slate-500">System Administrator</p>
+            <p className="text-lg font-semibold text-slate-900">ADMIN</p>
+          </div>
         </div>
-    );
+
+        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <p className="text-xs uppercase text-slate-500">Tổng người dùng</p>
+            <p className="mt-2 text-3xl font-bold text-slate-900">{stats.totalUsers}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <p className="text-xs uppercase text-slate-500">Đang hoạt động</p>
+            <p className="mt-2 text-3xl font-bold text-emerald-600">{stats.activeUsers}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <p className="text-xs uppercase text-slate-500">Bị khóa</p>
+            <p className="mt-2 text-3xl font-bold text-rose-600">{stats.lockedUsers}</p>
+          </div>
+        </div>
+
+        {error && <p className="mt-4 text-sm text-rose-600">{error}</p>}
+      </section>
+
+      <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+        {modules.map((module) => {
+          const Icon = module.icon;
+          return (
+            <article key={module.title} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+                <Icon size={28} />
+              </div>
+              <h2 className="mt-5 text-4xl font-bold leading-tight text-slate-900">{module.title}</h2>
+              <p className="mt-3 min-h-[56px] text-xl text-slate-600">{module.description}</p>
+
+              <Link
+                to={module.to}
+                className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-lg font-semibold text-white transition hover:bg-blue-700"
+              >
+                Truy cập
+                <ArrowRight size={18} />
+              </Link>
+            </article>
+          );
+        })}
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="flex items-center gap-2 text-slate-700">
+          <FileText size={18} />
+          <p className="text-sm">
+            Tất cả module quản trị đã được kết nối API `/api/admin/**`; thao tác trên UI sẽ ghi nhận vào backend.
+          </p>
+        </div>
+      </section>
+    </div>
+  );
 }

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
     Home as HomeIcon,
@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { AUTH_ROUTES, PUBLIC_ROUTES, CITIZEN_ROUTES } from "../../app/routes/route.constants.js";
+import httpClient from "../../shared/lib/http.js";
 
 /** ============ Small UI helpers ============ */
 function Container({ children, className = "" }) {
@@ -59,6 +60,38 @@ function SecondaryButton({ to, children }) {
 }
 
 export default function HomePage() {
+    const [footerSettings, setFooterSettings] = useState({
+        footerBrandName: "QUẢN LÝ CỨU HỘ",
+        footerDescription: "Hệ thống hỗ trợ cộng đồng trong tình huống thiên tai khẩn cấp. Thông tin được bảo mật và điều phối theo quy định của cơ quan chức năng.",
+        footerTermsLabel: "Điều khoản sử dụng",
+        footerTermsUrl: "#",
+        footerPrivacyLabel: "Chính sách bảo mật",
+        footerPrivacyUrl: "#",
+        footerSupportLabel: "Liên hệ hỗ trợ",
+        footerSupportUrl: "#",
+        footerSupportEmail: "support@cuuho.gov.vn",
+        hotline: "1900-xxxx",
+        footerFacebookUrl: "#",
+        footerTwitterUrl: "#",
+        footerYoutubeUrl: "#",
+        footerCopyright: "© 2024 Hệ thống Quản lý Cứu hộ - Cứu trợ. Bản quyền thuộc về Cơ quan chủ quản.",
+    });
+
+    useEffect(() => {
+        const loadRuntimeSettings = async () => {
+            try {
+                const runtime = await httpClient.get("/public/runtime-settings");
+                setFooterSettings((prev) => ({
+                    ...prev,
+                    ...runtime,
+                }));
+            } catch (err) {
+                console.error("[HomePage] load runtime settings error:", err);
+            }
+        };
+        loadRuntimeSettings();
+    }, []);
+
     return (
         <div className="min-h-screen bg-white text-slate-900">
             {/* ================= Header ================= */}
@@ -220,11 +253,10 @@ export default function HomePage() {
                                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
                                         <HomeIcon className="text-white" size={18} strokeWidth={2.2} />
                                     </div>
-                                    <span className="text-sm font-bold">QUẢN LÝ CỨU HỘ</span>
+                                    <span className="text-sm font-bold">{footerSettings.footerBrandName}</span>
                                 </div>
                                 <p className="max-w-md text-xs leading-relaxed text-slate-500 sm:text-sm">
-                                    Hệ thống hỗ trợ cộng đồng trong tình huống thiên tai khẩn cấp. Thông tin được bảo mật và điều phối theo
-                                    quy định của cơ quan chức năng.
+                                    {footerSettings.footerDescription}
                                 </p>
                             </div>
 
@@ -234,19 +266,19 @@ export default function HomePage() {
                                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Liên kết</h4>
                                     <ul className="mt-3 space-y-2 text-sm text-slate-600">
                                         <li>
-                                            <Link to="#" className="hover:text-blue-600">
-                                                Điều khoản sử dụng
-                                            </Link>
+                                            <a href={footerSettings.footerTermsUrl || "#"} target="_blank" rel="noreferrer" className="hover:text-blue-600">
+                                                {footerSettings.footerTermsLabel}
+                                            </a>
                                         </li>
                                         <li>
-                                            <Link to="#" className="hover:text-blue-600">
-                                                Chính sách bảo mật
-                                            </Link>
+                                            <a href={footerSettings.footerPrivacyUrl || "#"} target="_blank" rel="noreferrer" className="hover:text-blue-600">
+                                                {footerSettings.footerPrivacyLabel}
+                                            </a>
                                         </li>
                                         <li>
-                                            <Link to="#" className="hover:text-blue-600">
-                                                Liên hệ hỗ trợ
-                                            </Link>
+                                            <a href={footerSettings.footerSupportUrl || "#"} target="_blank" rel="noreferrer" className="hover:text-blue-600">
+                                                {footerSettings.footerSupportLabel}
+                                            </a>
                                         </li>
                                     </ul>
                                 </div>
@@ -256,11 +288,11 @@ export default function HomePage() {
                                     <div className="mt-3 space-y-2 text-sm text-slate-600">
                                         <div className="flex items-center gap-2">
                                             <Mail size={16} className="shrink-0 text-slate-500" />
-                                            <span className="break-all">support@cuuho.gov.vn</span>
+                                            <span className="break-all">{footerSettings.footerSupportEmail}</span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <Phone size={16} className="shrink-0 text-slate-500" />
-                                            <span>1900-xxxx</span>
+                                            <span>{footerSettings.hotline || "1900-xxxx"}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -270,21 +302,36 @@ export default function HomePage() {
                             <div className="md:text-right">
                                 <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Kết nối</h4>
                                 <div className="mt-3 flex gap-3 md:justify-end">
-                                    <Link to="#" className="rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-50">
+                                    <a
+                                        href={footerSettings.footerFacebookUrl || "#"}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-50"
+                                    >
                                         <Facebook size={16} className="text-slate-600" />
-                                    </Link>
-                                    <Link to="#" className="rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-50">
+                                    </a>
+                                    <a
+                                        href={footerSettings.footerTwitterUrl || "#"}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-50"
+                                    >
                                         <Twitter size={16} className="text-slate-600" />
-                                    </Link>
-                                    <Link to="#" className="rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-50">
+                                    </a>
+                                    <a
+                                        href={footerSettings.footerYoutubeUrl || "#"}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-50"
+                                    >
                                         <Youtube size={16} className="text-slate-600" />
-                                    </Link>
+                                    </a>
                                 </div>
                             </div>
                         </div>
 
                         <div className="mt-8 border-t border-slate-200 pt-6 text-center text-xs text-slate-500 sm:text-sm">
-                            © 2024 Hệ thống Quản lý Cứu hộ - Cứu trợ. Bản quyền thuộc về Cơ quan chủ quản.
+                            {footerSettings.footerCopyright}
                         </div>
                     </Container>
                 </footer>

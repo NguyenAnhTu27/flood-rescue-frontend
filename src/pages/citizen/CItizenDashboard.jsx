@@ -3,6 +3,7 @@ import { Plus, Shield, Package, AlertTriangle, PhoneCall, Eye, CheckCircle2, Clo
 import { CITIZEN_ROUTES } from "../../app/routes/route.constants.js";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { getMyRescueRequests } from "../../features/citizen/api.js";
+import httpClient from "../../shared/lib/http.js";
 import GoogleMap from "../../features/map/components/GoogleMap.jsx";
 import Button from "../../shared/ui/Button.jsx";
 
@@ -11,6 +12,7 @@ export default function CitizenDashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+    const [hotline, setHotline] = useState("115");
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -26,6 +28,20 @@ export default function CitizenDashboard() {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [location.pathname]);
+
+    useEffect(() => {
+        const loadRuntimeSettings = async () => {
+            try {
+                const config = await httpClient.get('/public/runtime-settings');
+                if (config?.hotline) {
+                    setHotline(String(config.hotline));
+                }
+            } catch (err) {
+                console.error('[CitizenDashboard] load runtime settings error:', err);
+            }
+        };
+        loadRuntimeSettings();
+    }, []);
 
     // Separate effect to handle state changes
     useEffect(() => {
@@ -274,10 +290,14 @@ export default function CitizenDashboard() {
                         </p>
                         <button
                             type="button"
+                            onClick={() => {
+                                const dialNumber = hotline.replace(/[^\d+]/g, "");
+                                window.location.href = `tel:${dialNumber}`;
+                            }}
                             className="inline-flex items-center gap-2 rounded-full bg-red-500 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-red-600 hover:shadow-lg"
                         >
                             <PhoneCall className="h-4 w-4" />
-                            Gọi ngay 115
+                            Gọi ngay {hotline}
                         </button>
                     </div>
                 </section>

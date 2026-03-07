@@ -24,6 +24,7 @@ import Card from '../../shared/ui/Card.jsx';
 import Badge from '../../shared/ui/Badge.jsx';
 import { getCoordinatorDashboard } from '../../features/coordinator/api.js';
 import { COORDINATOR_ROUTES } from '../../app/routes/route.constants.js';
+import httpClient from '../../shared/lib/http.js';
 
 export default function CoordinatorDashboard() {
     const navigate = useNavigate();
@@ -38,6 +39,7 @@ export default function CoordinatorDashboard() {
     const [vehicles, setVehicles] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [mapRefreshSeconds, setMapRefreshSeconds] = useState(20);
 
     const loadDashboard = async () => {
         try {
@@ -65,8 +67,27 @@ export default function CoordinatorDashboard() {
     }, []);
 
     useEffect(() => {
-        loadDashboard();
+        const loadRuntimeSettings = async () => {
+            try {
+                const config = await httpClient.get('/public/runtime-settings');
+                if (config?.mapRefreshSeconds) {
+                    setMapRefreshSeconds(Number(config.mapRefreshSeconds));
+                }
+            } catch (err) {
+                console.error('[CoordinatorDashboard] load runtime settings error:', err);
+            }
+        };
+        loadRuntimeSettings();
     }, []);
+
+    useEffect(() => {
+        loadDashboard();
+        const interval = setInterval(() => {
+            loadDashboard();
+        }, Math.max(5, Number(mapRefreshSeconds) || 20) * 1000);
+        return () => clearInterval(interval);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [mapRefreshSeconds]);
 
     const formatSyncTime = (date) => {
         return date.toLocaleTimeString('vi-VN', {

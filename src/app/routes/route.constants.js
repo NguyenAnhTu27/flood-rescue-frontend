@@ -70,6 +70,7 @@ export const PUBLIC_ROUTES = {
     DASHBOARD: '/admin',
     USERS_MANAGEMENT: '/admin/nguoi-dung',
     ROLES_PERMISSIONS: '/admin/phan-quyen',
+    SYSTEM_CATALOG: '/admin/danh-muc-he-thong',
     SYSTEM_SETTINGS: '/admin/cau-hinh-he-thong',
     NOTIFICATION_TEMPLATES: '/admin/mau-thong-bao',
     AUDIT_LOGS: '/admin/nhat-ky-he-thong',
