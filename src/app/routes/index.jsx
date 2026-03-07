@@ -26,18 +26,17 @@ import RegisterPage from '../../pages/auth/RegisterPage.jsx';
 
 // Citizen
 import CitizenDashboard from '../../pages/citizen/CItizenDashboard.jsx';
-import RescueDetailRequestPage from '../../pages/citizen/RescueDetailRequestPage.jsx';
 import RescueRequestCreatePage from '../../pages/citizen/RescueRequestCreatePage.jsx';
 import RescueRequestStatusPage from '../../pages/citizen/RescueRequestStatusPage.jsx';
-import MyRescueRequestsPage from '../../pages/citizen/MyRescueRequestsPage.jsx';
-import RescueRequestUpdatePage from '../../pages/citizen/RescueRequestUpdatePage.jsx';
+import FeedbackPage from '../../pages/citizen/FeedbackPage.jsx';
 
 // Coordinator
 import CoordinatorDashboard from '../../pages/coordinator/CoordinatorDashboard.jsx';
 import RescueQueuePage from '../../pages/coordinator/RescueQueuePage.jsx';
 import RescueVerifyPage from '../../pages/coordinator/RescueVerifyPage.jsx';
-import RescuePrioritizePage from '../../pages/coordinator/RescuePrioritizePage.jsx';
 import RescueAssignPage from '../../pages/coordinator/RescueAssignPage.jsx';
+import RescueRequestHandle from '../../pages/coordinator/RescueRequestHandle.jsx';
+import RescueRequestMerge from '../../pages/coordinator/RescueRequestMerge.jsx';
 import TeamWorkloadPage from '../../pages/coordinator/TeamWorkloadPage.jsx';
 
 // Rescuer
@@ -68,8 +67,7 @@ export default function AppRoutes() {
             {/* -------- PUBLIC -------- */}
             <Route
                 path={PUBLIC_ROUTES.HOME}
-                element={
-                    <HomePage />}
+                element={<HomePage />}
             />
             <Route
                 path={PUBLIC_ROUTES.EMERGENCY_GUIDE}
@@ -124,18 +122,6 @@ export default function AppRoutes() {
                 }
             />
             <Route
-                path={CITIZEN_ROUTES.RESCUE_DETAIL}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['CITIZEN']}>
-                            <RootLayout>
-                                <RescueDetailRequestPage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
                 path={CITIZEN_ROUTES.RESCUE_REQUEST_STATUS}
                 element={
                     <RequireAuth>
@@ -148,24 +134,12 @@ export default function AppRoutes() {
                 }
             />
             <Route
-                path={CITIZEN_ROUTES.MY_RESCUE_REQUESTS}
+                path={CITIZEN_ROUTES.FEEDBACK}
                 element={
                     <RequireAuth>
                         <RequireRole allow={['CITIZEN']}>
                             <RootLayout>
-                                <MyRescueRequestsPage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
-                path={CITIZEN_ROUTES.UPDATE_RESCUE_REQUEST}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['CITIZEN']}>
-                            <RootLayout>
-                                <RescueRequestUpdatePage />
+                                <FeedbackPage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -210,24 +184,36 @@ export default function AppRoutes() {
                 }
             />
             <Route
-                path={COORDINATOR_ROUTES.PRIORITIZE_REQUEST}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['COORDINATOR']}>
-                            <RootLayout>
-                                <RescuePrioritizePage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
                 path={COORDINATOR_ROUTES.ASSIGN_RESCUE}
                 element={
                     <RequireAuth>
                         <RequireRole allow={['COORDINATOR']}>
                             <RootLayout>
                                 <RescueAssignPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={COORDINATOR_ROUTES.TASK_MONITOR}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['COORDINATOR']}>
+                            <RootLayout>
+                                <RescueRequestHandle />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={COORDINATOR_ROUTES.MERGE_REQUESTS}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['COORDINATOR']}>
+                            <RootLayout>
+                                <RescueRequestMerge />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>

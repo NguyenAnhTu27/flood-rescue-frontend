@@ -22,4 +22,4 @@ export const FILE_BASE_URL =
   import.meta.env.VITE_FILE_BASE_URL || 'http://localhost:8080';
 
 // Mock mode
-export const USE_MOCK_API = false;
+export const USE_MOCK_API = true;
