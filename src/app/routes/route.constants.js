@@ -7,6 +7,7 @@
 export const PUBLIC_ROUTES = {
     HOME: '/',
     EMERGENCY_GUIDE: '/huong-dan-khan-cap',
+    CONTACT: '/lien-he',
     NOT_FOUND: '*',
   };
   

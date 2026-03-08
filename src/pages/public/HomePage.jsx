@@ -84,7 +84,7 @@ export default function HomePage() {
                             >
                                 Hướng dẫn
                             </Link>
-                            <Link to="#" className="text-sm font-medium text-slate-700 hover:text-blue-600">
+                            <Link to={PUBLIC_ROUTES.CONTACT} className="text-sm font-medium text-slate-700 hover:text-blue-600">
                                 Liên hệ
                             </Link>
                         </nav>
@@ -244,7 +244,7 @@ export default function HomePage() {
                                             </Link>
                                         </li>
                                         <li>
-                                            <Link to="#" className="hover:text-blue-600">
+                                            <Link to={PUBLIC_ROUTES.CONTACT} className="hover:text-blue-600">
                                                 Liên hệ hỗ trợ
                                             </Link>
                                         </li>
