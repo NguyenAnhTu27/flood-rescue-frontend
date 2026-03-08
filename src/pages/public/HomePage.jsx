@@ -124,7 +124,7 @@ export default function HomePage() {
 
                                 <div className="mt-6 flex flex-wrap gap-3">
                                     <PrimaryButton to={AUTH_ROUTES.LOGIN}>Gửi yêu cầu cứu hộ</PrimaryButton>
-                                    <SecondaryButton to="#">Theo dõi bản đồ</SecondaryButton>
+                                    <SecondaryButton to={CITIZEN_ROUTES.DASHBOARD}>Theo dõi bản đồ</SecondaryButton>
                                 </div>
                             </div>
 

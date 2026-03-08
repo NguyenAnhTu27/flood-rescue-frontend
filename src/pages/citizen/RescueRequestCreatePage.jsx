@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { CITIZEN_ROUTES } from '../../app/routes/route.constants.js';
 import GoogleMap from '../../features/map/components/GoogleMap.jsx';
+import { MAPBOX_ACCESS_TOKEN } from '../../app/config/env.js';
 import { createRescueRequest, uploadRescueAttachments } from '../../features/rescue/api.js';
 import PrioritySelector from '../../features/rescue/components/PrioritySelector.jsx';
 import AttachmentGallery from '../../features/rescue/components/AttachmentGallery.jsx';
@@ -75,30 +76,40 @@ export default function RescueRequestCreatePage() {
         };
     };
 
-    // Reverse geocode coordinates to address using Mapbox
+    // Helper function to reverse geocode coordinates to address via Mapbox
     const reverseGeocodeAddress = async (lat, lng) => {
+        if (!MAPBOX_ACCESS_TOKEN) {
+            console.warn('Mapbox access token not found, cannot geocode');
+            return null;
+        }
+
         try {
-            const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
-            if (!token) {
-                console.warn('Missing VITE_MAPBOX_ACCESS_TOKEN, cannot reverse geocode');
-                return null;
-            }
-
-            const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?language=vi&country=vn&access_token=${token}`;
-            const res = await fetch(url);
+            const res = await fetch(
+                `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_ACCESS_TOKEN}&language=vi&limit=1`,
+            );
             const data = await res.json();
-            const fullAddress = data?.features?.[0]?.place_name || null;
+            const feature = data.features?.[0];
 
-            if (fullAddress) {
+            if (feature) {
+                const fullAddress = feature.place_name;
                 const parsed = splitAddressFields(fullAddress);
                 setForm((prev) => ({
                     ...prev,
                     address: parsed.address,
                     ward: parsed.ward,
                 }));
+                console.log('[Geocoding Success]', {
+                    lat,
+                    lng,
+                    fullAddress,
+                    addressField: parsed.address,
+                    wardField: parsed.ward,
+                });
+
+                return fullAddress;
             }
 
-            return fullAddress;
+            return null;
         } catch (error) {
             console.error('Reverse geocoding error:', error);
             return null;
@@ -122,7 +133,7 @@ export default function RescueRequestCreatePage() {
                         longitude: lng,
                     }));
 
-                    // Reverse geocode to get address (will wait for Google Maps if needed)
+                    // Reverse geocode to get address via Mapbox
                     await reverseGeocodeAddress(lat, lng);
                     setIsLoadingGps(false);
                 },
@@ -161,7 +172,7 @@ export default function RescueRequestCreatePage() {
                     longitude: lng,
                 }));
 
-                // Reverse geocode to get address (will wait for Google Maps if needed)
+                // Reverse geocode to get address via Mapbox
                 await reverseGeocodeAddress(lat, lng);
                 setIsLoadingGps(false);
             },
