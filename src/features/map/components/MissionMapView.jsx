@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
-import { MAPBOX_ACCESS_TOKEN } from '../../../app/config/env.js';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { MAPBOX_ACCESS_TOKEN, MAPBOX_STYLE_URL } from '../../../app/config/env.js';
+
+mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
 
 /**
- * Mission Map View - Read-only map for displaying mission location
+ * Mission Map View - Read-only Mapbox map for displaying mission location
  * @param {Object} props
  * @param {Object} props.center - Center position { lat, lng }
  * @param {Object} props.markerPosition - Marker position { lat, lng }
@@ -13,66 +15,59 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 export default function MissionMapView({
     center = { lat: 10.8231, lng: 106.6297 },
     markerPosition,
-    zoom = 15
+    zoom = 15,
 }) {
+    const containerRef = useRef(null);
     const mapRef = useRef(null);
-    const mapInstanceRef = useRef(null);
     const markerRef = useRef(null);
     const [isLoaded, setIsLoaded] = useState(false);
 
-    // Initialize Mapbox map (read-only)
+    // Initialize read-only map once
     useEffect(() => {
-        if (!mapRef.current) return;
+        if (!containerRef.current || mapRef.current) return;
 
-        if (!MAPBOX_ACCESS_TOKEN) {
-            console.warn('Mapbox access token not found. Please set VITE_MAPBOX_ACCESS_TOKEN in .env');
-            return;
-        }
-
-        mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
-
-        const initialPosition = markerPosition || center;
+        const pos = markerPosition || center;
 
         const map = new mapboxgl.Map({
-            container: mapRef.current,
-            style: 'mapbox://styles/mapbox/streets-v12',
-            center: [initialPosition.lng, initialPosition.lat],
+            container: containerRef.current,
+            style: MAPBOX_STYLE_URL,
+            center: [pos.lng, pos.lat],
             zoom,
-            interactive: false,
+            interactive: false, // read-only
         });
 
-        const marker = new mapboxgl.Marker({ draggable: false })
-            .setLngLat([initialPosition.lng, initialPosition.lat])
+        const marker = new mapboxgl.Marker()
+            .setLngLat([pos.lng, pos.lat])
             .addTo(map);
-
-        mapInstanceRef.current = map;
-        markerRef.current = marker;
 
         map.on('load', () => setIsLoaded(true));
 
+        mapRef.current = map;
+        markerRef.current = marker;
+
         return () => {
-            marker.remove();
             map.remove();
+            mapRef.current = null;
+            markerRef.current = null;
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Update marker position when prop changes
     useEffect(() => {
-        const map = mapInstanceRef.current;
-        const marker = markerRef.current;
-        if (!map || !marker || !markerPosition) return;
+        if (!mapRef.current || !markerRef.current || !markerPosition) return;
 
-        marker.setLngLat([markerPosition.lng, markerPosition.lat]);
-        map.easeTo({ center: [markerPosition.lng, markerPosition.lat], duration: 500 });
+        markerRef.current.setLngLat([markerPosition.lng, markerPosition.lat]);
+        mapRef.current.flyTo({ center: [markerPosition.lng, markerPosition.lat] });
     }, [markerPosition]);
 
     return (
         <div className="relative w-full h-full">
-            <div ref={mapRef} className="w-full h-full" />
+            <div ref={containerRef} className="w-full h-full" />
             {!isLoaded && (
                 <div className="absolute inset-0 flex items-center justify-center bg-slate-100">
                     <div className="text-center">
-                        <div className="inline-block h-6 w-6 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+                        <div className="inline-block h-6 w-6 animate-spin rounded-full border-3 border-solid border-blue-600 border-r-transparent" />
                         <p className="mt-1 text-[10px] text-slate-600">Đang tải...</p>
                     </div>
                 </div>
