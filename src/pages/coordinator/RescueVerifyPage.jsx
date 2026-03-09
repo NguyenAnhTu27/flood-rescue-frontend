@@ -203,10 +203,14 @@ export default function RescueVerifyPage() {
                 note,
             });
 
-            // 2. Nếu trạng thái đã được chọn khác PENDING thì cập nhật status
-            if (status && status !== initialRequest.status) {
-                await changeRescueRequestStatus(initialRequest.id, status, note);
+            // 2. Sau khi xác minh thành công, luôn đảm bảo request đã sang VERIFIED (hoặc trạng thái cao hơn do người dùng chọn)
+            const normalizedStatus = String(status || '').toUpperCase();
+            const targetStatus = normalizedStatus && normalizedStatus !== 'PENDING' ? normalizedStatus : 'VERIFIED';
+            const baselineStatus = String(initialRequest.status || '').toUpperCase();
+            if (baselineStatus !== targetStatus) {
+                await changeRescueRequestStatus(initialRequest.id, targetStatus, note);
             }
+            setStatus(targetStatus);
 
             window.alert('Xác minh yêu cầu thành công. Thông tin đã được lưu xuống hệ thống.');
             navigate(-1);

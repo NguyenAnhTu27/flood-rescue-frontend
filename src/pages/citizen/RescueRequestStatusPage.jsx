@@ -19,22 +19,22 @@ function normalizeStatus(s) {
 function statusToActiveStepIndex(statusRaw) {
     const s = normalizeStatus(statusRaw);
     // 1: submitted, 2: verified, 3: enroute, 4: on-scene/working, 5: done
-    if (!s) return 2;
-    if (['DONE', 'COMPLETED', 'FINISHED', 'RESCUED'].includes(s)) return 5;
-    if (['IN_PROGRESS', 'WORKING', 'PROCESSING', 'ON_SITE', 'AT_SCENE', 'ARRIVED'].includes(s)) return 4;
-    if (['ASSIGNED', 'DEPARTED', 'EN_ROUTE', 'ON_THE_WAY', 'ONWAY'].includes(s)) return 3;
-    if (['VERIFIED', 'CONFIRMED', 'APPROVED'].includes(s)) return 2;
-    if (['PENDING', 'NEW', 'CREATED', 'SUBMITTED', 'RECEIVED'].includes(s)) return 1;
-    return 2;
+    if (!s) return 1;
+    if (['DONE', 'COMPLETED', 'FINISHED', 'RESCUED', 'CLOSED'].includes(s)) return 5;
+    if (['IN_PROGRESS', 'WORKING', 'PROCESSING', 'ON_SITE', 'AT_SCENE', 'ARRIVED', 'RESCUING', 'HANDLING'].includes(s)) return 4;
+    if (['ASSIGNED', 'DISPATCHED', 'DISPATCHING', 'DEPARTED', 'EN_ROUTE', 'ON_THE_WAY', 'ONWAY', 'MOVING'].includes(s)) return 3;
+    if (['VERIFIED', 'CONFIRMED', 'APPROVED', 'ESCALATED', 'PRIORITIZED'].includes(s)) return 2;
+    if (['PENDING', 'NEW', 'CREATED', 'SUBMITTED', 'RECEIVED', 'QUEUED', 'WAITING'].includes(s)) return 1;
+    return 1;
 }
 
 function statusToHeaderLabel(statusRaw) {
     const s = normalizeStatus(statusRaw);
-    if (['DONE', 'COMPLETED', 'FINISHED', 'RESCUED'].includes(s)) return 'HOÀN THÀNH';
-    if (['IN_PROGRESS', 'WORKING', 'PROCESSING', 'ON_SITE', 'AT_SCENE', 'ARRIVED'].includes(s)) return 'ĐANG XỬ LÝ';
-    if (['ASSIGNED', 'DEPARTED', 'EN_ROUTE', 'ON_THE_WAY', 'ONWAY'].includes(s)) return 'ĐANG DI CHUYỂN';
-    if (['VERIFIED', 'CONFIRMED', 'APPROVED'].includes(s)) return 'ĐÃ XÁC MINH';
-    return 'ĐANG XỬ LÝ';
+    if (['DONE', 'COMPLETED', 'FINISHED', 'RESCUED', 'CLOSED'].includes(s)) return 'HOÀN THÀNH';
+    if (['IN_PROGRESS', 'WORKING', 'PROCESSING', 'ON_SITE', 'AT_SCENE', 'ARRIVED', 'RESCUING', 'HANDLING'].includes(s)) return 'ĐANG XỬ LÝ';
+    if (['ASSIGNED', 'DISPATCHED', 'DISPATCHING', 'DEPARTED', 'EN_ROUTE', 'ON_THE_WAY', 'ONWAY', 'MOVING'].includes(s)) return 'ĐANG DI CHUYỂN';
+    if (['VERIFIED', 'CONFIRMED', 'APPROVED', 'ESCALATED', 'PRIORITIZED'].includes(s)) return 'ĐÃ XÁC MINH';
+    return 'ĐÃ TIẾP NHẬN';
 }
 
 export default function RescueRequestStatusPage() {

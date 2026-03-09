@@ -98,7 +98,7 @@ export default function RescueAssignPage() {
                         page: 0,
                         size: 50
                     });
-                } catch (err) {
+                } catch {
                     // Nếu lỗi, thử với status PENDING
                     console.log('[RescueAssignPage] Retrying with PENDING status filter...');
                     data = await getCoordinatorRescueQueue({
@@ -387,8 +387,8 @@ export default function RescueAssignPage() {
             const requestIdsToUpdate = (requests || []).map((r) => r.id).filter(Boolean);
             for (const reqId of requestIdsToUpdate) {
                 try {
-                    // Đưa yêu cầu sang trạng thái IN_PROGRESS để không còn là PENDING trong hàng đợi
-                    await changeRescueRequestStatus(reqId, 'IN_PROGRESS');
+                    // Sau khi phân công, chuyển sang ASSIGNED để citizen thấy bước "Đội cứu hộ đang đến"
+                    await changeRescueRequestStatus(reqId, 'ASSIGNED');
                 } catch (e) {
                     console.error('[RescueAssignPage] Cannot change status for request', reqId, e);
                 }
