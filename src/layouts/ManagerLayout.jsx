@@ -8,7 +8,9 @@ const primaryNav = [
     { label: 'Trang chủ', to: MANAGER_ROUTES.DASHBOARD },
     { label: 'Kho hàng', to: MANAGER_ROUTES.INVENTORY_OVERVIEW },
     { label: 'Yêu cầu cứu trợ', to: MANAGER_ROUTES.RELIEF_REQUEST_DASHBOARD },
+    { label: 'Theo dõi phân phối', to: MANAGER_ROUTES.DISTRIBUTION_TRACKING },
     { label: 'Phương tiện', to: MANAGER_ROUTES.ASSETS_MANAGEMENT },
+    { label: 'Báo cáo', to: MANAGER_ROUTES.REPORTS },
 ];
 
 export default function ManagerLayout({ children }) {
@@ -192,3 +194,4 @@ export default function ManagerLayout({ children }) {
         </div>
     );
 }
+

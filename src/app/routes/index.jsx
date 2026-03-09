@@ -40,11 +40,14 @@ import RescueVerifyPage from '../../pages/coordinator/RescueVerifyPage.jsx';
 import RescuePrioritizePage from '../../pages/coordinator/RescuePrioritizePage.jsx';
 import RescueAssignPage from '../../pages/coordinator/RescueAssignPage.jsx';
 import TeamWorkloadPage from '../../pages/coordinator/TeamWorkloadPage.jsx';
+import DuplicateManagementPage from '../../pages/coordinator/DuplicateManagementPage.jsx';
+import EscalationPage from '../../pages/coordinator/EscalationPage.jsx';
 
 // Rescuer
 import RescuerDashboard from '../../pages/rescuer/RescuerDashboard.jsx';
 import MyAssignmentsPage from '../../pages/rescuer/MyAssignmentsPage.jsx';
 import RescueUpdateStatusPage from '../../pages/rescuer/RescueUpdateStatusPage.jsx';
+import SafetyGuidePage from '../../pages/rescuer/SafetyGuidePage.jsx';
 
 // Manager
 import ManagerDashboard from '../../pages/manager/ManagerDashboard.jsx';
@@ -52,6 +55,7 @@ import ManagerLayout from '../../layouts/ManagerLayout.jsx';
 import InventoryOverviewPage from '../../pages/manager/kho/InventoryOverviewPage.jsx';
 import DistributionPlanPage from '../../pages/manager/hang-cuu-tro/DistributionPlanPage.jsx';
 import DistributionVoucherPage from '../../pages/manager/hang-cuu-tro/DistributionVoucherPage.jsx';
+import DistributionTrackingPage from '../../pages/manager/hang-cuu-tro/DistributionTrackingPage.jsx';
 import AssetsManagementPage from '../../pages/manager/phuong-tien/AssetsManagementPage.jsx';
 import AssetCreatePage from '../../pages/manager/phuong-tien/AssetCreatePage.jsx';
 import AssetsAssignToTask from '../../features/assets/components/AssetsAssignToTask.jsx';
@@ -62,6 +66,7 @@ import ItemCategoriesPage from '../../pages/manager/kho/ItemCategoriesPage.jsx';
 import ReliefRequestDashboardPage from '../../pages/manager/hang-cuu-tro/ReliefRequestDashboardPage.jsx';
 import ReliefRequestCreatePage from '../../pages/manager/hang-cuu-tro/ReliefRequestCreatePage.jsx';
 import ReliefRequestVerifyPage from '../../pages/manager/hang-cuu-tro/ReliefRequestVerifyPage.jsx';
+import ReportsPage from '../../pages/manager/ReportsPage.jsx';
 
 // Admin
 import AdminDashboard from '../../pages/admin/AdminDashboard.jsx';
@@ -273,6 +278,30 @@ export default function AppRoutes() {
                 }
             />
 
+            <Route
+                path={COORDINATOR_ROUTES.DUPLICATE_MANAGEMENT}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['COORDINATOR']}>
+                            <RootLayout>
+                                <DuplicateManagementPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={COORDINATOR_ROUTES.ESCALATION}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['COORDINATOR']}>
+                            <RootLayout>
+                                <EscalationPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
             {/* -------- RESCUER (Private) -------- */}
             <Route
                 path={RESCUER_ROUTES.DASHBOARD}
@@ -311,6 +340,18 @@ export default function AppRoutes() {
                 }
             />
 
+            <Route
+                path={RESCUER_ROUTES.SAFETY_GUIDE}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['RESCUER']}>
+                            <RootLayout>
+                                <SafetyGuidePage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
             {/* -------- MANAGER (Private) -------- */}
             <Route
                 path={MANAGER_ROUTES.DASHBOARD}
@@ -445,6 +486,18 @@ export default function AppRoutes() {
                 }
             />
             <Route
+                path={MANAGER_ROUTES.DISTRIBUTION_TRACKING}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['MANAGER']}>
+                            <ManagerLayout>
+                                <DistributionTrackingPage />
+                            </ManagerLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
                 path={MANAGER_ROUTES.ASSETS_MANAGEMENT}
                 element={
                     <RequireAuth>
@@ -481,6 +534,18 @@ export default function AppRoutes() {
                 }
             />
 
+            <Route
+                path={MANAGER_ROUTES.REPORTS}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['MANAGER']}>
+                            <ManagerLayout>
+                                <ReportsPage />
+                            </ManagerLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
             {/* -------- ADMIN (Private) -------- */}
             <Route
                 path={ADMIN_ROUTES.DASHBOARD}
@@ -603,6 +668,8 @@ export default function AppRoutes() {
         </Routes>
     );
 }
+
+
 
 
 
