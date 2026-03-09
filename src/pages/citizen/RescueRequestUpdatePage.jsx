@@ -163,9 +163,10 @@ export default function RescueRequestUpdatePage() {
 
             const updatedRequest = await updateRescueRequest(request.id, payload);
 
-            // Navigate back to detail page or list
-            navigate(CITIZEN_ROUTES.RESCUE_DETAIL, {
+            // Navigate back to status page
+            navigate(CITIZEN_ROUTES.RESCUE_REQUEST_STATUS, {
                 state: {
+                    requestId: (updatedRequest?.id || request?.id),
                     request: updatedRequest || { ...request, updated: true },
                     successMessage: 'Thông tin yêu cầu đã được cập nhật thành công!'
                 },
@@ -179,8 +180,8 @@ export default function RescueRequestUpdatePage() {
     };
 
     const handleCancel = () => {
-        navigate(CITIZEN_ROUTES.RESCUE_DETAIL, {
-            state: { request },
+        navigate(CITIZEN_ROUTES.RESCUE_REQUEST_STATUS, {
+            state: { requestId: request?.id, request },
         });
     };
 

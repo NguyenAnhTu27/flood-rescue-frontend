@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle2, Clock, MapPin, Users, AlertTriangle, Info } from 'lucide-react';
 
 import { getRescueRequest, getRescueRequestStatus } from '../../features/rescue/api.js';
-import { getMyRescueRequests } from '../../features/citizen/api.js';
+import { confirmRescueResult, getMyRescueRequests, reopenCancelledRequest } from '../../features/citizen/api.js';
+import { CITIZEN_ROUTES } from '../../app/routes/route.constants.js';
 
 function pickFirstTruthy(...vals) {
     for (const v of vals) {
@@ -16,20 +17,24 @@ function normalizeStatus(s) {
     return String(s || '').toUpperCase();
 }
 
-function statusToActiveStepIndex(statusRaw) {
+function statusToActiveStepIndex(statusRaw, waitingForTeam) {
+    if (waitingForTeam) return 3;
     const s = normalizeStatus(statusRaw);
-    // 1: submitted, 2: verified, 3: enroute, 4: on-scene/working, 5: done
+    // 1: submitted, 2: verified, 3: rescue team processing/waiting, 4: done
     if (!s) return 2;
-    if (['DONE', 'COMPLETED', 'FINISHED', 'RESCUED'].includes(s)) return 5;
-    if (['IN_PROGRESS', 'WORKING', 'PROCESSING', 'ON_SITE', 'AT_SCENE', 'ARRIVED'].includes(s)) return 4;
+    if (['CANCELLED', 'CANCELED'].includes(s)) return 1;
+    if (['DONE', 'COMPLETED', 'FINISHED', 'RESCUED'].includes(s)) return 4;
+    if (['IN_PROGRESS', 'WORKING', 'PROCESSING', 'ON_SITE', 'AT_SCENE', 'ARRIVED'].includes(s)) return 3;
     if (['ASSIGNED', 'DEPARTED', 'EN_ROUTE', 'ON_THE_WAY', 'ONWAY'].includes(s)) return 3;
     if (['VERIFIED', 'CONFIRMED', 'APPROVED'].includes(s)) return 2;
     if (['PENDING', 'NEW', 'CREATED', 'SUBMITTED', 'RECEIVED'].includes(s)) return 1;
     return 2;
 }
 
-function statusToHeaderLabel(statusRaw) {
+function statusToHeaderLabel(statusRaw, waitingForTeam) {
+    if (waitingForTeam) return 'ĐANG CHỜ ĐỘI';
     const s = normalizeStatus(statusRaw);
+    if (['CANCELLED', 'CANCELED'].includes(s)) return 'ĐÃ HỦY';
     if (['DONE', 'COMPLETED', 'FINISHED', 'RESCUED'].includes(s)) return 'HOÀN THÀNH';
     if (['IN_PROGRESS', 'WORKING', 'PROCESSING', 'ON_SITE', 'AT_SCENE', 'ARRIVED'].includes(s)) return 'ĐANG XỬ LÝ';
     if (['ASSIGNED', 'DEPARTED', 'EN_ROUTE', 'ON_THE_WAY', 'ONWAY'].includes(s)) return 'ĐANG DI CHUYỂN';
@@ -44,25 +49,17 @@ export default function RescueRequestStatusPage() {
     // Request data được truyền từ trang tạo yêu cầu
     const request = location.state?.request || null;
 
-    // Fallback dữ liệu demo nếu người dùng truy cập trực tiếp
-    const demoRequest = {
-        id: 0,
-        code: 'RR-DEMO-0000',
-        addressText: 'Chưa có dữ liệu',
-        affectedPeopleCount: 0,
-        priority: 'MEDIUM',
-        description: 'Bạn vừa truy cập trang này trực tiếp. Hãy tạo một yêu cầu cứu hộ để xem chi tiết đầy đủ.',
-        status: 'PENDING',
-        createdAt: new Date().toISOString(),
-    };
-
     const requestId = Number(pickFirstTruthy(request?.id, location.state?.requestId, 0)) || 0;
     const [liveRequest, setLiveRequest] = useState(request || null);
     const [statusRaw, setStatusRaw] = useState(pickFirstTruthy(request?.status, 'PENDING'));
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [confirmingRescueResult, setConfirmingRescueResult] = useState(false);
+    const [showNotRescuedReason, setShowNotRescuedReason] = useState(false);
+    const [notRescuedReason, setNotRescuedReason] = useState('');
+    const [reopening, setReopening] = useState(false);
 
-    const data = liveRequest || request || demoRequest;
+    const data = liveRequest || request || null;
 
     const formatPriority = (priority) => {
         switch (priority) {
@@ -75,10 +72,18 @@ export default function RescueRequestStatusPage() {
         }
     };
 
-    const priorityMeta = formatPriority(data.priority);
+    const priorityMeta = formatPriority(data?.priority);
 
-    const activeStepIndex = useMemo(() => statusToActiveStepIndex(statusRaw), [statusRaw]);
-    const headerLabel = useMemo(() => statusToHeaderLabel(statusRaw), [statusRaw]);
+    const waitingForTeam = Boolean(data?.waitingForTeam);
+    const activeStepIndex = useMemo(() => statusToActiveStepIndex(statusRaw, waitingForTeam), [statusRaw, waitingForTeam]);
+    const headerLabel = useMemo(() => statusToHeaderLabel(statusRaw, waitingForTeam), [statusRaw, waitingForTeam]);
+    const waitingCitizenConfirmation = Boolean(
+        data?.waitingCitizenRescueConfirmation
+        || (normalizeStatus(statusRaw) === 'COMPLETED'
+            && ['PENDING', '', 'NULL'].includes(String(data?.rescueResultConfirmationStatus || 'PENDING').toUpperCase()))
+    );
+    const isCancelled = ['CANCELLED', 'CANCELED'].includes(normalizeStatus(statusRaw));
+    const isInProgress = ['IN_PROGRESS', 'WORKING', 'PROCESSING', 'ON_SITE', 'AT_SCENE', 'ARRIVED'].includes(normalizeStatus(statusRaw));
 
     const steps = useMemo(() => ([
         {
@@ -97,26 +102,31 @@ export default function RescueRequestStatusPage() {
         },
         {
             id: 3,
-            title: 'Đội cứu hộ đang đến',
-            description: 'Đội cứu hộ gần nhất sẽ được điều tới vị trí của bạn.',
-            timeLabel: activeStepIndex >= 3 ? 'Đang di chuyển' : 'Dự kiến sớm',
+            title: waitingForTeam
+                ? 'Đang chờ đội cứu hộ'
+                : isInProgress
+                    ? 'Đội cứu hộ đang thực hiện quá trình cứu hộ'
+                    : 'Đội cứu hộ đang đến',
+            description: waitingForTeam
+                ? 'Yêu cầu đã xác minh, hiện chưa có đội rảnh. Hệ thống đang tiếp tục điều phối.'
+                : isInProgress
+                    ? 'Đội cứu hộ đang trực tiếp xử lý và cứu hộ tại khu vực của bạn.'
+                    : 'Đội cứu hộ gần nhất sẽ được điều tới vị trí của bạn.',
+            timeLabel: waitingForTeam
+                ? 'Chưa có đội rảnh'
+                : isInProgress
+                    ? 'Đang thực hiện cứu hộ'
+                    : activeStepIndex >= 3 ? 'Đang di chuyển' : 'Dự kiến sớm',
             status: activeStepIndex > 3 ? 'done' : activeStepIndex === 3 ? 'current' : 'pending',
         },
         {
             id: 4,
-            title: 'Đã đến hiện trường',
-            description: 'Đội cứu hộ đã có mặt và đang triển khai hỗ trợ.',
-            timeLabel: activeStepIndex >= 4 ? 'Đang xử lý' : 'Chờ cập nhật',
-            status: activeStepIndex > 4 ? 'done' : activeStepIndex === 4 ? 'current' : 'pending',
-        },
-        {
-            id: 5,
             title: 'Hoàn thành',
             description: 'Công tác cứu hộ kết thúc an toàn.',
-            timeLabel: activeStepIndex >= 5 ? 'Hoàn thành' : 'Chờ xác nhận',
-            status: activeStepIndex === 5 ? 'done' : 'pending',
+            timeLabel: activeStepIndex >= 4 ? 'Hoàn thành' : 'Chờ xác nhận',
+            status: activeStepIndex === 4 ? 'done' : 'pending',
         },
-    ]), [activeStepIndex]);
+    ]), [activeStepIndex, waitingForTeam, isInProgress]);
 
     useEffect(() => {
         let mounted = true;
@@ -191,6 +201,93 @@ export default function RescueRequestStatusPage() {
         navigate('/cong-dan/yeu-cau-cuu-ho');
     };
 
+    const handleGoToUpdateRequest = () => {
+        const targetId = Number(data?.id || requestId || 0);
+        if (!targetId) {
+            window.alert('Không tìm thấy mã yêu cầu để cập nhật.');
+            return;
+        }
+        navigate(CITIZEN_ROUTES.UPDATE_RESCUE_REQUEST, {
+            state: {
+                requestId: targetId,
+                request: data,
+            },
+        });
+    };
+
+    const handleConfirmRescued = async () => {
+        if (!requestId || confirmingRescueResult) return;
+        setConfirmingRescueResult(true);
+        try {
+            await confirmRescueResult(requestId, { rescued: true });
+            navigate(CITIZEN_ROUTES.FEEDBACK, { state: { requestId } });
+        } catch (e) {
+            window.alert(e?.message || 'Không thể xác nhận trạng thái cứu hộ.');
+        } finally {
+            setConfirmingRescueResult(false);
+        }
+    };
+
+    const handleConfirmNotRescued = async () => {
+        if (!requestId || confirmingRescueResult) return;
+        if (!notRescuedReason.trim()) {
+            window.alert('Vui lòng nhập lý do cứu hộ chưa thành công thực tế.');
+            return;
+        }
+        setConfirmingRescueResult(true);
+        try {
+            const resp = await confirmRescueResult(requestId, { rescued: false, reason: notRescuedReason.trim() });
+            const followUpId = Number(resp?.followUpRequestId || 0);
+            if (followUpId > 0) {
+                navigate(CITIZEN_ROUTES.RESCUE_REQUEST_STATUS, { state: { requestId: followUpId } });
+            } else {
+                window.location.reload();
+            }
+        } catch (e) {
+            window.alert(e?.message || 'Không thể gửi lại yêu cầu cứu hộ.');
+        } finally {
+            setConfirmingRescueResult(false);
+        }
+    };
+
+    const handleReopenCancelled = async () => {
+        if (!requestId || reopening) return;
+        const reason = window.prompt('Nhập lý do gửi lại yêu cầu:');
+        if (reason === null) return;
+        if (!reason.trim()) {
+            window.alert('Vui lòng nhập lý do.');
+            return;
+        }
+        setReopening(true);
+        try {
+            await reopenCancelledRequest(requestId, reason.trim());
+            window.alert('Đã gửi lại yêu cầu cứu hộ.');
+            window.location.reload();
+        } catch (e) {
+            window.alert(e?.message || 'Không thể gửi lại yêu cầu.');
+        } finally {
+            setReopening(false);
+        }
+    };
+
+    if (!data) {
+        return (
+            <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
+                <h2 className="text-lg font-semibold text-slate-900">Chưa có yêu cầu để hiển thị</h2>
+                <p className="mt-2 text-sm text-slate-600">
+                    {loading ? 'Đang tải dữ liệu yêu cầu cứu hộ...' : 'Không tìm thấy dữ liệu yêu cầu cứu hộ từ hệ thống.'}
+                </p>
+                <button
+                    type="button"
+                    onClick={handleBackToList}
+                    className="mt-4 inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                >
+                    Danh sách yêu cầu của tôi
+                </button>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -224,6 +321,89 @@ export default function RescueRequestStatusPage() {
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1.3fr)] items-start">
                 {/* Tiến độ cứu hộ */}
                 <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    {waitingCitizenConfirmation && (
+                        <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                            <h3 className="text-sm font-semibold text-amber-900">
+                                Đội cứu hộ đã báo hoàn thành. Bạn đã được cứu hộ chưa?
+                            </h3>
+                            <p className="mt-1 text-xs text-amber-800">
+                                Nếu chưa thành công thực tế, hệ thống sẽ tự gửi lại yêu cầu cứu hộ kèm lý do của bạn.
+                            </p>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                <button
+                                    type="button"
+                                    onClick={handleConfirmRescued}
+                                    disabled={confirmingRescueResult}
+                                    className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                                >
+                                    Tôi đã được cứu hộ
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowNotRescuedReason((v) => !v)}
+                                    disabled={confirmingRescueResult}
+                                    className="rounded-lg border border-rose-300 bg-white px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-60"
+                                >
+                                    Chưa được cứu hộ
+                                </button>
+                            </div>
+                            {showNotRescuedReason && (
+                                <div className="mt-3 space-y-2">
+                                    <textarea
+                                        value={notRescuedReason}
+                                        onChange={(e) => setNotRescuedReason(e.target.value)}
+                                        placeholder="Mô tả rõ lý do cứu hộ chưa thành công thực tế..."
+                                        rows={3}
+                                        className="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-amber-400"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleConfirmNotRescued}
+                                        disabled={confirmingRescueResult}
+                                        className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
+                                    >
+                                        {confirmingRescueResult ? 'Đang gửi lại yêu cầu...' : 'Gửi lại yêu cầu cứu hộ'}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {waitingForTeam && (
+                        <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50 p-4">
+                            <h3 className="text-sm font-semibold text-blue-900">Yêu cầu đã xác minh, đang chờ đội cứu hộ</h3>
+                            <p className="mt-1 text-xs text-blue-800">
+                                Hiện chưa có đội rảnh. Yêu cầu của bạn đã được đưa vào hàng đợi và ưu tiên điều phối ngay khi có đội.
+                            </p>
+                        </div>
+                    )}
+                    {isCancelled && (
+                        <div className="mb-5 rounded-xl border border-rose-200 bg-rose-50 p-4">
+                            <h3 className="text-sm font-semibold text-rose-900">Yêu cầu đã bị hủy</h3>
+                            <p className="mt-1 text-xs text-rose-800">
+                                {data?.coordinatorCancelNote
+                                    ? `Lý do: ${data.coordinatorCancelNote}`
+                                    : 'Yêu cầu đã bị hủy bởi hệ thống/điều phối.'}
+                            </p>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => navigate(CITIZEN_ROUTES.FEEDBACK, { state: { requestId } })}
+                                    className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                                >
+                                    Đánh giá dịch vụ
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleReopenCancelled}
+                                    disabled={reopening}
+                                    className="rounded-lg border border-rose-300 bg-white px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60"
+                                >
+                                    {reopening ? 'Đang gửi lại...' : 'Gửi lại yêu cầu'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="mb-5 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50">
@@ -382,6 +562,7 @@ export default function RescueRequestStatusPage() {
                             <div className="flex flex-1 flex-col gap-2 sm:flex-row">
                                 <button
                                     type="button"
+                                    onClick={handleGoToUpdateRequest}
                                     className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-md transition hover:bg-blue-700 hover:shadow-lg"
                                 >
                                     Cập nhật thêm thông tin

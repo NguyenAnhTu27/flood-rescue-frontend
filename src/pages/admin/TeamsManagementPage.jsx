@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, RefreshCw, Search, Users, MapPin, Phone } from 'lucide-react';
+import { RefreshCw, Search, Users, MapPin, Phone } from 'lucide-react';
 import { ADMIN_ROUTES } from '../../app/routes/route.constants.js';
 import { getTeams, deleteTeam } from '../../features/teams/api.js';
 
@@ -85,14 +85,6 @@ export default function TeamsManagementPage() {
                     </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                    <button
-                        type="button"
-                        onClick={() => navigate(ADMIN_ROUTES.CREATE_TEAM)}
-                        className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
-                    >
-                        <Plus className="h-4 w-4" />
-                        Tạo đội mới
-                    </button>
                     <button
                         type="button"
                         onClick={loadTeams}

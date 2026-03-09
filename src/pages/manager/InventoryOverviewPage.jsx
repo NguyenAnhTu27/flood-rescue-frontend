@@ -2,21 +2,13 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Info, Tag, RefreshCw } from 'lucide-react';
 import { MANAGER_ROUTES } from '../../app/routes/route.constants.js';
-import { getInventoryStock, getManagerDashboard, listInventoryReceipts, listInventoryIssues, getItemCategories } from '../../features/relief/api.js';
+import { getInventoryStock, listInventoryReceipts, listInventoryIssues, getItemCategories, getTemporaryInventoryIssues } from '../../features/relief/api.js';
 
-const mockStats = [
-    { id: 'total-items', label: 'TỔNG MẶT HÀNG', value: '24', color: 'text-slate-800' },
-    { id: 'current-stock', label: 'TỒN KHO HIỆN TẠI', value: '12,450', color: 'text-blue-600' },
-    { id: 'import-today', label: 'NHẬP TRONG NGÀY', value: '+1,200', color: 'text-green-600' },
-    { id: 'export-today', label: 'XUẤT TRONG NGÀY', value: '-850', color: 'text-red-600' },
-];
-
-const mockInventory = [
-    { id: '1', code: '#ITEM-001', name: 'Gạo tẻ (25kg)', category: 'Lương thực', unit: 'Bao', qty: 450, status: 'Ổn định', statusType: 'stable' },
-    { id: '2', code: '#ITEM-002', name: 'Mì tôm (Thùng 30 gói)', category: 'Lương thực', unit: 'Thùng', qty: 1200, status: 'Ổn định', statusType: 'stable' },
-    { id: '3', code: '#ITEM-003', name: 'Nước suối (Lốc 6 chai 1.5L)', category: 'Nhu yếu phẩm', unit: 'Lốc', qty: 85, status: 'Sắp hết', statusType: 'low' },
-    { id: '4', code: '#ITEM-004', name: 'Áo phao cứu sinh', category: 'Thiết bị bảo hộ', unit: 'Chiếc', qty: 320, status: 'Ổn định', statusType: 'stable' },
-    { id: '5', code: '#ITEM-005', name: 'Thuốc hạ sốt & Sơ cứu', category: 'Y tế', unit: 'Bộ', qty: 500, status: 'Ổn định', statusType: 'stable' },
+const DEFAULT_STATS = [
+    { id: 'total-items', label: 'TỔNG MẶT HÀNG', value: '0', color: 'text-slate-800' },
+    { id: 'current-stock', label: 'TỒN KHO HIỆN TẠI', value: '0', color: 'text-blue-600' },
+    { id: 'import-today', label: 'NHẬP TRONG NGÀY', value: '0', color: 'text-green-600' },
+    { id: 'export-today', label: 'XUẤT TRONG NGÀY', value: '0', color: 'text-red-600' },
 ];
 
 export default function InventoryOverviewPage() {
@@ -24,7 +16,8 @@ export default function InventoryOverviewPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [inventory, setInventory] = useState([]);
-    const [stats, setStats] = useState(mockStats);
+    const [temporaryIssues, setTemporaryIssues] = useState([]);
+    const [stats, setStats] = useState(DEFAULT_STATS);
 
     // Load dữ liệu tồn kho từ backend
     const loadInventory = async () => {
@@ -33,7 +26,6 @@ export default function InventoryOverviewPage() {
             setError(null);
 
             let inventoryData = [];
-            let statsData = mockStats;
 
             // Strategy 1: Thử lấy từ API tồn kho trực tiếp (/api/inventory/stock)
             // API này đọc từ bảng stock_balances, chỉ có dữ liệu khi có phiếu nhập status = DONE
@@ -67,185 +59,104 @@ export default function InventoryOverviewPage() {
                     stockDataLoaded = true; // Có dữ liệu từ stock_balances
                     console.log('[InventoryOverviewPage] Loaded', inventoryData.length, 'items from stock_balances');
                 }
-
-                // Cập nhật stats nếu có
-                if (stockData?.summary || stockData?.stats) {
-                    const summary = stockData.summary || stockData.stats;
-                    if (Array.isArray(summary)) {
-                        statsData = summary.map((s, idx) => ({
-                            ...(mockStats[idx] || mockStats[0]),
-                            value: String(s.value ?? s.total ?? (mockStats[idx]?.value || '0')),
-                            label: s.label || s.name || (mockStats[idx]?.label || ''),
-                        }));
-                    }
-                }
             } catch (stockErr) {
-                console.warn('[InventoryOverviewPage] getInventoryStock failed, trying dashboard:', stockErr);
+                console.warn('[InventoryOverviewPage] getInventoryStock failed, fallback to calculate from receipts-issues:', stockErr);
                 stockDataLoaded = false;
             }
 
-            // Nếu Strategy 1 không có dữ liệu (mảng rỗng hoặc lỗi), thử Strategy 2 và 3
+            // Nếu Strategy 1 không có dữ liệu (mảng rỗng hoặc lỗi), tính từ receipts/issues DONE
             if (!stockDataLoaded || inventoryData.length === 0) {
-
-                // Strategy 2: Lấy từ dashboard
                 try {
-                    console.log('[InventoryOverviewPage] Trying getManagerDashboard...');
-                    const dashboardData = await getManagerDashboard();
-                    console.log('[InventoryOverviewPage] getManagerDashboard response:', dashboardData);
-                    const payload = dashboardData?.data || dashboardData;
+                    console.log('[InventoryOverviewPage] Calculating stock from receipts - issues...');
 
-                    if (Array.isArray(payload?.inventoryItems)) {
-                        inventoryData = payload.inventoryItems;
-                    } else if (Array.isArray(payload?.items)) {
-                        inventoryData = payload.items;
-                    }
-
-                    // Nếu dashboard có dữ liệu, dùng luôn
-                    if (inventoryData.length > 0) {
-                        console.log('[InventoryOverviewPage] Loaded', inventoryData.length, 'items from dashboard');
-                    } else {
-                        throw new Error('Dashboard has no inventory data');
-                    }
-
-                    if (payload?.inventorySummary) {
-                        const summary = payload.inventorySummary;
-                        if (Array.isArray(summary)) {
-                            statsData = summary.map((s, idx) => ({
-                                ...(mockStats[idx] || mockStats[0]),
-                                value: String(s.value ?? (mockStats[idx]?.value || '0')),
-                                label: s.label || s.name || (mockStats[idx]?.label || ''),
-                            }));
-                        }
-                    }
-                } catch (dashboardErr) {
-                    console.warn('[InventoryOverviewPage] getManagerDashboard failed or empty, trying receipts:', dashboardErr);
-
-                    // Strategy 3: Tính tồn kho từ phiếu nhập (DONE) - phiếu xuất (DONE)
-                    // Lưu ý: Chỉ phiếu nhập status = DONE mới được cập nhật vào stock_balances
+                    // Lấy danh sách item categories để map thông tin
+                    let categoriesMap = new Map();
                     try {
-                        console.log('[InventoryOverviewPage] Calculating stock from receipts - issues...');
+                        const categoriesResponse = await getItemCategories();
+                        let categories = [];
+                        if (Array.isArray(categoriesResponse)) {
+                            categories = categoriesResponse;
+                        } else if (Array.isArray(categoriesResponse?.data)) {
+                            categories = categoriesResponse.data;
+                        } else if (Array.isArray(categoriesResponse?.content)) {
+                            categories = categoriesResponse.content;
+                        }
 
-                        // Lấy danh sách item categories để map thông tin
-                        let categoriesMap = new Map();
-                        try {
-                            const categoriesResponse = await getItemCategories();
-                            let categories = [];
-                            if (Array.isArray(categoriesResponse)) {
-                                categories = categoriesResponse;
-                            } else if (Array.isArray(categoriesResponse?.data)) {
-                                categories = categoriesResponse.data;
-                            } else if (Array.isArray(categoriesResponse?.content)) {
-                                categories = categoriesResponse.content;
+                        categories.forEach((cat) => {
+                            if (cat.id) {
+                                categoriesMap.set(cat.id, {
+                                    code: cat.code || `#CAT-${cat.id}`,
+                                    name: cat.name || 'Danh mục',
+                                    unit: cat.unit || 'Đơn vị',
+                                });
                             }
-
-                            categories.forEach((cat) => {
-                                if (cat.id) {
-                                    categoriesMap.set(cat.id, {
-                                        code: cat.code || `#CAT-${cat.id}`,
-                                        name: cat.name || 'Danh mục',
-                                        unit: cat.unit || 'Đơn vị',
-                                    });
-                                }
-                            });
-                            console.log('[InventoryOverviewPage] Loaded categories map:', categoriesMap);
-                        } catch (catErr) {
-                            console.warn('[InventoryOverviewPage] Could not load categories:', catErr);
-                        }
-
-                        // Lấy tất cả phiếu nhập
-                        const receiptsResponse = await listInventoryReceipts({});
-                        console.log('[InventoryOverviewPage] listInventoryReceipts response:', receiptsResponse);
-
-                        // Parse receipts
-                        let receipts = [];
-                        if (Array.isArray(receiptsResponse)) {
-                            receipts = receiptsResponse;
-                        } else if (Array.isArray(receiptsResponse?.content)) {
-                            receipts = receiptsResponse.content;
-                        } else if (Array.isArray(receiptsResponse?.data)) {
-                            receipts = receiptsResponse.data;
-                        }
-
-                        // Lọc chỉ lấy phiếu nhập đã duyệt (status = DONE)
-                        // Lưu ý: Chỉ phiếu nhập status = DONE mới được cập nhật vào stock_balances
-                        // APPROVED chưa đủ, phải là DONE
-                        const approvedReceipts = receipts.filter(
-                            (r) => r.status === 'DONE'
-                        );
-                        console.log('[InventoryOverviewPage] DONE receipts (will update stock_balances):', approvedReceipts.length);
-
-                        // Lấy tất cả phiếu xuất
-                        let issues = [];
-                        try {
-                            const issuesResponse = await listInventoryIssues({});
-                            console.log('[InventoryOverviewPage] listInventoryIssues response:', issuesResponse);
-
-                            if (Array.isArray(issuesResponse)) {
-                                issues = issuesResponse;
-                            } else if (Array.isArray(issuesResponse?.content)) {
-                                issues = issuesResponse.content;
-                            } else if (Array.isArray(issuesResponse?.data)) {
-                                issues = issuesResponse.data;
-                            }
-                        } catch (issuesErr) {
-                            console.warn('[InventoryOverviewPage] Could not load issues, assuming 0:', issuesErr);
-                            issues = [];
-                        }
-
-                        // Lọc chỉ lấy phiếu xuất đã duyệt (status = DONE)
-                        // Tương tự, chỉ phiếu xuất DONE mới được trừ khỏi stock_balances
-                        const approvedIssues = issues.filter(
-                            (i) => i.status === 'DONE'
-                        );
-                        console.log('[InventoryOverviewPage] DONE issues (will reduce stock_balances):', approvedIssues.length);
-
-                        // Aggregate: Tính tổng nhập - tổng xuất theo itemCategoryId
-                        const itemMap = new Map();
-
-                        // Cộng từ phiếu nhập
-                        approvedReceipts.forEach((receipt) => {
-                            const lines = receipt.lines || receipt.lineItems || [];
-                            lines.forEach((line) => {
-                                const itemCategoryId = line.itemCategoryId || line.itemId;
-                                if (!itemCategoryId) return;
-
-                                const categoryInfo = categoriesMap.get(itemCategoryId) || {};
-                                const existing = itemMap.get(itemCategoryId) || {
-                                    id: itemCategoryId,
-                                    itemCategoryId: itemCategoryId,
-                                    code: categoryInfo.code || line.itemCode || `#ITEM-${itemCategoryId}`,
-                                    name: categoryInfo.name || line.itemName || line.itemCategoryName || 'Mặt hàng',
-                                    category: categoryInfo.name || line.itemCategoryName || 'Khác',
-                                    unit: categoryInfo.unit || line.unit || 'Đơn vị',
-                                    qty: 0,
-                                };
-                                existing.qty += Number(line.qty || line.quantity || 0);
-                                itemMap.set(itemCategoryId, existing);
-                            });
                         });
-
-                        // Trừ từ phiếu xuất
-                        approvedIssues.forEach((issue) => {
-                            const lines = issue.lines || issue.lineItems || [];
-                            lines.forEach((line) => {
-                                const itemCategoryId = line.itemCategoryId || line.itemId;
-                                if (!itemCategoryId) return;
-
-                                const existing = itemMap.get(itemCategoryId);
-                                if (existing) {
-                                    existing.qty -= Number(line.qty || line.quantity || 0);
-                                    // Đảm bảo không âm
-                                    if (existing.qty < 0) existing.qty = 0;
-                                }
-                            });
-                        });
-
-                        inventoryData = Array.from(itemMap.values());
-                        console.log('[InventoryOverviewPage] Calculated stock (DONE receipts - DONE issues):', inventoryData);
-                    } catch (receiptsErr) {
-                        console.error('[InventoryOverviewPage] All APIs failed:', receiptsErr);
-                        inventoryData = [];
+                    } catch (catErr) {
+                        console.warn('[InventoryOverviewPage] Could not load categories:', catErr);
                     }
+
+                    const receiptsResponse = await listInventoryReceipts({});
+                    const issuesResponse = await listInventoryIssues({});
+                    const receipts = Array.isArray(receiptsResponse)
+                        ? receiptsResponse
+                        : Array.isArray(receiptsResponse?.content)
+                            ? receiptsResponse.content
+                            : Array.isArray(receiptsResponse?.data)
+                                ? receiptsResponse.data
+                                : [];
+                    const issues = Array.isArray(issuesResponse)
+                        ? issuesResponse
+                        : Array.isArray(issuesResponse?.content)
+                            ? issuesResponse.content
+                            : Array.isArray(issuesResponse?.data)
+                                ? issuesResponse.data
+                                : [];
+
+                    const approvedReceipts = receipts.filter((r) => String(r?.status || '').toUpperCase() === 'DONE');
+                    const approvedIssues = issues.filter((i) => String(i?.status || '').toUpperCase() === 'DONE');
+
+                    const itemMap = new Map();
+
+                    approvedReceipts.forEach((receipt) => {
+                        const lines = receipt.lines || receipt.lineItems || [];
+                        lines.forEach((line) => {
+                            const itemCategoryId = line.itemCategoryId || line.itemId;
+                            if (!itemCategoryId) return;
+
+                            const categoryInfo = categoriesMap.get(itemCategoryId) || {};
+                            const existing = itemMap.get(itemCategoryId) || {
+                                id: itemCategoryId,
+                                itemCategoryId,
+                                code: categoryInfo.code || line.itemCode || `#ITEM-${itemCategoryId}`,
+                                name: categoryInfo.name || line.itemName || line.itemCategoryName || 'Mặt hàng',
+                                category: categoryInfo.name || line.itemCategoryName || 'Khác',
+                                unit: categoryInfo.unit || line.unit || 'Đơn vị',
+                                qty: 0,
+                            };
+                            existing.qty += Number(line.qty || line.quantity || 0);
+                            itemMap.set(itemCategoryId, existing);
+                        });
+                    });
+
+                    approvedIssues.forEach((issue) => {
+                        const lines = issue.lines || issue.lineItems || [];
+                        lines.forEach((line) => {
+                            const itemCategoryId = line.itemCategoryId || line.itemId;
+                            if (!itemCategoryId) return;
+
+                            const existing = itemMap.get(itemCategoryId);
+                            if (existing) {
+                                existing.qty -= Number(line.qty || line.quantity || 0);
+                                if (existing.qty < 0) existing.qty = 0;
+                            }
+                        });
+                    });
+
+                    inventoryData = Array.from(itemMap.values());
+                    console.log('[InventoryOverviewPage] Calculated stock (DONE receipts - DONE issues):', inventoryData);
+                } catch (receiptsErr) {
+                    console.error('[InventoryOverviewPage] All APIs failed:', receiptsErr);
+                    inventoryData = [];
                 }
             }
 
@@ -253,17 +164,31 @@ export default function InventoryOverviewPage() {
             // Hỗ trợ nhiều format từ API stock_balances hoặc từ tính toán receipts-issues
             const normalizedInventory = inventoryData.map((item, idx) => {
                 // Parse số lượng từ nhiều field khác nhau
+                const donationQty = Number(item.donationQty ?? item.donation_qty ?? 0);
+                const purchaseQty = Number(item.purchaseQty ?? item.purchase_qty ?? 0);
+                const totalQtyFromSource = item.totalQty ?? item.total_qty;
                 const qty = typeof item.qty === 'number'
                     ? item.qty
                     : typeof item.quantity === 'number'
                         ? item.quantity
+                        : typeof totalQtyFromSource === 'number'
+                            ? totalQtyFromSource
                         : typeof item.stockQty === 'number'
                             ? item.stockQty
                             : typeof item.stockQuantity === 'number'
                                 ? item.stockQuantity
                                 : typeof item.balance === 'number'
                                     ? item.balance
-                                    : Number(item.qty || item.quantity || item.stockQty || item.stockQuantity || item.balance || 0);
+                                    : Number(
+                                        item.qty
+                                        || item.quantity
+                                        || totalQtyFromSource
+                                        || item.stockQty
+                                        || item.stockQuantity
+                                        || item.balance
+                                        || (donationQty + purchaseQty)
+                                        || 0
+                                    );
 
                 // Parse itemCategoryId từ nhiều field
                 const itemCategoryId = item.itemCategoryId || item.itemId || item.categoryId || item.id;
@@ -283,14 +208,82 @@ export default function InventoryOverviewPage() {
             console.log('[InventoryOverviewPage] Normalized inventory:', normalizedInventory);
             // Chỉ set data từ backend, không fallback về mock nếu không có data
             setInventory(normalizedInventory);
-            setStats(statsData);
+
+            // Tính stats theo dữ liệu thực tế:
+            // - total-items / current-stock lấy từ tồn kho hiện có
+            // - import/export trong ngày chỉ tính phiếu DONE
+            const [receiptsForStatsResp, issuesForStatsResp] = await Promise.allSettled([
+                listInventoryReceipts({}),
+                listInventoryIssues({}),
+            ]);
+            const receiptsForStats = receiptsForStatsResp.status === 'fulfilled'
+                ? (Array.isArray(receiptsForStatsResp.value)
+                    ? receiptsForStatsResp.value
+                    : Array.isArray(receiptsForStatsResp.value?.content)
+                        ? receiptsForStatsResp.value.content
+                        : Array.isArray(receiptsForStatsResp.value?.data)
+                            ? receiptsForStatsResp.value.data
+                            : [])
+                : [];
+            const issuesForStats = issuesForStatsResp.status === 'fulfilled'
+                ? (Array.isArray(issuesForStatsResp.value)
+                    ? issuesForStatsResp.value
+                    : Array.isArray(issuesForStatsResp.value?.content)
+                        ? issuesForStatsResp.value.content
+                        : Array.isArray(issuesForStatsResp.value?.data)
+                            ? issuesForStatsResp.value.data
+                            : [])
+                : [];
+
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+
+            const importTodayQty = receiptsForStats
+                .filter((r) => String(r?.status || '').toUpperCase() === 'DONE')
+                .filter((r) => new Date(r?.updatedAt || r?.createdAt || 0) >= startOfToday)
+                .reduce((sum, r) => {
+                    const lines = r?.lines || r?.lineItems || [];
+                    return sum + lines.reduce((s, line) => s + Number(line?.qty || line?.quantity || 0), 0);
+                }, 0);
+
+            const exportTodayQty = issuesForStats
+                .filter((i) => String(i?.status || '').toUpperCase() === 'DONE')
+                .filter((i) => new Date(i?.updatedAt || i?.createdAt || 0) >= startOfToday)
+                .reduce((sum, i) => {
+                    const lines = i?.lines || i?.lineItems || [];
+                    return sum + lines.reduce((s, line) => s + Number(line?.qty || line?.quantity || 0), 0);
+                }, 0);
+
+            const totalCurrentStock = normalizedInventory.reduce((sum, item) => sum + Number(item?.qty || 0), 0);
+
+            setStats([
+                { id: 'total-items', label: 'TỔNG MẶT HÀNG', value: String(normalizedInventory.length), color: 'text-slate-800' },
+                { id: 'current-stock', label: 'TỒN KHO HIỆN TẠI', value: totalCurrentStock.toLocaleString('vi-VN'), color: 'text-blue-600' },
+                { id: 'import-today', label: 'NHẬP TRONG NGÀY', value: importTodayQty.toLocaleString('vi-VN'), color: 'text-green-600' },
+                { id: 'export-today', label: 'XUẤT TRONG NGÀY', value: exportTodayQty.toLocaleString('vi-VN'), color: 'text-red-600' },
+            ]);
+
+            try {
+                const tempIssuesResp = await getTemporaryInventoryIssues();
+                const list = Array.isArray(tempIssuesResp)
+                    ? tempIssuesResp
+                    : Array.isArray(tempIssuesResp?.data)
+                        ? tempIssuesResp.data
+                        : Array.isArray(tempIssuesResp?.content)
+                            ? tempIssuesResp.content
+                            : [];
+                setTemporaryIssues(list);
+            } catch {
+                setTemporaryIssues([]);
+            }
         } catch (err) {
             console.error('[InventoryOverviewPage] loadInventory error:', err);
             setError(err?.message || 'Không thể tải dữ liệu tồn kho');
             // Không set mock data khi có lỗi - để hiển thị empty state
             setInventory([]);
             // Giữ stats mặc định nếu có lỗi
-            setStats(mockStats);
+            setStats(DEFAULT_STATS);
+            setTemporaryIssues([]);
         } finally {
             setLoading(false);
         }
@@ -333,11 +326,10 @@ export default function InventoryOverviewPage() {
                         Tạo phiếu nhập
                     </Link>
                     <Link
-                        to={MANAGER_ROUTES.CREATE_ISSUE}
-                        className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
+                        to={MANAGER_ROUTES.DASHBOARD}
+                        className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
                     >
-                        <Plus className="h-4 w-4" />
-                        Tạo phiếu xuất
+                        Xử lý yêu cầu cứu trợ
                     </Link>
                 </div>
             </div>
@@ -371,7 +363,21 @@ export default function InventoryOverviewPage() {
                             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
                         >
                             <Tag className="h-3.5 w-3.5" />
-                            Quản lý danh mục hàng
+                            Danh mục hàng
+                        </Link>
+                        <Link
+                            to={MANAGER_ROUTES.ITEM_CLASSIFICATIONS}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+                        >
+                            <Tag className="h-3.5 w-3.5" />
+                            Phân loại hàng
+                        </Link>
+                        <Link
+                            to={MANAGER_ROUTES.ITEM_UNITS}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+                        >
+                            <Tag className="h-3.5 w-3.5" />
+                            Đơn vị quản lý
                         </Link>
                         <button
                             type="button"
@@ -474,6 +480,31 @@ export default function InventoryOverviewPage() {
             </div>
 
             {/* ===== COORDINATION NOTE ===== */}
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                <h3 className="text-sm font-semibold text-amber-900">Tạm trừ theo đội đang nhận hàng</h3>
+                {temporaryIssues.length === 0 ? (
+                    <p className="mt-1 text-xs text-amber-800">Hiện không có phiếu xuất nào ở trạng thái tạm trừ.</p>
+                ) : (
+                    <div className="mt-2 space-y-2">
+                        {temporaryIssues.map((issue) => (
+                            <div key={issue.id} className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs text-slate-700">
+                                <div className="font-semibold text-slate-900">
+                                    {issue.code} - Đội: {issue.assignedTeamName || issue.assignedTeamCode || issue.assignedTeamId || '—'}
+                                </div>
+                                <div className="mt-1">
+                                    Lý do tạm trừ: {issue.note || 'Đội đang lấy hàng đi cứu trợ (trạng thái đã tới điểm cứu trợ).'}
+                                </div>
+                                <div className="mt-1">
+                                    Tạm trừ:
+                                    {' '}
+                                    {(issue.lines || []).map((l) => `${l.itemCode || l.itemName}: ${l.qty} ${l.unit}`).join(' | ') || '—'}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
             <div className="flex gap-3 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100">
                     <Info className="h-5 w-5 text-blue-600" />

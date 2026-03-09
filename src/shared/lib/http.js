@@ -6,123 +6,15 @@
  * Then replace this file with axios version (see API_SETUP_GUIDE.md)
  */
 
-import { getToken, removeToken } from './storage.js';
-import { USE_MOCK_API } from '../../app/config/env.js';
+import { getToken } from './storage.js';
 
 // Get API base URL from environment or use default
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
-
-// Mock API handler (thứ tự quan trọng: path dài/prefix trước)
-const mockApiHandler = {
-    // -------- Citizen rescue: by-id (prefix) --------
-    '/rescue/citizen/requests/': async (data, opts) => {
-        const urlPath = (opts.url || '').split('?')[0];
-        const id = urlPath.replace(/.*\/requests\//, '').replace(/\/.*$/, '').trim();
-        const { mockGetRescueRequestById, mockUpdateRescueRequest, mockCancelRescueRequest } = await import('./mockApi.js');
-        if (opts.method === 'GET') return mockGetRescueRequestById(id);
-        if (opts.method === 'PUT') return mockUpdateRescueRequest(id, data);
-        if (opts.method === 'DELETE') return mockCancelRescueRequest(id);
-        return mockGetRescueRequestById(id);
-    },
-    // -------- Rescue requests by id & status (coordinator/citizen dùng /rescue/requests/:id) --------
-    '/rescue/requests/': async (data, opts) => {
-        const urlPath = (opts.url || '').split('?')[0];
-        const after = urlPath.replace(/.*\/requests\//, '').trim();
-        const [id, action] = after.split('/');
-        const {
-            mockGetRescueRequestById,
-            mockGetRescueRequestStatus,
-            mockUpdateRescueRequest,
-            mockCancelRescueRequest,
-        } = await import('./mockApi.js');
-        if (opts.method === 'GET' && action === 'status') return mockGetRescueRequestStatus(id);
-        if (opts.method === 'POST' && action === 'cancel') return mockCancelRescueRequest(id);
-        if (opts.method === 'PUT') return mockUpdateRescueRequest(id, data);
-        return mockGetRescueRequestById(id);
-    },
-    // -------- Citizen: list + create --------
-    '/rescue/citizen/requests': async (data, opts) => {
-        const { mockGetRescueRequests, mockCreateRescueRequest } = await import('./mockApi.js');
-        if (opts.method === 'POST') return mockCreateRescueRequest(data);
-        return mockGetRescueRequests();
-    },
-    '/rescue/citizen/attachments': async (data, opts) => {
-        const { mockUploadRescueAttachments } = await import('./mockApi.js');
-        return mockUploadRescueAttachments(data);
-    },
-    '/citizen/dashboard': async () => {
-        const { mockCitizenDashboard } = await import('./mockApi.js');
-        return mockCitizenDashboard();
-    },
-    '/citizen/feedback': async (data) => {
-        const { mockSubmitFeedback } = await import('./mockApi.js');
-        return mockSubmitFeedback(data);
-    },
-    '/citizen/rescue-requests': async () => {
-        const { mockGetRescueRequests } = await import('./mockApi.js');
-        return mockGetRescueRequests();
-    },
-    '/rescue/requests': async (data, opts) => {
-        if (opts.method === 'POST' && data && typeof data === 'object' && !Array.isArray(data)) {
-            const { mockCreateRescueRequest } = await import('./mockApi.js');
-            return mockCreateRescueRequest(data);
-        }
-        const { mockGetRescueRequests } = await import('./mockApi.js');
-        return mockGetRescueRequests();
-    },
-    '/auth/login': async (data) => {
-        const { mockLogin } = await import('./mockApi.js');
-        return mockLogin(data);
-    },
-    '/auth/register': async (data) => {
-        const { mockRegister } = await import('./mockApi.js');
-        return mockRegister(data);
-    },
-};
 
 /**
  * Main HTTP client function
  */
 async function httpClient(url, options = {}) {
-    // Check if mock mode is enabled
-    if (USE_MOCK_API) {
-        // Find matching mock handler (check exact match or path prefix)
-        let mockHandler = mockApiHandler[url];
-        
-        // If no exact match, try to find by path prefix
-        if (!mockHandler) {
-            const urlPath = url.split('?')[0]; // Remove query params
-            for (const [path, handler] of Object.entries(mockApiHandler)) {
-                if (urlPath === path || urlPath.startsWith(path)) {
-                    mockHandler = handler;
-                    break;
-                }
-            }
-        }
-        
-        if (mockHandler) {
-            console.log(`[MOCK API] ${options.method || 'GET'} ${url}`, options.body && typeof options.body === 'string' ? JSON.parse(options.body) : {});
-            try {
-                let mockData = {};
-                if (options.body instanceof FormData) {
-                    mockData = options.body;
-                } else if (options.body && typeof options.body === 'string') {
-                    try {
-                        mockData = JSON.parse(options.body);
-                    } catch {
-                        mockData = {};
-                    }
-                }
-                const opts = { method: options.method || 'GET', url };
-                return await mockHandler(mockData, opts);
-            } catch (err) {
-                throw err;
-            }
-        } else {
-            console.warn(`[MOCK API] No mock handler for ${url}, falling back to real API`);
-        }
-    }
-
     const token = getToken();
     
     // Default headers

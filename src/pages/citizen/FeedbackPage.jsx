@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { CheckCircle2, Square, Star, Heart } from 'lucide-react';
 import { CITIZEN_ROUTES } from '../../app/routes/route.constants.js';
+import { createCitizenSystemFeedback } from '../../features/feedback/api.js';
 import Button from '../../shared/ui/Button.jsx';
 import Textarea from '../../shared/ui/Textarea.jsx';
 
@@ -28,16 +29,24 @@ export default function FeedbackPage() {
     const [hoverRating, setHoverRating] = useState(0);
     const [message, setMessage] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState('');
 
     const displayRating = hoverRating || rating;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
+        setSubmitError('');
         try {
-            // TODO: Gọi API gửi phản hồi
-            await new Promise((r) => setTimeout(r, 600));
+            await createCitizenSystemFeedback({
+                rating,
+                feedbackContent: message?.trim() || null,
+                rescuedConfirmed: Boolean(confirmedStatus.rescued),
+                reliefConfirmed: Boolean(confirmedStatus.relief),
+            });
             navigate(CITIZEN_ROUTES.DASHBOARD);
+        } catch (err) {
+            setSubmitError(err?.message || 'Không thể gửi phản hồi. Vui lòng thử lại.');
         } finally {
             setIsSubmitting(false);
         }
@@ -53,12 +62,11 @@ export default function FeedbackPage() {
                             <CheckCircle2 className="h-8 w-8 text-green-600" />
                         </div>
                         <h1 className="mt-4 text-xl font-bold text-slate-900">
-                            Xác nhận & Gửi phản hồi
+                            Đánh giá hệ thống & Gửi phản hồi
                         </h1>
                         <p className="mt-2 text-sm text-slate-600">
-                            Cảm ơn bạn đã giữ bình tĩnh. Sự an toàn của bạn là ưu tiên hàng đầu
-                            của chúng tôi. Vui lòng hoàn thành bước cuối cùng này để kết thúc
-                            quy trình hỗ trợ.
+                            Chia sẻ mức độ hài lòng của bạn với hệ thống cứu hộ/cứu trợ để đội
+                            quản trị cải thiện trải nghiệm phục vụ.
                         </p>
                     </div>
 
@@ -143,7 +151,7 @@ export default function FeedbackPage() {
                             <Textarea
                                 value={message}
                                 onChange={(e) => setMessage(e.target.value)}
-                                placeholder="Chia sẻ thêm về trải nghiệm hoặc gửi lời cảm ơn đến đội cứu hộ"
+                                placeholder="Ví dụ: hệ thống dễ dùng, phản hồi nhanh/chậm, đề xuất cải thiện..."
                                 rows={4}
                                 className="mt-3"
                             />
@@ -159,6 +167,11 @@ export default function FeedbackPage() {
 
                         {/* Actions */}
                         <div className="space-y-3 pt-2">
+                            {submitError && (
+                                <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                                    {submitError}
+                                </div>
+                            )}
                             <Button
                                 type="submit"
                                 variant="success"
