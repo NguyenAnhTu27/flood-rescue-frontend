@@ -139,14 +139,6 @@ export default function ReliefRequestVerifyPage() {
         return String(request?.code || request?.id || sampleRequest.id);
     }, [request]);
 
-    const handleCreateDistributionSlip = () => {
-        const selectedRequestId = requestId || request?.id || request?.code;
-        const nextPath = selectedRequestId
-            ? `${MANAGER_ROUTES.DISTRIBUTION_PLAN}?requestId=${encodeURIComponent(selectedRequestId)}`
-            : MANAGER_ROUTES.DISTRIBUTION_PLAN;
-        navigate(nextPath);
-    };
-
     const handleApprove = async () => {
         if (!requestId) {
             window.alert('Khong tim thay id yeu cau de duyet.');
@@ -214,13 +206,6 @@ export default function ReliefRequestVerifyPage() {
                     <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
                         <Printer className="h-4 w-4" />
                         In phieu
-                    </button>
-                    <button
-                        onClick={handleCreateDistributionSlip}
-                        className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
-                    >
-                        <FileText className="h-4 w-4" />
-                        Tao phieu phan phoi hang
                     </button>
                     <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
                         <Share2 className="h-4 w-4" />

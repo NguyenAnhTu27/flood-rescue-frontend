@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Pencil, X, Check, FileText, List, BarChart3, Info } from 'lucide-react';
+import { Plus, Trash2, X, Check, FileText, List, BarChart3, Info } from 'lucide-react';
 import { MANAGER_ROUTES } from '../../../app/routes/route.constants.js';
 import {
     createInventoryIssue,
@@ -9,8 +9,6 @@ import {
     getItemCategories,
 } from '../../../features/relief/api.js';
 import { listReliefRequests } from '../../../features/relief/api.js';
-import { getTeams } from '../../../features/teams/api.js';
-import { getAssets } from '../../../features/assets/api.js';
 
 const INITIAL_ITEMS = [
     {
@@ -32,8 +30,8 @@ export default function IssueCreatePage() {
         reliefRequestId: null,
         reliefRequestCode: '',
         reliefRequestArea: '',
-        teamId: '',
-        assetId: '',
+        basisRef: '',
+        receiverDept: '',
         note: '',
     });
 
@@ -44,8 +42,6 @@ export default function IssueCreatePage() {
     const [itemCategories, setItemCategories] = useState([]);
     const [stockData, setStockData] = useState([]); // Tồn kho hiện tại
     const [reliefRequests, setReliefRequests] = useState([]);
-    const [teams, setTeams] = useState([]);
-    const [assets, setAssets] = useState([]);
     const [searchReliefQuery, setSearchReliefQuery] = useState('');
     const [showReliefSearch, setShowReliefSearch] = useState(false);
 
@@ -61,11 +57,9 @@ export default function IssueCreatePage() {
         const loadReferenceData = async () => {
             try {
                 setLoadingData(true);
-                const [categoriesData, stockDataRes, teamsData, assetsData] = await Promise.allSettled([
+                const [categoriesData, stockDataRes] = await Promise.allSettled([
                     getItemCategories(),
                     getInventoryStock(),
-                    getTeams(),
-                    getAssets({ status: 'available' }),
                 ]);
 
                 // Parse item categories
@@ -87,33 +81,6 @@ export default function IssueCreatePage() {
                     else if (Array.isArray(data?.data)) list = data.data;
                     else if (Array.isArray(data?.lines)) list = data.lines;
                     setStockData(list);
-                }
-
-                // Parse teams
-                if (teamsData.status === 'fulfilled') {
-                    const data = teamsData.value;
-                    let list = [];
-                    if (Array.isArray(data)) list = data;
-                    else if (Array.isArray(data?.content)) list = data.content;
-                    else if (Array.isArray(data?.data)) list = data.data;
-                    setTeams(list);
-                }
-
-                // Parse assets
-                if (assetsData.status === 'fulfilled') {
-                    const data = assetsData.value;
-                    let list = [];
-                    if (Array.isArray(data)) list = data;
-                    else if (Array.isArray(data?.content)) list = data.content;
-                    else if (Array.isArray(data?.data)) list = data.data;
-                    else if (Array.isArray(data?.items)) list = data.items;
-
-                    console.log('[IssueCreatePage] Loaded assets:', list.length);
-                    setAssets(list);
-                } else {
-                    console.warn('[IssueCreatePage] Could not load assets:', assetsData.reason);
-                    // Nếu không load được, để mảng rỗng (không dùng mock data ở đây vì đây là form tạo mới)
-                    setAssets([]);
                 }
 
                 // Generate initial code
@@ -314,14 +281,12 @@ export default function IssueCreatePage() {
         if (formData.reliefRequestId) {
             payload.reliefRequestId = parseInt(formData.reliefRequestId);
         }
-        if (formData.teamId) {
-            payload.teamId = parseInt(formData.teamId);
-        }
-        if (formData.assetId) {
-            payload.assetId = parseInt(formData.assetId);
-        }
-        if (formData.note && formData.note.trim()) {
-            payload.note = formData.note.trim();
+        const noteParts = [];
+        if (formData.basisRef?.trim()) noteParts.push(`Can cu: ${formData.basisRef.trim()}`);
+        if (formData.receiverDept?.trim()) noteParts.push(`Don vi nhan kho: ${formData.receiverDept.trim()}`);
+        if (formData.note?.trim()) noteParts.push(`Ghi chu kho: ${formData.note.trim()}`);
+        if (noteParts.length > 0) {
+            payload.note = noteParts.join(' | ');
         }
 
         return payload;
@@ -418,7 +383,7 @@ export default function IssueCreatePage() {
                 </nav>
                 <h1 className="text-2xl font-bold text-slate-900">Phiếu xuất kho cứu trợ</h1>
                 <p className="mt-1 text-sm text-slate-500">
-                    Phân phối hàng hóa từ kho trung tâm đến các khu vực cứu trợ khẩn cấp.
+                    Chứng từ kho dùng để ghi nhận xuất hàng khỏi kho trung tâm theo kế hoạch đã duyệt.
                 </p>
             </div>
 
@@ -520,40 +485,31 @@ export default function IssueCreatePage() {
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="text-xs font-medium text-slate-600">Đội vận chuyển</label>
-                                <select
-                                    value={formData.teamId}
-                                    onChange={(e) => handleFormChange('teamId', e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                >
-                                    <option value="">Chọn đội vận chuyển</option>
-                                    {teams.map((team) => (
-                                        <option key={team.id} value={team.id}>
-                                            {team.name || team.teamName || `Đội ${team.id}`}
-                                        </option>
-                                    ))}
-                                </select>
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <div>
+                                    <label className="text-xs font-medium text-slate-600">Căn cứ xuất kho</label>
+                                    <input
+                                        type="text"
+                                        value={formData.basisRef}
+                                        onChange={(e) => handleFormChange('basisRef', e.target.value)}
+                                        className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                        placeholder="Ví dụ: Lệnh điều phối DP-20260308-001"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-medium text-slate-600">Đơn vị nhận kho</label>
+                                    <input
+                                        type="text"
+                                        value={formData.receiverDept}
+                                        onChange={(e) => handleFormChange('receiverDept', e.target.value)}
+                                        className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                        placeholder="Đội giao nhận / điểm tập kết nhận hàng"
+                                    />
+                                </div>
                             </div>
 
                             <div>
-                                <label className="text-xs font-medium text-slate-600">Phương tiện</label>
-                                <select
-                                    value={formData.assetId}
-                                    onChange={(e) => handleFormChange('assetId', e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                >
-                                    <option value="">Chọn phương tiện</option>
-                                    {assets.map((asset) => (
-                                        <option key={asset.id} value={asset.id}>
-                                            {asset.code || asset.assetCode || `PT-${asset.id}`} - {asset.type || asset.name || 'Phương tiện'}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="text-xs font-medium text-slate-600">Ghi chú</label>
+                                <label className="text-xs font-medium text-slate-600">Ghi chú kho</label>
                                 <textarea
                                     rows={3}
                                     value={formData.note}
@@ -699,7 +655,7 @@ export default function IssueCreatePage() {
                                 <div className="flex items-start gap-2">
                                     <Info className="h-4 w-4 text-blue-600 mt-0.5" />
                                     <p className="text-xs text-blue-800">
-                                        Sau khi 'Duyệt phiếu xuất', số lượng tồn kho thực tế sẽ được trừ đi và không thể sửa đổi thông tin hàng hóa.
+                                        Phiếu xuất kho chỉ ghi nhận nghiệp vụ kho. Thông tin giao nhận chi tiết thực hiện ở Phiếu điều phối hàng.
                                     </p>
                                 </div>
                             </div>

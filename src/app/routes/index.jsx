@@ -47,8 +47,10 @@ import RescueUpdateStatusPage from '../../pages/rescuer/RescueUpdateStatusPage.j
 
 // Manager
 import ManagerDashboard from '../../pages/manager/ManagerDashboard.jsx';
+import ManagerLayout from '../../layouts/ManagerLayout.jsx';
 import InventoryOverviewPage from '../../pages/manager/kho/InventoryOverviewPage.jsx';
 import DistributionPlanPage from '../../pages/manager/hang-cuu-tro/DistributionPlanPage.jsx';
+import DistributionVoucherPage from '../../pages/manager/hang-cuu-tro/DistributionVoucherPage.jsx';
 import AssetsManagementPage from '../../pages/manager/phuong-tien/AssetsManagementPage.jsx';
 import AssetCreatePage from '../../pages/manager/phuong-tien/AssetCreatePage.jsx';
 import AssetsAssignToTask from '../../features/assets/components/AssetsAssignToTask.jsx';
@@ -297,9 +299,9 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <RootLayout>
+                            <ManagerLayout>
                                 <ManagerDashboard />
-                            </RootLayout>
+                            </ManagerLayout>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -309,9 +311,9 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <RootLayout>
+                            <ManagerLayout>
                                 <InventoryOverviewPage />
-                            </RootLayout>
+                            </ManagerLayout>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -321,9 +323,9 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <RootLayout>
+                            <ManagerLayout>
                                 <ItemCategoriesPage />
-                            </RootLayout>
+                            </ManagerLayout>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -333,9 +335,9 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <RootLayout>
+                            <ManagerLayout>
                                 <ReceiptCreatePage />
-                            </RootLayout>
+                            </ManagerLayout>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -345,9 +347,9 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <RootLayout>
+                            <ManagerLayout>
                                 <ReceiptApprovalPage />
-                            </RootLayout>
+                            </ManagerLayout>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -357,9 +359,9 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <RootLayout>
+                            <ManagerLayout>
                                 <IssueCreatePage />
-                            </RootLayout>
+                            </ManagerLayout>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -369,9 +371,9 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <RootLayout>
+                            <ManagerLayout>
                                 <ReliefRequestCreatePage />
-                            </RootLayout>
+                            </ManagerLayout>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -381,9 +383,9 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <RootLayout>
+                            <ManagerLayout>
                                 <ReliefRequestDashboardPage />
-                            </RootLayout>
+                            </ManagerLayout>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -393,9 +395,9 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <RootLayout>
+                            <ManagerLayout>
                                 <ReliefRequestVerifyPage />
-                            </RootLayout>
+                            </ManagerLayout>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -405,9 +407,21 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <RootLayout>
+                            <ManagerLayout>
                                 <DistributionPlanPage />
-                            </RootLayout>
+                            </ManagerLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={MANAGER_ROUTES.DISTRIBUTION_VOUCHER}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['MANAGER']}>
+                            <ManagerLayout>
+                                <DistributionVoucherPage />
+                            </ManagerLayout>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -417,9 +431,9 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <RootLayout>
+                            <ManagerLayout>
                                 <AssetsManagementPage />
-                            </RootLayout>
+                            </ManagerLayout>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -429,9 +443,9 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <RootLayout>
+                            <ManagerLayout>
                                 <AssetCreatePage />
-                            </RootLayout>
+                            </ManagerLayout>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -441,7 +455,9 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <AssetsAssignToTask />
+                            <ManagerLayout>
+                                <AssetsAssignToTask />
+                            </ManagerLayout>
                         </RequireRole>
                     </RequireAuth>
                 }

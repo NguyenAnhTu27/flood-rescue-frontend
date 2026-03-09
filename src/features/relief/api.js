@@ -1,5 +1,14 @@
 import httpClient from '../../shared/lib/http.js';
 
+const DISTRIBUTION_BASE_PATHS = ['/distribution', '/manager/distribution', '/relief'];
+const DISTRIBUTION_RESOURCE_PATHS = ['/vouchers', '/orders', '/distributions', '/distribution-vouchers'];
+
+function buildDistributionCollectionCandidates() {
+  return DISTRIBUTION_BASE_PATHS.flatMap((basePath) =>
+    DISTRIBUTION_RESOURCE_PATHS.map((resourcePath) => `${basePath}${resourcePath}`)
+  );
+}
+
 /**
  * Manager (cứu trợ) dashboard
  * Thử nhiều endpoint khác nhau để tương thích với BE.
@@ -110,6 +119,49 @@ export async function listInventoryIssues(params = {}) {
     }
   }
   throw lastErr || new Error('Không tìm thấy endpoint phiếu xuất kho');
+}
+
+/**
+ * DISTRIBUTION VOUCHERS (phiếu điều phối giao hàng)
+ * Backend tách riêng khỏi nghiệp vụ kho.
+ */
+
+// Tạo phiếu điều phối giao hàng
+export async function createDistributionVoucher(payload) {
+  const candidates = buildDistributionCollectionCandidates();
+
+  let lastErr;
+  for (const path of candidates) {
+    try {
+      return await httpClient.post(path, payload);
+    } catch (e) {
+      lastErr = e;
+      if (e?.status !== 404 && e?.status !== 401 && e?.status !== 403) {
+        throw e;
+      }
+    }
+  }
+
+  throw lastErr || new Error('Không tìm thấy endpoint phiếu điều phối');
+}
+
+// Danh sách phiếu điều phối
+export async function listDistributionVouchers(params = {}) {
+  const candidates = buildDistributionCollectionCandidates();
+
+  let lastErr;
+  for (const path of candidates) {
+    try {
+      return await httpClient.get(path, { params });
+    } catch (e) {
+      lastErr = e;
+      if (e?.status !== 404 && e?.status !== 401 && e?.status !== 403) {
+        throw e;
+      }
+    }
+  }
+
+  throw lastErr || new Error('Không tìm thấy endpoint danh sách phiếu điều phối');
 }
 
 /**

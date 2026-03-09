@@ -62,6 +62,7 @@ export const PUBLIC_ROUTES = {
     RELIEF_REQUEST_DASHBOARD: '/quan-ly/danh-sach-yeu-cau-cuu-tro',
     RELIEF_APPROVE: '/quan-ly/xac-minh-cuu-tro',
     DISTRIBUTION_PLAN: '/quan-ly/phan-phoi',
+    DISTRIBUTION_VOUCHER: '/quan-ly/phieu-phan-phoi',
     DISTRIBUTION_TRACKING: '/quan-ly/theo-doi-phan-phoi',
     ASSETS_MANAGEMENT: '/quan-ly/phuong-tien',
     CREATE_ASSET: '/quan-ly/tao-phuong-tien',

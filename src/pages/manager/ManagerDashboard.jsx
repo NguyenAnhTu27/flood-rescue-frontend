@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { MANAGER_ROUTES } from '../../app/routes/route.constants.js';
 import { getManagerDashboard } from '../../features/relief/api.js';
+import { listDistributionVouchers } from '../../features/relief/apiDistribution.js';
 
 const mockStats = [
     {
@@ -207,6 +208,14 @@ const inventoryItems = [
     },
 ];
 
+function parseArrayResponse(payload) {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.content)) return payload.content;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.items)) return payload.items;
+    return [];
+}
+
 export default function ManagerDashboard() {
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
@@ -235,30 +244,70 @@ export default function ManagerDashboard() {
                 setLoading(true);
                 setError(null);
 
-                const data = await getManagerDashboard();
+                const [dashboardRes, distributionsRes] = await Promise.allSettled([
+                    getManagerDashboard(),
+                    listDistributionVouchers({ size: 200 }),
+                ]);
+
+                const data = dashboardRes.status === 'fulfilled' ? dashboardRes.value : {};
                 const payload = data?.data || data; // phòng trường hợp BE bọc trong data
+
+                const distributionList =
+                    distributionsRes.status === 'fulfilled'
+                        ? parseArrayResponse(distributionsRes.value)
+                        : [];
+                const processingStatuses = new Set(['PLANNED', 'ASSIGNED', 'IN_TRANSIT', 'DRAFT']);
+                const processingCount = distributionList.filter((d) =>
+                    processingStatuses.has(String(d?.status || '').toUpperCase())
+                ).length;
 
                 // --------- Tổng quan (stats) ---------
                 // Kỳ vọng payload.overview hoặc payload.stats là mảng
                 let apiStats = payload?.overview || payload?.stats || [];
-                if (!Array.isArray(apiStats) || apiStats.length === 0) {
-                    apiStats = mockStats;
-                } else {
-                    apiStats = apiStats.map((item, idx) => {
-                        const base = mockStats[idx] || mockStats[0];
-                        return {
-                            id: item.id || base.id || `stat-${idx}`,
-                            label: item.label || item.name || base.label,
-                            value: String(item.value ?? item.total ?? base.value),
-                            unit: item.unit || base.unit || '',
-                            sub: item.sub || item.description || base.sub || '',
-                            icon: base.icon, // dùng icon tĩnh để đỡ phức tạp
-                            color: base.color || 'slate',
-                            trend: item.trend || base.trend || null,
-                            highlighted: item.highlighted ?? base.highlighted ?? false,
-                        };
-                    });
+                if (!Array.isArray(apiStats)) {
+                    apiStats = [];
                 }
+                const normalizedApiStats = apiStats.map((item, idx) => ({
+                    id: item?.id || item?.key || item?.code || `stat-${idx}`,
+                    label: item?.label || item?.name || '',
+                    value: String(item?.value ?? item?.total ?? ''),
+                    unit: item?.unit || '',
+                    sub: item?.sub || item?.description || '',
+                    trend: item?.trend || null,
+                    highlighted: item?.highlighted ?? false,
+                }));
+
+                // Giữ đủ bộ card theo mockStats để UI luôn có:
+                // Kho trung tâm / Tổng phương tiện / Phiếu xuất / Phiếu nhập / Đơn phân phối.
+                const mergedStats = mockStats.map((base, idx) => {
+                    const byId = normalizedApiStats.find((s) => s.id === base.id);
+                    const byIdx = normalizedApiStats[idx];
+                    const source = byId || byIdx;
+                    return {
+                        ...base,
+                        ...(source || {}),
+                        id: base.id,
+                        label: source?.label || base.label,
+                        value: source?.value || base.value,
+                        unit: source?.unit || base.unit,
+                        sub: source?.sub || base.sub,
+                        icon: base.icon, // icon cố định theo từng card
+                        color: base.color || 'slate',
+                        trend: source?.trend || base.trend || null,
+                        highlighted: source?.highlighted ?? base.highlighted ?? false,
+                    };
+                });
+                const statsWithDistribution = mergedStats.map((stat) => {
+                    if (stat.id !== 'distributions') return stat;
+                    return {
+                        ...stat,
+                        value: distributionList.length > 0 ? String(distributionList.length) : stat.value,
+                        sub:
+                            distributionList.length > 0
+                                ? `${processingCount} đang xử lý`
+                                : stat.sub,
+                    };
+                });
 
                 // --------- Giao dịch gần đây ---------
                 // Kỳ vọng payload.recentTransactions hoặc payload.transactions
@@ -316,7 +365,7 @@ export default function ManagerDashboard() {
                     }));
                 }
 
-                setStats(apiStats);
+                setStats(statsWithDistribution);
                 setTransactions(apiTransactions);
                 setInventorySummaryState(apiInvSummary);
                 setInventoryItemsState(apiInvItems);
@@ -338,7 +387,7 @@ export default function ManagerDashboard() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900">
-                        Dashboard Quản lý Cứu trợ
+                        Trang chủ quản lý cứu trợ
                     </h1>
                     <p className="mt-1 text-sm text-slate-500">
                         Hệ thống giám sát vận hành và điều phối logistics cứu trợ thiên tai

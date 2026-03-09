@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Filter, Download, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { Download, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import { MANAGER_ROUTES } from '../../../app/routes/route.constants.js';
 import { listReliefRequests, getAreas, getItemCategories } from '../../../features/relief/api.js';
 
@@ -242,10 +242,8 @@ export default function ReliefRequestDashboardPage() {
         window.alert('Tính năng xuất báo cáo đang được phát triển');
     };
 
-    const handleFilter = () => {
-        // TODO: Open filter modal
-        console.log('Open filter modal');
-        window.alert('Tính năng bộ lọc đang được phát triển');
+    const handleCreateDistributionVoucher = () => {
+        navigate(MANAGER_ROUTES.DISTRIBUTION_VOUCHER);
     };
 
     return (
@@ -286,11 +284,10 @@ export default function ReliefRequestDashboardPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={handleFilter}
+                        onClick={handleCreateDistributionVoucher}
                         className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                     >
-                        <Filter className="h-4 w-4" />
-                        Bộ lọc
+                        Tạo phiếu phân phối
                     </button>
                     <button
                         onClick={() => navigate(MANAGER_ROUTES.RELIEF_REQUEST_CREATE)}
@@ -404,8 +401,8 @@ export default function ReliefRequestDashboardPage() {
                                                             : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                                                             }`}
                                                     >
-                                                        <Eye className="h-4 w-4" />
-                                                        {isPending ? 'Xem & xác minh' : 'Chi tiết'}
+
+                                                        {isPending ? 'xác minh' : 'Chi tiết'}
                                                     </button>
                                                 </td>
                                             </tr>
