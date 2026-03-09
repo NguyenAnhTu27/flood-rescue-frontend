@@ -94,9 +94,7 @@ export default function AppRoutes() {
             <Route
                 path={PUBLIC_ROUTES.EMERGENCY_GUIDE}
                 element={
-                    <RootLayout>
-                        <EmergencyGuidePage />
-                    </RootLayout>
+                    <EmergencyGuidePage />
                 }
             />
 

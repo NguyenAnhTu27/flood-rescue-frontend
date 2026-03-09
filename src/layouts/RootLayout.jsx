@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
     Bell,
     ChevronDown,
@@ -21,6 +21,7 @@ export default function RootLayout({ children }) {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [userOpen, setUserOpen] = useState(false);
     const userMenuRef = useRef(null);
+    const location = useLocation();
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -32,18 +33,29 @@ export default function RootLayout({ children }) {
         return () => document.removeEventListener("mousedown", onDocClick);
     }, []);
 
+    const dashboardTab = new URLSearchParams(location.search).get("tab");
     const navItems = [
-        { label: "Trang chủ", to: CITIZEN_ROUTES.DASHBOARD },
-        { label: "Yêu cầu của tôi", to: CITIZEN_ROUTES.MY_RESCUE_REQUESTS },
-        { label: "Bản đồ cứu trợ", to: CITIZEN_ROUTES.DASHBOARD },
-        { label: "Hướng dẫn an toàn", to: PUBLIC_ROUTES.EMERGENCY_GUIDE },
+        {
+            label: "Trang chủ",
+            to: `${CITIZEN_ROUTES.DASHBOARD}?tab=home`,
+            isActive: location.pathname === CITIZEN_ROUTES.DASHBOARD && dashboardTab !== "map",
+        },
+        {
+            label: "Yêu cầu của tôi",
+            to: CITIZEN_ROUTES.MY_RESCUE_REQUESTS,
+            isActive: location.pathname === CITIZEN_ROUTES.MY_RESCUE_REQUESTS,
+        },
+        {
+            label: "Bản đồ cứu trợ",
+            to: `${CITIZEN_ROUTES.DASHBOARD}?tab=map`,
+            isActive: location.pathname === CITIZEN_ROUTES.DASHBOARD && dashboardTab === "map",
+        },
+        {
+            label: "Hướng dẫn an toàn",
+            to: PUBLIC_ROUTES.EMERGENCY_GUIDE,
+            isActive: location.pathname === PUBLIC_ROUTES.EMERGENCY_GUIDE,
+        },
     ];
-
-    const navLinkClass = ({ isActive }) =>
-        [
-            "relative px-2 py-2 text-sm font-medium transition",
-            isActive ? "text-blue-600" : "text-slate-700 hover:text-blue-600",
-        ].join(" ");
 
     return (
         <div className="min-h-screen bg-white flex flex-col">
@@ -61,7 +73,8 @@ export default function RootLayout({ children }) {
                             <div className="leading-tight">
                                 <div className="text-sm font-extrabold tracking-wide text-blue-600">
                                     CỨU HỘ KHẨN CẤP
-                                </div>                                <div className="text-[10px] font-semibold tracking-wider text-slate-400">
+                                </div>
+                                <div className="text-[10px] font-semibold tracking-wider text-slate-400">
                                     EMERGENCY RELIEF SYSTEM
                                 </div>
                             </div>
@@ -70,20 +83,22 @@ export default function RootLayout({ children }) {
                         {/* Center: Nav (desktop) */}
                         <nav className="hidden md:flex items-center gap-7">
                             {navItems.map((it) => (
-                                <NavLink key={it.to} to={it.to} className={navLinkClass}>
-                                    {({ isActive }) => (
-                                        <>
-                                            {it.label}
-                                            {/* underline active like image */}
-                                            <span
-                                                className={[
-                                                    "absolute left-0 -bottom-[14px] h-[2px] w-full rounded-full transition",
-                                                    isActive ? "bg-blue-600" : "bg-transparent",
-                                                ].join(" ")}
-                                            />
-                                        </>
-                                    )}
-                                </NavLink>
+                                <Link
+                                    key={`${it.label}-${it.to}`}
+                                    to={it.to}
+                                    className={[
+                                        "relative px-2 py-2 text-sm font-medium transition",
+                                        it.isActive ? "text-blue-600" : "text-slate-700 hover:text-blue-600",
+                                    ].join(" ")}
+                                >
+                                    {it.label}
+                                    <span
+                                        className={[
+                                            "absolute left-0 -bottom-[14px] h-[2px] w-full rounded-full transition",
+                                            it.isActive ? "bg-blue-600" : "bg-transparent",
+                                        ].join(" ")}
+                                    />
+                                </Link>
                             ))}
                         </nav>
 
@@ -190,21 +205,21 @@ export default function RootLayout({ children }) {
                         <div className="md:hidden pb-3">
                             <div className="mt-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
                                 {navItems.map((it) => (
-                                    <NavLink
-                                        key={it.to}
+                                    <Link
+                                        key={`${it.label}-${it.to}`}
                                         to={it.to}
                                         onClick={() => setMobileOpen(false)}
-                                        className={({ isActive }) =>
+                                        className={
                                             [
                                                 "block rounded-lg px-3 py-2 text-sm font-medium",
-                                                isActive
+                                                it.isActive
                                                     ? "bg-blue-50 text-blue-700"
                                                     : "text-slate-700 hover:bg-slate-50",
                                             ].join(" ")
                                         }
                                     >
                                         {it.label}
-                                    </NavLink>
+                                    </Link>
                                 ))}
                             </div>
                         </div>
