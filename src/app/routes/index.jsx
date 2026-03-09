@@ -26,6 +26,7 @@ import RegisterPage from '../../pages/auth/RegisterPage.jsx';
 
 // Citizen
 import CitizenDashboard from '../../pages/citizen/CItizenDashboard.jsx';
+import FeedbackPage from '../../pages/citizen/FeedbackPage.jsx';
 import RescueDetailRequestPage from '../../pages/citizen/RescueDetailRequestPage.jsx';
 import RescueRequestCreatePage from '../../pages/citizen/RescueRequestCreatePage.jsx';
 import RescueRequestStatusPage from '../../pages/citizen/RescueRequestStatusPage.jsx';
@@ -64,6 +65,11 @@ import ReliefRequestVerifyPage from '../../pages/manager/hang-cuu-tro/ReliefRequ
 
 // Admin
 import AdminDashboard from '../../pages/admin/AdminDashboard.jsx';
+import AdminTeamAssetPage from '../../pages/admin/AdminTeamAssetPage.jsx';
+import AuditLogsPage from '../../pages/admin/AuditLogsPage.jsx';
+import NotificationTemplatesPage from '../../pages/admin/NotificationTemplatesPage.jsx';
+import RolesPermissionsPage from '../../pages/admin/RolesPermissionsPage.jsx';
+import SystemSettingsPage from '../../pages/admin/SystemSettingsPage.jsx';
 import UserManagementPage from '../../pages/admin/UserManagementPage.jsx';
 import TeamsManagementPage from '../../pages/admin/TeamsManagementPage.jsx';
 import TeamCreatePage from '../../pages/admin/TeamCreatePage.jsx';
@@ -175,6 +181,18 @@ export default function AppRoutes() {
                         <RequireRole allow={['CITIZEN']}>
                             <RootLayout>
                                 <RescueRequestUpdatePage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={CITIZEN_ROUTES.FEEDBACK}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['CITIZEN']}>
+                            <RootLayout>
+                                <FeedbackPage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -512,6 +530,66 @@ export default function AppRoutes() {
                     </RequireAuth>
                 }
             />
+            <Route
+                path={ADMIN_ROUTES.ROLES_PERMISSIONS}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['ADMIN']}>
+                            <RootLayout>
+                                <RolesPermissionsPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={ADMIN_ROUTES.SYSTEM_SETTINGS}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['ADMIN']}>
+                            <RootLayout>
+                                <SystemSettingsPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={ADMIN_ROUTES.NOTIFICATION_TEMPLATES}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['ADMIN']}>
+                            <RootLayout>
+                                <NotificationTemplatesPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={ADMIN_ROUTES.AUDIT_LOGS}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['ADMIN']}>
+                            <RootLayout>
+                                <AuditLogsPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={ADMIN_ROUTES.TEAMS_ASSETS}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['ADMIN']}>
+                            <RootLayout>
+                                <AdminTeamAssetPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
 
             {/* -------- NOT FOUND -------- */}
             <Route
@@ -525,3 +603,6 @@ export default function AppRoutes() {
         </Routes>
     );
 }
+
+
+
