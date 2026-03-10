@@ -5,6 +5,7 @@ import GoogleMap from '../../features/map/components/GoogleMap.jsx';
 import Button from '../../shared/ui/Button.jsx';
 import Badge from '../../shared/ui/Badge.jsx';
 import { getTeams } from '../../features/teams/api.js';
+import { getAssets } from '../../features/assets/api.js';
 import {
     assignTaskGroup,
     changeRescueRequestStatus,
@@ -31,6 +32,8 @@ function pickFirst(...values) {
 }
 
 function toNumberOrNull(value) {
+    if (value === undefined || value === null) return null;
+    if (typeof value === 'string' && value.trim() === '') return null;
     const num = Number(value);
     return Number.isFinite(num) ? num : null;
 }
@@ -85,9 +88,11 @@ export default function RescueAssignPage() {
     const [loadingRequests, setLoadingRequests] = useState(false);
 
     const [teams, setTeams] = useState([]);
+    const [assets, setAssets] = useState([]);
     const [loadingResources, setLoadingResources] = useState(true);
 
     const [selectedTeamId, setSelectedTeamId] = useState('');
+    const [selectedAssetId, setSelectedAssetId] = useState('');
     const [assigning, setAssigning] = useState(false);
     const [overloadOpen, setOverloadOpen] = useState(false);
     const [overloadNote, setOverloadNote] = useState('');
@@ -109,6 +114,30 @@ export default function RescueAssignPage() {
         () => teams.find((t) => String(t.id) === String(selectedTeamId)) || null,
         [teams, selectedTeamId]
     );
+    const availableAssetsForTeam = useMemo(() => {
+        const teamIdNum = toNumberOrNull(selectedTeamId);
+        if (teamIdNum === null) return [];
+
+        return assets.filter((asset) => {
+            const rawAssignedTeamId = toNumberOrNull(
+                pickFirst(asset?.assignedTeamId, asset?.assigned_team_id, asset?.teamId)
+            );
+            const assignedTeamId = rawAssignedTeamId !== null && rawAssignedTeamId > 0
+                ? rawAssignedTeamId
+                : null;
+            const status = String(asset?.status || '').toUpperCase();
+
+            // Có thể dùng lại tài sản đội đang giữ (IN_USE/AVAILABLE),
+            // hoặc lấy tài sản rảnh chưa thuộc đội nào.
+            if (assignedTeamId === teamIdNum) {
+                return status === 'IN_USE' || status === 'AVAILABLE';
+            }
+            if (assignedTeamId === null) {
+                return status === 'AVAILABLE';
+            }
+            return false;
+        });
+    }, [assets, selectedTeamId]);
     const blockedTeamId = toNumberOrNull(selectedRequest?.sourceTeamId);
     const showMergedDetail = mergeMode && selectedRequests.length > 1;
     const mergedDetail = useMemo(() => {
@@ -189,6 +218,7 @@ export default function RescueAssignPage() {
                 setLoadingResources(true);
                 const teamsResp = await getTeams();
                 const taskGroupsResp = await getTaskGroups({ page: 0, size: 500 });
+                const assetsResp = await getAssets();
 
                 const teamsRaw = toArray(teamsResp)
                     .map((t) => ({
@@ -215,13 +245,21 @@ export default function RescueAssignPage() {
                 const teamsList = blockedTeamId
                     ? teamsWithTaskCount.filter((t) => Number(t.id) !== Number(blockedTeamId))
                     : teamsWithTaskCount;
+                const assetsList = toArray(assetsResp)
+                    .map((a) => ({
+                        ...a,
+                        id: pickFirst(a?.id, a?.assetId, a?.vehicleId),
+                    }))
+                    .filter((a) => toNumberOrNull(a?.id) !== null);
 
                 setTeams(teamsList);
+                setAssets(assetsList);
 
                 if (teamsList[0]?.id) setSelectedTeamId(String(teamsList[0].id));
             } catch (e) {
                 console.error('[RescueAssignPage] load teams error', e);
                 setTeams([]);
+                setAssets([]);
             } finally {
                 setLoadingResources(false);
             }
@@ -236,6 +274,14 @@ export default function RescueAssignPage() {
             setSelectedTeamId(next?.id ? String(next.id) : '');
         }
     }, [blockedTeamId, selectedTeamId, teams]);
+
+    useEffect(() => {
+        if (!selectedAssetId) return;
+        const stillValid = availableAssetsForTeam.some((a) => String(a.id) === String(selectedAssetId));
+        if (!stillValid) {
+            setSelectedAssetId('');
+        }
+    }, [availableAssetsForTeam, selectedAssetId]);
 
     useEffect(() => {
         if (!mergeMode && selectedRequestIds.length > 1) {
@@ -260,6 +306,10 @@ export default function RescueAssignPage() {
     const handleAssign = async () => {
         if (!selectedTeamId) {
             window.alert('Vui lòng chọn đội cứu hộ để phân công.');
+            return;
+        }
+        if (!selectedAssetId) {
+            window.alert('Vui lòng chọn tài sản cho đội cứu hộ trước khi phân công.');
             return;
         }
 
@@ -304,7 +354,7 @@ export default function RescueAssignPage() {
             await assignTaskGroup({
                 taskGroupId: targetTaskGroupNum,
                 teamId: teamIdNum,
-                assetId: null,
+                assetId: toNumberOrNull(selectedAssetId),
             });
 
             // Sau phân công, request từ VERIFIED -> ASSIGNED (1 hoặc nhiều yêu cầu khi gộp)
@@ -355,9 +405,9 @@ export default function RescueAssignPage() {
     };
 
     return (
-        <div className="flex h-[calc(100vh-8rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div className="flex flex-1 overflow-hidden">
-                <div className="flex w-80 shrink-0 flex-col border-r border-slate-200">
+        <div className="flex h-[calc(100vh-4.5rem)] min-h-[760px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="flex min-h-0 flex-1 overflow-hidden">
+                <div className="flex w-[22rem] shrink-0 flex-col border-r border-slate-200">
                     <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
                         <h2 className="text-sm font-bold text-slate-900">Đội cứu hộ</h2>
                         <p className="mt-0.5 text-xs text-slate-600">Chọn 1 đội để nhận nhiệm vụ</p>
@@ -402,8 +452,8 @@ export default function RescueAssignPage() {
                     </div>
                 </div>
 
-                <div className="relative flex min-w-0 flex-1 flex-col bg-slate-100">
-                    <div className="absolute left-0 right-0 top-0 z-10 border-b border-slate-200 bg-white/95 px-4 py-2 backdrop-blur">
+                <div className="flex min-w-0 flex-1 flex-col bg-slate-100">
+                    <div className="z-10 border-b border-slate-200 bg-white px-4 py-3">
                         <div className="grid gap-3">
                             <div>
                                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Điều phối / Phân công</p>
@@ -421,6 +471,9 @@ export default function RescueAssignPage() {
                                         Vị trí đội được chọn: {Number(selectedTeam.currentLatitude).toFixed(6)}, {Number(selectedTeam.currentLongitude).toFixed(6)}
                                     </p>
                                 )}
+                                <p className="mt-1 text-xs text-slate-600">
+                                    Tài sản khả dụng cho đội (phương tiện + thiết bị): {availableAssetsForTeam.length}
+                                </p>
                                 {blockedTeamId && (
                                     <p className="mt-1 text-xs font-semibold text-rose-700">
                                         Yêu cầu khẩn cấp: không thể phân công lại cho đội #{blockedTeamId} (đội đã gửi khẩn cấp).
@@ -430,7 +483,7 @@ export default function RescueAssignPage() {
                         </div>
                     </div>
 
-                    <div className="flex-1 pt-20">
+                    <div className="min-h-[460px] flex-1">
                         <GoogleMap
                             center={mapCenter}
                             markerPosition={
@@ -472,7 +525,7 @@ export default function RescueAssignPage() {
                     </div>
                 </div>
 
-                <div className="flex w-80 shrink-0 flex-col border-l border-slate-200">
+                <div className="flex w-[22rem] shrink-0 flex-col border-l border-slate-200">
                     <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
                         <div className="flex items-center justify-between gap-3">
                             <div>
@@ -540,7 +593,39 @@ export default function RescueAssignPage() {
                 </div>
             </div>
 
-            <div className="border-t border-slate-200 bg-white px-4 py-3">
+            <div className="max-h-[34vh] overflow-y-auto border-t border-slate-200 bg-white px-4 py-3">
+                <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                        Chọn tài sản cho đội <span className="text-rose-600">*</span>
+                    </label>
+                    <p className="mt-1 text-xs text-slate-500">
+                        Bao gồm mọi tài sản đã tạo ở trang Manager (cano, xe, thiết bị...). Bắt buộc chọn 1 tài sản khi phân công.
+                    </p>
+                    <select
+                        className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+                        value={selectedAssetId}
+                        onChange={(e) => setSelectedAssetId(e.target.value)}
+                        disabled={!selectedTeamId || loadingResources}
+                    >
+                        <option value="">-- Chọn tài sản --</option>
+                        {availableAssetsForTeam.map((asset) => {
+                            const code = asset?.code || asset?.assetCode || `#${asset.id}`;
+                            const name = asset?.name || asset?.assetName || 'Tài sản';
+                            const status = String(asset?.status || '').toUpperCase();
+                            const type = asset?.assetType || asset?.type || asset?.category || null;
+                            const assignedTeamId = toNumberOrNull(
+                                pickFirst(asset?.assignedTeamId, asset?.assigned_team_id, asset?.teamId)
+                            );
+                            const heldTag = assignedTeamId === toNumberOrNull(selectedTeamId) ? 'đang giữ' : 'rảnh';
+                            return (
+                                <option key={asset.id} value={String(asset.id)}>
+                                    {code} - {name}{type ? ` - ${type}` : ''} ({status || 'N/A'}, {heldTag})
+                                </option>
+                            );
+                        })}
+                    </select>
+                </div>
+
                 <div className="mb-2 flex items-center justify-between">
                     <h4 className="text-sm font-bold text-slate-900">
                         {showMergedDetail ? 'Chi tiết yêu cầu gộp' : 'Chi tiết yêu cầu'}
@@ -640,6 +725,9 @@ export default function RescueAssignPage() {
                     <span className="font-semibold text-slate-700">ĐÃ CHỌN</span>
                     <span className="inline-flex items-center gap-1"><Users className="h-4 w-4" />{selectedTeamId ? '1 đội' : '0 đội'}</span>
                     <span className="inline-flex items-center gap-1"><MapPin className="h-4 w-4" />{selectedRequests.length} yêu cầu VERIFIED</span>
+                    <span className="inline-flex items-center gap-1">
+                        {selectedAssetId ? '1 tài sản' : '0 tài sản'}
+                    </span>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -654,7 +742,7 @@ export default function RescueAssignPage() {
                     >
                         Quá tải
                     </Button>
-                    <Button variant="primary" size="sm" onClick={handleAssign} disabled={assigning || (!taskGroupId && selectedRequests.length === 0)}>
+                    <Button variant="primary" size="sm" onClick={handleAssign} disabled={assigning || !selectedAssetId || (!taskGroupId && selectedRequests.length === 0)}>
                         <CheckCircle2 className="h-4 w-4" />
                         {assigning ? 'Đang phân công...' : 'Phân công nhiệm vụ'}
                     </Button>

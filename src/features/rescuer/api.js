@@ -57,6 +57,10 @@ export async function updateRescuerTeamLocation({ latitude, longitude, locationT
   });
 }
 
+export async function returnRescuerTeamAssets() {
+  return httpClient.post('/rescue/rescuer/assets/return');
+}
+
 // Backward-compatible exports used by existing pages
 export async function updateRescueRequestStatusAsRescuer(id, status, note) {
   return updateRescuerTaskStatus(id, status, note);

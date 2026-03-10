@@ -7,6 +7,7 @@ import Button from '../../shared/ui/Button.jsx';
 import GoogleMap from '../../features/map/components/GoogleMap.jsx';
 import { getTeams } from '../../features/teams/api.js';
 import { listReliefRequests, getInventoryIssue, rejectReliefRequestByManager } from '../../features/relief/api.js';
+import { getAssets } from '../../features/assets/api.js';
 
 function normalizeList(data) {
     if (Array.isArray(data)) return data;
@@ -53,6 +54,7 @@ export default function ReliefTeamManagementPage() {
     const [error, setError] = useState('');
     const [teams, setTeams] = useState([]);
     const [requests, setRequests] = useState([]);
+    const [assets, setAssets] = useState([]);
     const [selectedTeamId, setSelectedTeamId] = useState(preselectTeamId);
     const [showTasksModal, setShowTasksModal] = useState(false);
     const [selectedTaskId, setSelectedTaskId] = useState(null);
@@ -69,12 +71,14 @@ export default function ReliefTeamManagementPage() {
         try {
             setLoading(true);
             setError('');
-            const [teamsResp, requestsResp] = await Promise.all([
+            const [teamsResp, requestsResp, assetsResp] = await Promise.all([
                 getTeams(),
                 listReliefRequests({ page: 0, size: 500 }),
+                getAssets({ page: 0, size: 500 }),
             ]);
             setTeams(normalizeList(teamsResp));
             setRequests(normalizeList(requestsResp));
+            setAssets(normalizeList(assetsResp));
         } catch (e) {
             setError(e?.message || 'Không thể tải dữ liệu quản lý đội cứu trợ');
         } finally {
@@ -91,16 +95,26 @@ export default function ReliefTeamManagementPage() {
             const teamRequests = requests.filter((r) => Number(r?.assignedTeamId) === Number(team?.id));
             const activeCount = teamRequests.filter(isActiveTask).length;
             const doneCount = teamRequests.filter((r) => !isActiveTask(r)).length;
+            const teamAssets = assets.filter((asset) => {
+                const holderTeamId = Number(
+                    asset?.assignedTeamId
+                    ?? asset?.teamId
+                    ?? asset?.currentTeamId
+                    ?? asset?.holderTeamId
+                );
+                return holderTeamId > 0 && holderTeamId === Number(team?.id);
+            });
             return {
                 ...team,
                 coords: extractCoords(team),
                 teamRequests,
+                teamAssets,
                 activeCount,
                 doneCount,
                 totalCount: teamRequests.length,
             };
         });
-    }, [teams, requests]);
+    }, [teams, requests, assets]);
 
     const selectedTeam = useMemo(() => {
         if (selectedTeamId) {
@@ -233,6 +247,15 @@ export default function ReliefTeamManagementPage() {
                                         </button>
                                     </div>
                                     <div className="mt-1 text-xs text-slate-500">Tổng: {team.totalCount} | Hoàn thành: {team.doneCount}</div>
+                                    <div className="mt-1 text-xs text-slate-600">
+                                        Phương tiện giữ: {team.teamAssets.length > 0
+                                            ? team.teamAssets
+                                                .slice(0, 3)
+                                                .map((asset) => asset.code || asset.assetCode || asset.licensePlate || `PT-${asset.id}`)
+                                                .join(', ')
+                                            : 'Chưa có'}
+                                        {team.teamAssets.length > 3 ? ` (+${team.teamAssets.length - 3})` : ''}
+                                    </div>
                                     <div className="mt-1 text-xs text-slate-500">
                                         {team.currentLocationText || team.description || 'Chưa có mô tả vị trí'}
                                     </div>
@@ -255,7 +278,17 @@ export default function ReliefTeamManagementPage() {
                     </Card>
 
                     <Card className="p-4 text-sm text-slate-600">
-                        Bấm vào một đội ở cột bên trái để xem bảng danh sách task của đội đó.
+                        <div>Bấm vào một đội ở cột bên trái để xem bảng danh sách task của đội đó.</div>
+                        {selectedTeam && (
+                            <div className="mt-2 text-xs text-slate-700">
+                                Phương tiện đội đang giữ:{' '}
+                                {selectedTeam.teamAssets.length > 0
+                                    ? selectedTeam.teamAssets
+                                        .map((asset) => asset.code || asset.assetCode || asset.licensePlate || `PT-${asset.id}`)
+                                        .join(', ')
+                                    : 'Chưa có'}
+                            </div>
+                        )}
                     </Card>
                 </div>
             </div>

@@ -6,7 +6,7 @@ import Card from '../../shared/ui/Card.jsx';
 import Button from '../../shared/ui/Button.jsx';
 import Badge from '../../shared/ui/Badge.jsx';
 import MissionMapView from '../../features/map/components/MissionMapView.jsx';
-import { getRescuerDashboard, getRescuerTaskGroupById, updateRescuerTeamLocation } from '../../features/rescuer/api.js';
+import { getRescuerDashboard, getRescuerTaskGroupById, returnRescuerTeamAssets, updateRescuerTeamLocation } from '../../features/rescuer/api.js';
 import { getRescuerReliefRequests } from '../../features/relief/api.js';
 import { RESCUER_ROUTES } from '../../app/routes/route.constants.js';
 
@@ -32,6 +32,16 @@ function normalizeMissionStatus(statusRaw) {
     if (s === 'NEW') return { label: 'Mới phân công', color: 'bg-slate-100 text-slate-700' };
     if (s === 'DONE' || s === 'COMPLETED') return { label: 'Hoàn thành', color: 'bg-green-100 text-green-700' };
     if (s === 'CANCELLED') return { label: 'Đã huỷ', color: 'bg-red-100 text-red-700' };
+    if (!s) return { label: 'Chưa rõ', color: 'bg-slate-100 text-slate-700' };
+    return { label: statusRaw, color: 'bg-slate-100 text-slate-700' };
+}
+
+function normalizeAssetStatus(statusRaw) {
+    const s = String(statusRaw || '').toUpperCase();
+    if (s === 'IN_USE') return { label: 'Đang sử dụng', color: 'bg-amber-100 text-amber-700' };
+    if (s === 'AVAILABLE') return { label: 'Sẵn sàng', color: 'bg-green-100 text-green-700' };
+    if (s === 'MAINTENANCE') return { label: 'Bảo trì', color: 'bg-slate-100 text-slate-700' };
+    if (s === 'BROKEN' || s === 'INACTIVE') return { label: 'Không khả dụng', color: 'bg-red-100 text-red-700' };
     if (!s) return { label: 'Chưa rõ', color: 'bg-slate-100 text-slate-700' };
     return { label: statusRaw, color: 'bg-slate-100 text-slate-700' };
 }
@@ -319,6 +329,18 @@ function normalizeDashboardResponse(raw) {
 
     const activeTaskGroups = Number(pickFirstTruthy(data.activeTaskGroups, data.totalActiveTaskGroups, missions.length));
     const activeAssignments = Number(pickFirstTruthy(data.activeAssignments, data.totalActiveAssignments));
+    const heldAssetsRaw = toArray(pickFirstTruthy(data.heldAssets, data.teamAssets, data.assets));
+    const heldAssets = heldAssetsRaw.map((a) => {
+        const status = normalizeAssetStatus(pickFirstTruthy(a?.status, a?.assetStatus));
+        return {
+            id: pickFirstTruthy(a?.id, a?.assetId, a?.vehicleId) || Math.random().toString(36).slice(2),
+            code: pickFirstTruthy(a?.code, a?.assetCode, a?.vehicleCode) || null,
+            name: pickFirstTruthy(a?.name, a?.assetName, a?.vehicleName) || 'Phương tiện',
+            type: pickFirstTruthy(a?.assetType, a?.type, a?.vehicleType) || null,
+            statusLabel: status.label,
+            statusColor: status.color,
+        };
+    });
 
     return {
         team: {
@@ -335,6 +357,7 @@ function normalizeDashboardResponse(raw) {
             activeTaskGroups: Number.isFinite(activeTaskGroups) ? activeTaskGroups : missions.length,
             activeAssignments: Number.isFinite(activeAssignments) ? activeAssignments : null,
         },
+        heldAssets,
         missions,
     };
 }
@@ -362,6 +385,7 @@ export default function RescuerDashboard() {
     const [reliefRequests, setReliefRequests] = useState([]);
     const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
     const [updatingMyLocation, setUpdatingMyLocation] = useState(false);
+    const [returningAssets, setReturningAssets] = useState(false);
     const mountedRef = useRef(true);
 
     const loadDashboard = useCallback(async () => {
@@ -445,10 +469,12 @@ export default function RescuerDashboard() {
     const membersInfo =
         normalized.team.memberCount !== null ? `Quân số: ${normalized.team.memberCount} thành viên` : 'Quân số: —';
     const missions = normalized.missions;
+    const heldAssets = normalized.heldAssets;
     const activeMissions = useMemo(
         () => missions.filter((m) => ['NEW', 'ASSIGNED', 'IN_PROGRESS'].includes(String(m?.raw?.status || '').toUpperCase())),
         [missions]
     );
+    const canReturnAssets = !loading && activeMissions.length === 0 && heldAssets.length > 0;
 
     const updatedTimeText = useMemo(() => {
         if (!lastUpdatedAt) return '--:--:--';
@@ -489,6 +515,23 @@ export default function RescuerDashboard() {
             { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
         );
     }, [loadDashboard]);
+
+    const handleReturnAssets = useCallback(async () => {
+        if (!canReturnAssets || returningAssets) return;
+        const ok = window.confirm(`Xác nhận trả ${heldAssets.length} tài sản về trạng thái sẵn sàng?`);
+        if (!ok) return;
+        try {
+            setReturningAssets(true);
+            const resp = await returnRescuerTeamAssets();
+            const count = Number(resp?.returnedAssetCount ?? heldAssets.length);
+            window.alert(`Đã trả ${Number.isFinite(count) ? count : heldAssets.length} tài sản.`);
+            await loadDashboard();
+        } catch (e) {
+            window.alert(e?.message || 'Không thể trả tài sản lúc này.');
+        } finally {
+            setReturningAssets(false);
+        }
+    }, [canReturnAssets, heldAssets.length, loadDashboard, returningAssets]);
 
     const newReliefRequests = useMemo(
         () => reliefRequests.filter((r) => {
@@ -536,6 +579,13 @@ export default function RescuerDashboard() {
                                         </>
                                     )}
                                 </span>
+                                <span>•</span>
+                                <span>
+                                    Phương tiện đang giữ:{' '}
+                                    <span className="font-semibold">
+                                        {heldAssets.length}
+                                    </span>
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -574,6 +624,16 @@ export default function RescuerDashboard() {
                         >
                             Làm mới
                         </Button>
+                        {canReturnAssets && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={returningAssets}
+                                onClick={handleReturnAssets}
+                            >
+                                {returningAssets ? 'Đang trả tài sản...' : 'Trả phương tiện / thiết bị'}
+                            </Button>
+                        )}
                     </div>
                 </div>
                 {!!error && (
@@ -604,6 +664,37 @@ export default function RescuerDashboard() {
                             zoom={Number.isFinite(normalized.team.latitude) && Number.isFinite(normalized.team.longitude) ? 15 : 11}
                         />
                     </div>
+                </div>
+
+                <div className="rounded-lg border border-slate-200 bg-white">
+                    <div className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
+                        Phương tiện đội đang giữ ({heldAssets.length})
+                    </div>
+                    {heldAssets.length === 0 ? (
+                        <div className="px-3 py-3 text-xs text-slate-500">
+                            Hiện đội chưa giữ phương tiện nào.
+                        </div>
+                    ) : (
+                        <div className="grid gap-2 p-3 md:grid-cols-2">
+                            {heldAssets.map((asset) => (
+                                <div key={asset.id} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="min-w-0">
+                                            <div className="truncate text-sm font-semibold text-slate-900">
+                                                {asset.name}
+                                            </div>
+                                            <div className="text-xs text-slate-600">
+                                                {asset.code || '—'}{asset.type ? ` • ${asset.type}` : ''}
+                                            </div>
+                                        </div>
+                                        <Badge outline size="sm" className={asset.statusColor + ' text-[10px] font-semibold uppercase'}>
+                                            {asset.statusLabel}
+                                        </Badge>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </Card>
 

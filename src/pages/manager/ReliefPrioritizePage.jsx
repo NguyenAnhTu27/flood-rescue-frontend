@@ -5,6 +5,7 @@ import Card from '../../shared/ui/Card.jsx';
 import Button from '../../shared/ui/Button.jsx';
 import Badge from '../../shared/ui/Badge.jsx';
 import { getInventoryIssue, getRescuerReliefRequests, updateRescuerReliefStatus } from '../../features/relief/api.js';
+import { updateAssetStatus } from '../../features/assets/api.js';
 import GoogleMap from '../../features/map/components/GoogleMap.jsx';
 import { RESCUER_ROUTES } from '../../app/routes/route.constants.js';
 
@@ -110,6 +111,7 @@ export default function ReliefPrioritizePage() {
     const [selectedRequestId, setSelectedRequestId] = useState(null);
     const [savingRequestId, setSavingRequestId] = useState(null);
     const [savingBoardStage, setSavingBoardStage] = useState(false);
+    const [returningAssetId, setReturningAssetId] = useState(null);
     const [boardStage, setBoardStage] = useState(1);
 
     const loadData = async () => {
@@ -144,6 +146,9 @@ export default function ReliefPrioritizePage() {
                 issueById.set(issueId, {
                     code: result.value?.code || `#${issueId}`,
                     lines,
+                    assetId: result.value?.assetId ?? null,
+                    assetCode: result.value?.assetCode || null,
+                    assetName: result.value?.assetName || null,
                 });
             }
 
@@ -156,6 +161,9 @@ export default function ReliefPrioritizePage() {
                 return {
                     ...r,
                     assignedIssueCode: r?.assignedIssueCode || issue.code,
+                    assignedAssetId: r?.assignedAssetId ?? issue.assetId ?? null,
+                    assignedAssetCode: r?.assignedAssetCode || issue.assetCode || null,
+                    assignedAssetName: r?.assignedAssetName || issue.assetName || null,
                     lines: hasLines
                         ? r.lines
                         : issue.lines.map((line) => ({
@@ -358,6 +366,36 @@ export default function ReliefPrioritizePage() {
             next.splice(targetIdx, 0, item);
             return next;
         });
+    };
+
+    const getAssetLabel = (req) => {
+        return req?.assignedAssetCode
+            || req?.assignedAssetName
+            || (req?.assignedAssetId ? `#${req.assignedAssetId}` : '—');
+    };
+
+    const handleReturnAsset = async (req) => {
+        const assetId = Number(req?.assignedAssetId || 0);
+        if (!assetId) {
+            window.alert('Yêu cầu này chưa có phương tiện để trả.');
+            return;
+        }
+        const confirmed = window.confirm(`Xác nhận trả phương tiện ${getAssetLabel(req)} về trạng thái sẵn sàng?`);
+        if (!confirmed) return;
+        try {
+            setReturningAssetId(assetId);
+            try {
+                await updateAssetStatus(assetId, 'AVAILABLE');
+            } catch {
+                await updateAssetStatus(assetId, 'available');
+            }
+            await loadData();
+            window.alert('Đã trả phương tiện thành công.');
+        } catch (e) {
+            window.alert(e?.message || 'Không thể trả phương tiện. Vui lòng thử lại.');
+        } finally {
+            setReturningAssetId(null);
+        }
     };
 
     return (
@@ -574,6 +612,7 @@ export default function ReliefPrioritizePage() {
                                             <th className="px-3 py-3 font-semibold">Mức độ</th>
                                             <th className="px-3 py-3 font-semibold">Số người</th>
                                             <th className="px-3 py-3 font-semibold">Chờ xử lý</th>
+                                            <th className="px-3 py-3 font-semibold">Phương tiện</th>
                                             <th className="px-3 py-3 font-semibold">Bản đồ</th>
                                             <th className="px-3 py-3 text-center font-semibold">Sắp xếp</th>
                                         </tr>
@@ -600,6 +639,22 @@ export default function ReliefPrioritizePage() {
                                                     </td>
                                                     <td className="px-3 py-3 text-slate-700">{req.people}</td>
                                                     <td className="px-3 py-3 text-slate-700">{formatWaiting(req.waiting)}</td>
+                                                    <td className="px-3 py-3 text-slate-700">
+                                                        <div className="flex flex-col gap-1">
+                                                            <span className="text-xs">{getAssetLabel(req)}</span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    void handleReturnAsset(req);
+                                                                }}
+                                                                disabled={!req?.assignedAssetId || Number(returningAssetId) === Number(req?.assignedAssetId)}
+                                                                className="inline-flex w-fit items-center rounded-md border border-emerald-300 px-2 py-1 text-[11px] font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                                                            >
+                                                                {Number(returningAssetId) === Number(req?.assignedAssetId) ? 'Đang trả...' : 'Trả phương tiện'}
+                                                            </button>
+                                                        </div>
+                                                    </td>
                                                     <td className="px-3 py-3 text-slate-700">
                                                         <button
                                                             type="button"

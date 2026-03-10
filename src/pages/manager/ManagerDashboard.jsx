@@ -357,10 +357,16 @@ export default function ManagerDashboard() {
             <div>
                 <div className="mb-4 flex items-center justify-between">
                     <h2 className="text-lg font-semibold text-slate-900">Lối tắt Quản lý</h2>
-                    <Link to={MANAGER_ROUTES.RELIEF_REQUESTS} className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700">
-                        Xem tất cả tính năng
-                        <ChevronRight className="h-4 w-4" />
-                    </Link>
+                    <div className="flex items-center gap-3">
+                        <Link to={MANAGER_ROUTES.ASSETS_MANAGEMENT} className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700">
+                            Quản lý phương tiện
+                            <ChevronRight className="h-4 w-4" />
+                        </Link>
+                        <Link to={MANAGER_ROUTES.RELIEF_REQUESTS} className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700">
+                            Xem tất cả tính năng
+                            <ChevronRight className="h-4 w-4" />
+                        </Link>
+                    </div>
                 </div>
 
                 <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
