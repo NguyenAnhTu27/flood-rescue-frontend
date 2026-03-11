@@ -1,108 +1,86 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { GOOGLE_MAPS_API_KEY } from '../../../app/config/env.js';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import { MAPBOX_ACCESS_TOKEN } from '../../../app/config/env.js';
 
-/**
- * Mission Map View - Read-only map for displaying mission location
- * @param {Object} props
- * @param {Object} props.center - Center position { lat, lng }
- * @param {Object} props.markerPosition - Marker position { lat, lng }
- * @param {number} props.zoom - Map zoom level (default: 15)
- */
+const FALLBACK_STYLE = {
+    version: 8,
+    sources: {
+        osm: {
+            type: 'raster',
+            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            attribution: '© OpenStreetMap contributors',
+        },
+    },
+    layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
+};
+
+function getMapStyle() {
+    if (MAPBOX_ACCESS_TOKEN) return 'mapbox://styles/mapbox/streets-v12';
+    return FALLBACK_STYLE;
+}
+
 export default function MissionMapView({
     center = { lat: 10.8231, lng: 106.6297 },
     markerPosition,
-    zoom = 15
+    zoom = 15,
 }) {
+    const containerRef = useRef(null);
     const mapRef = useRef(null);
-    const [map, setMap] = useState(null);
-    const [marker, setMarker] = useState(null);
+    const markerRef = useRef(null);
     const [isLoaded, setIsLoaded] = useState(false);
+    const target = useMemo(() => markerPosition || center, [center, markerPosition]);
 
-    // Load Google Maps script
     useEffect(() => {
-        if (window.google && window.google.maps) {
-            setIsLoaded(true);
-            return;
-        }
+        if (!containerRef.current || mapRef.current) return;
+        mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN || '';
 
-        const apiKey = GOOGLE_MAPS_API_KEY || import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
-
-        if (!apiKey) {
-            console.warn('Google Maps API key not found');
-        }
-
-        const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geocoding&language=vi&region=VN`;
-        script.async = true;
-        script.defer = true;
-
-        script.onload = () => {
-            setIsLoaded(true);
-        };
-
-        script.onerror = () => {
-            console.error('Failed to load Google Maps script');
-        };
-
-        document.head.appendChild(script);
-    }, []);
-
-    // Initialize map
-    useEffect(() => {
-        if (!isLoaded || !window.google || !mapRef.current) return;
-
-        const mapInstance = new window.google.maps.Map(mapRef.current, {
-            center: markerPosition || center,
-            zoom: zoom,
-            mapTypeControl: false,
-            streetViewControl: false,
-            fullscreenControl: false,
-            zoomControl: false,
-            draggable: false,
-            scrollwheel: false,
-            disableDoubleClickZoom: true,
-            styles: [
-                {
-                    featureType: 'poi',
-                    elementType: 'labels',
-                    stylers: [{ visibility: 'off' }]
-                }
-            ]
+        const map = new mapboxgl.Map({
+            container: containerRef.current,
+            style: getMapStyle(),
+            center: [Number(target.lng), Number(target.lat)],
+            zoom: Number(zoom) || 15,
+            interactive: false,
         });
 
-        setMap(mapInstance);
+        map.on('load', () => setIsLoaded(true));
 
-        // Create marker (not draggable, read-only)
-        const position = markerPosition || center;
-        const markerInstance = new window.google.maps.Marker({
-            position: position,
-            map: mapInstance,
-            draggable: false,
-            animation: window.google.maps.Animation.DROP,
-            title: 'Vị trí nhiệm vụ'
-        });
+        const marker = new mapboxgl.Marker({ draggable: false, color: '#ef4444' })
+            .setLngLat([Number(target.lng), Number(target.lat)])
+            .addTo(map);
 
-        setMarker(markerInstance);
+        mapRef.current = map;
+        markerRef.current = marker;
 
-    }, [isLoaded, center, markerPosition, zoom]);
+        return () => {
+            marker.remove();
+            map.remove();
+            markerRef.current = null;
+            mapRef.current = null;
+            setIsLoaded(false);
+        };
+    }, [target, zoom]);
 
-    // Update marker position when prop changes
     useEffect(() => {
-        if (!map || !marker || !markerPosition) return;
-
-        const position = new window.google.maps.LatLng(markerPosition.lat, markerPosition.lng);
-        marker.setPosition(position);
-        map.panTo(position);
-    }, [markerPosition, map, marker]);
+        const map = mapRef.current;
+        const marker = markerRef.current;
+        if (!map || !marker) return;
+        if (!Number.isFinite(Number(target.lat)) || !Number.isFinite(Number(target.lng))) return;
+        const lng = Number(target.lng);
+        const lat = Number(target.lat);
+        marker.setLngLat([lng, lat]);
+        map.jumpTo({ center: [lng, lat] });
+    }, [target]);
 
     return (
-        <div className="relative w-full h-full">
-            <div ref={mapRef} className="w-full h-full" />
+        <div className="relative h-full w-full">
+            <div ref={containerRef} className="h-full w-full" />
             {!isLoaded && (
                 <div className="absolute inset-0 flex items-center justify-center bg-slate-100">
                     <div className="text-center">
-                        <div className="inline-block h-6 w-6 animate-spin rounded-full border-3 border-solid border-blue-600 border-r-transparent"></div>
-                        <p className="mt-1 text-[10px] text-slate-600">Đang tải...</p>
+                        <div className="inline-block h-6 w-6 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent" />
+                        <p className="mt-1 text-[10px] text-slate-600">Dang tai...</p>
                     </div>
                 </div>
             )}

@@ -16,6 +16,23 @@ import {
 import { AUTH_ROUTES, PUBLIC_ROUTES, CITIZEN_ROUTES } from "../../app/routes/route.constants.js";
 import httpClient from "../../shared/lib/http.js";
 
+const normalizeExternalUrl = (url) => {
+    const value = String(url || "").trim();
+    if (!value || value === "#") return "#";
+    if (value.startsWith("/")) return value;
+    const lower = value.toLowerCase();
+    if (lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("mailto:") || lower.startsWith("tel:")) {
+        return value;
+    }
+    return `https://${value}`;
+};
+
+const resolveFooterLink = (rawUrl, fallbackPath) => {
+    const value = String(rawUrl || "").trim();
+    if (!value || value === "#") return fallbackPath;
+    return normalizeExternalUrl(value);
+};
+
 /** ============ Small UI helpers ============ */
 function Container({ children, className = "" }) {
     return <div className={`mx-auto w-full max-w-[90%] px-2 lg:px-3 ${className}`}>{children}</div>;
@@ -64,11 +81,11 @@ export default function HomePage() {
         footerBrandName: "QUẢN LÝ CỨU HỘ",
         footerDescription: "Hệ thống hỗ trợ cộng đồng trong tình huống thiên tai khẩn cấp. Thông tin được bảo mật và điều phối theo quy định của cơ quan chức năng.",
         footerTermsLabel: "Điều khoản sử dụng",
-        footerTermsUrl: "#",
+        footerTermsUrl: PUBLIC_ROUTES.TERMS_OF_USE,
         footerPrivacyLabel: "Chính sách bảo mật",
-        footerPrivacyUrl: "#",
+        footerPrivacyUrl: PUBLIC_ROUTES.PRIVACY_POLICY,
         footerSupportLabel: "Liên hệ hỗ trợ",
-        footerSupportUrl: "#",
+        footerSupportUrl: PUBLIC_ROUTES.SUPPORT_CONTACT,
         footerSupportEmail: "support@cuuho.gov.vn",
         hotline: "1900-xxxx",
         footerFacebookUrl: "#",
@@ -117,7 +134,7 @@ export default function HomePage() {
                             >
                                 Hướng dẫn
                             </Link>
-                            <Link to="#" className="text-sm font-medium text-slate-700 hover:text-blue-600">
+                            <Link to={PUBLIC_ROUTES.SUPPORT_CONTACT} className="text-sm font-medium text-slate-700 hover:text-blue-600">
                                 Liên hệ
                             </Link>
                         </nav>
@@ -266,17 +283,17 @@ export default function HomePage() {
                                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Liên kết</h4>
                                     <ul className="mt-3 space-y-2 text-sm text-slate-600">
                                         <li>
-                                            <a href={footerSettings.footerTermsUrl || "#"} target="_blank" rel="noreferrer" className="hover:text-blue-600">
+                                            <a href={resolveFooterLink(footerSettings.footerTermsUrl, PUBLIC_ROUTES.TERMS_OF_USE)} target="_blank" rel="noreferrer" className="hover:text-blue-600">
                                                 {footerSettings.footerTermsLabel}
                                             </a>
                                         </li>
                                         <li>
-                                            <a href={footerSettings.footerPrivacyUrl || "#"} target="_blank" rel="noreferrer" className="hover:text-blue-600">
+                                            <a href={resolveFooterLink(footerSettings.footerPrivacyUrl, PUBLIC_ROUTES.PRIVACY_POLICY)} target="_blank" rel="noreferrer" className="hover:text-blue-600">
                                                 {footerSettings.footerPrivacyLabel}
                                             </a>
                                         </li>
                                         <li>
-                                            <a href={footerSettings.footerSupportUrl || "#"} target="_blank" rel="noreferrer" className="hover:text-blue-600">
+                                            <a href={resolveFooterLink(footerSettings.footerSupportUrl, PUBLIC_ROUTES.SUPPORT_CONTACT)} target="_blank" rel="noreferrer" className="hover:text-blue-600">
                                                 {footerSettings.footerSupportLabel}
                                             </a>
                                         </li>
@@ -288,11 +305,15 @@ export default function HomePage() {
                                     <div className="mt-3 space-y-2 text-sm text-slate-600">
                                         <div className="flex items-center gap-2">
                                             <Mail size={16} className="shrink-0 text-slate-500" />
-                                            <span className="break-all">{footerSettings.footerSupportEmail}</span>
+                                            <a href={normalizeExternalUrl(`mailto:${footerSettings.footerSupportEmail || ""}`)} className="break-all hover:text-blue-600">
+                                                {footerSettings.footerSupportEmail}
+                                            </a>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <Phone size={16} className="shrink-0 text-slate-500" />
-                                            <span>{footerSettings.hotline || "1900-xxxx"}</span>
+                                            <a href={normalizeExternalUrl(`tel:${footerSettings.hotline || ""}`)} className="hover:text-blue-600">
+                                                {footerSettings.hotline || "1900-xxxx"}
+                                            </a>
                                         </div>
                                     </div>
                                 </div>
@@ -303,7 +324,7 @@ export default function HomePage() {
                                 <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Kết nối</h4>
                                 <div className="mt-3 flex gap-3 md:justify-end">
                                     <a
-                                        href={footerSettings.footerFacebookUrl || "#"}
+                                        href={normalizeExternalUrl(footerSettings.footerFacebookUrl)}
                                         target="_blank"
                                         rel="noreferrer"
                                         className="rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-50"
@@ -311,7 +332,7 @@ export default function HomePage() {
                                         <Facebook size={16} className="text-slate-600" />
                                     </a>
                                     <a
-                                        href={footerSettings.footerTwitterUrl || "#"}
+                                        href={normalizeExternalUrl(footerSettings.footerTwitterUrl)}
                                         target="_blank"
                                         rel="noreferrer"
                                         className="rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-50"
@@ -319,7 +340,7 @@ export default function HomePage() {
                                         <Twitter size={16} className="text-slate-600" />
                                     </a>
                                     <a
-                                        href={footerSettings.footerYoutubeUrl || "#"}
+                                        href={normalizeExternalUrl(footerSettings.footerYoutubeUrl)}
                                         target="_blank"
                                         rel="noreferrer"
                                         className="rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-50"

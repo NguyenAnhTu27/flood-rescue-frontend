@@ -4,6 +4,11 @@ import { CheckCircle2, Clock, MapPin, Users, AlertTriangle, Info } from 'lucide-
 import { CITIZEN_ROUTES } from '../../app/routes/route.constants.js';
 import Button from '../../shared/ui/Button.jsx';
 import Badge from '../../shared/ui/Badge.jsx';
+import { cancelRescueRequest } from '../../features/citizen/api.js';
+
+function normalizeStatus(s) {
+    return String(s || '').toUpperCase();
+}
 
 export default function RescueDetailRequestPage() {
     const location = useLocation();
@@ -13,30 +18,18 @@ export default function RescueDetailRequestPage() {
     const request = location.state?.request || null;
     const formDraft = location.state?.formDraft || null;
 
-    // Fallback dữ liệu demo nếu người dùng truy cập trực tiếp
-    const demoRequest = {
-        id: 0,
-        code: 'RR-DEMO-0000',
-        addressText: 'Chưa có dữ liệu',
-        affectedPeopleCount: 0,
-        priority: 'MEDIUM',
-        description: 'Bạn vừa truy cập trang này trực tiếp. Hãy tạo một yêu cầu cứu hộ để xem chi tiết đầy đủ.',
-        status: 'PENDING',
-        createdAt: new Date().toISOString(),
-    };
+    const data = request || null;
 
-    const data = request || demoRequest;
-
-    // Prefer values from BE response; fallback to what user filled in the create form
+    // Prefer values from BE response; fallback to draft data from the create form
     const merged = {
         ...data,
-        addressText: data.addressText || formDraft?.address || demoRequest.addressText,
+        addressText: data?.addressText || formDraft?.address || '',
         affectedPeopleCount:
-            data.affectedPeopleCount ??
+            data?.affectedPeopleCount ??
             (formDraft?.peopleCount ? parseInt(formDraft.peopleCount, 10) : undefined) ??
-            demoRequest.affectedPeopleCount,
-        priority: data.priority || formDraft?.level || demoRequest.priority,
-        description: data.description || formDraft?.description || demoRequest.description,
+            0,
+        priority: data?.priority || formDraft?.level || 'MEDIUM',
+        description: data?.description || formDraft?.description || '',
     };
 
     const formatPriority = (priority) => {
@@ -52,46 +45,75 @@ export default function RescueDetailRequestPage() {
 
     const priorityMeta = formatPriority(merged.priority);
 
+    const statusRaw = normalizeStatus(merged?.status);
+    const activeStep = (() => {
+        if (['COMPLETED', 'DONE', 'RESCUED'].includes(statusRaw)) return 4;
+        if (['IN_PROGRESS', 'WORKING', 'PROCESSING', 'ARRIVED', 'ON_SITE', 'AT_SCENE'].includes(statusRaw)) return 3;
+        if (['ASSIGNED', 'VERIFIED', 'CONFIRMED', 'APPROVED'].includes(statusRaw)) return 2;
+        return 1;
+    })();
+
     const steps = [
         {
             id: 1,
             title: 'Yêu cầu đã gửi',
             description: 'Hệ thống đã nhận được yêu cầu cứu hộ từ vị trí của bạn.',
-            timeLabel: 'Vừa xong',
-            status: 'done',
+            timeLabel: activeStep >= 1 ? 'Vừa xong' : 'Đang chờ',
+            status: activeStep > 1 ? 'done' : activeStep === 1 ? 'current' : 'pending',
         },
         {
             id: 2,
             title: 'Đã xác minh',
             description: 'Điều phối viên đang đánh giá mức độ khẩn cấp của yêu cầu.',
-            timeLabel: 'Đang chờ',
-            status: 'current',
+            timeLabel: activeStep >= 2 ? 'Đã xác minh' : 'Đang chờ',
+            status: activeStep > 2 ? 'done' : activeStep === 2 ? 'current' : 'pending',
         },
         {
             id: 3,
             title: 'Đội cứu hộ đang đến',
-            description: 'Đội cứu hộ gần nhất sẽ được điều tới vị trí của bạn.',
-            timeLabel: 'Dự kiến sớm',
-            status: 'pending',
+            description: activeStep >= 3
+                ? 'Đội cứu hộ đang thực hiện quá trình cứu hộ.'
+                : 'Đội cứu hộ gần nhất sẽ được điều tới vị trí của bạn.',
+            timeLabel: activeStep >= 3 ? 'Đang xử lý' : 'Dự kiến sớm',
+            status: activeStep > 3 ? 'done' : activeStep === 3 ? 'current' : 'pending',
         },
         {
             id: 4,
-            title: 'Đã đến hiện trường',
-            description: 'Đội cứu hộ đã có mặt và đang triển khai hỗ trợ.',
-            timeLabel: 'Chờ cập nhật',
-            status: 'pending',
-        },
-        {
-            id: 5,
             title: 'Hoàn thành',
             description: 'Công tác cứu hộ kết thúc an toàn.',
-            timeLabel: 'Chờ xác nhận',
-            status: 'pending',
+            timeLabel: activeStep >= 4 ? 'Hoàn thành' : 'Chờ xác nhận',
+            status: activeStep === 4 ? 'done' : 'pending',
         },
     ];
 
     const handleBackToList = () => {
         navigate('/cong-dan/yeu-cau-cuu-ho');
+    };
+
+    if (!data) {
+        return (
+            <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
+                <h2 className="text-lg font-semibold text-slate-900">Không có dữ liệu yêu cầu</h2>
+                <p className="mt-2 text-sm text-slate-600">
+                    Vui lòng truy cập từ danh sách yêu cầu của bạn để xem chi tiết.
+                </p>
+                <Button type="button" variant="outline" size="sm" onClick={handleBackToList} className="mt-4">
+                    Danh sách yêu cầu của tôi
+                </Button>
+            </div>
+        );
+    }
+
+    const handleCancelRequest = async () => {
+        if (!merged?.id) return;
+        const confirmed = window.confirm('Bạn chắc chắn muốn hủy yêu cầu này?');
+        if (!confirmed) return;
+        try {
+            await cancelRescueRequest(merged.id);
+            navigate(CITIZEN_ROUTES.MY_RESCUE_REQUESTS);
+        } catch (err) {
+            alert(err?.message || 'Không thể hủy yêu cầu');
+        }
     };
 
     return (
@@ -300,6 +322,7 @@ export default function RescueDetailRequestPage() {
                                     type="button"
                                     variant="danger"
                                     size="sm"
+                                    onClick={handleCancelRequest}
                                     className="flex-1"
                                 >
                                     Hủy yêu cầu cứu hộ

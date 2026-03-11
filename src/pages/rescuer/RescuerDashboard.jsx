@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { MapPin, Clock, AlertTriangle, MoreHorizontal, Users as UsersIcon } from 'lucide-react';
+import { MapPin, Clock, AlertTriangle, MoreHorizontal, Users as UsersIcon, Crosshair } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import Card from '../../shared/ui/Card.jsx';
 import Button from '../../shared/ui/Button.jsx';
 import Badge from '../../shared/ui/Badge.jsx';
 import MissionMapView from '../../features/map/components/MissionMapView.jsx';
-import { getRescuerDashboard, getRescuerTaskGroupById } from '../../features/rescuer/api.js';
+import { getRescuerDashboard, getRescuerTaskGroupById, returnRescuerTeamAssets, updateRescuerTeamLocation } from '../../features/rescuer/api.js';
+import { getRescuerReliefRequests } from '../../features/relief/api.js';
 import { RESCUER_ROUTES } from '../../app/routes/route.constants.js';
 
 function normalizeTeamStatus(statusRaw) {
@@ -31,6 +32,16 @@ function normalizeMissionStatus(statusRaw) {
     if (s === 'NEW') return { label: 'Mới phân công', color: 'bg-slate-100 text-slate-700' };
     if (s === 'DONE' || s === 'COMPLETED') return { label: 'Hoàn thành', color: 'bg-green-100 text-green-700' };
     if (s === 'CANCELLED') return { label: 'Đã huỷ', color: 'bg-red-100 text-red-700' };
+    if (!s) return { label: 'Chưa rõ', color: 'bg-slate-100 text-slate-700' };
+    return { label: statusRaw, color: 'bg-slate-100 text-slate-700' };
+}
+
+function normalizeAssetStatus(statusRaw) {
+    const s = String(statusRaw || '').toUpperCase();
+    if (s === 'IN_USE') return { label: 'Đang sử dụng', color: 'bg-amber-100 text-amber-700' };
+    if (s === 'AVAILABLE') return { label: 'Sẵn sàng', color: 'bg-green-100 text-green-700' };
+    if (s === 'MAINTENANCE') return { label: 'Bảo trì', color: 'bg-slate-100 text-slate-700' };
+    if (s === 'BROKEN' || s === 'INACTIVE') return { label: 'Không khả dụng', color: 'bg-red-100 text-red-700' };
     if (!s) return { label: 'Chưa rõ', color: 'bg-slate-100 text-slate-700' };
     return { label: statusRaw, color: 'bg-slate-100 text-slate-700' };
 }
@@ -238,13 +249,13 @@ function normalizeDashboardResponse(raw) {
 
         // Mã nhiệm vụ: chỉ lấy từ dữ liệu thực BE (không tự generate cứng)
         const codeFromBe = pickFirstTruthy(
+            tg?.code,
+            tg?.taskGroupCode,
+            tg?.name,
             rr0?.code,
             rr0?.requestCode,
             rr0?.rescueRequestCode,
-            rr0?.citizenRequestCode,
-            tg?.code,
-            tg?.taskGroupCode,
-            tg?.name
+            rr0?.citizenRequestCode
         );
         const code = codeFromBe ? String(codeFromBe) : '';
 
@@ -318,6 +329,18 @@ function normalizeDashboardResponse(raw) {
 
     const activeTaskGroups = Number(pickFirstTruthy(data.activeTaskGroups, data.totalActiveTaskGroups, missions.length));
     const activeAssignments = Number(pickFirstTruthy(data.activeAssignments, data.totalActiveAssignments));
+    const heldAssetsRaw = toArray(pickFirstTruthy(data.heldAssets, data.teamAssets, data.assets));
+    const heldAssets = heldAssetsRaw.map((a) => {
+        const status = normalizeAssetStatus(pickFirstTruthy(a?.status, a?.assetStatus));
+        return {
+            id: pickFirstTruthy(a?.id, a?.assetId, a?.vehicleId) || Math.random().toString(36).slice(2),
+            code: pickFirstTruthy(a?.code, a?.assetCode, a?.vehicleCode) || null,
+            name: pickFirstTruthy(a?.name, a?.assetName, a?.vehicleName) || 'Phương tiện',
+            type: pickFirstTruthy(a?.assetType, a?.type, a?.vehicleType) || null,
+            statusLabel: status.label,
+            statusColor: status.color,
+        };
+    });
 
     return {
         team: {
@@ -325,13 +348,33 @@ function normalizeDashboardResponse(raw) {
             area: area ? String(area) : null,
             memberCount: memberCount !== null ? Number(memberCount) : null,
             status: teamStatus,
+            latitude: toNumberOrNull(pickFirstTruthy(team?.currentLatitude, data.teamLatitude)),
+            longitude: toNumberOrNull(pickFirstTruthy(team?.currentLongitude, data.teamLongitude)),
+            locationText: pickFirstTruthy(team?.currentLocationText, data.teamLocationText) || null,
+            locationUpdatedAt: pickFirstTruthy(team?.currentLocationUpdatedAt, data.teamLocationUpdatedAt) || null,
         },
         stats: {
             activeTaskGroups: Number.isFinite(activeTaskGroups) ? activeTaskGroups : missions.length,
             activeAssignments: Number.isFinite(activeAssignments) ? activeAssignments : null,
         },
+        heldAssets,
         missions,
     };
+}
+
+function toList(data) {
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.content)) return data.content;
+    if (Array.isArray(data?.items)) return data.items;
+    if (Array.isArray(data?.data)) return data.data;
+    return [];
+}
+
+function fmtDateTime(value) {
+    if (!value) return '—';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '—';
+    return d.toLocaleString('vi-VN');
 }
 
 export default function RescuerDashboard() {
@@ -339,7 +382,10 @@ export default function RescuerDashboard() {
     const [rawDashboard, setRawDashboard] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [reliefRequests, setReliefRequests] = useState([]);
     const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
+    const [updatingMyLocation, setUpdatingMyLocation] = useState(false);
+    const [returningAssets, setReturningAssets] = useState(false);
     const mountedRef = useRef(true);
 
     const loadDashboard = useCallback(async () => {
@@ -349,7 +395,10 @@ export default function RescuerDashboard() {
                 setError('');
             }
 
-            const resp = await getRescuerDashboard();
+            const [resp, reliefResp] = await Promise.all([
+                getRescuerDashboard(),
+                getRescuerReliefRequests({ page: 0, size: 100 }),
+            ]);
             if (!mountedRef.current) return;
 
             // Enrich: dashboard list often has requests/assignments null -> fetch detail by id
@@ -390,6 +439,7 @@ export default function RescuerDashboard() {
             }
 
             setRawDashboard(enrichedResp);
+            setReliefRequests(toList(reliefResp));
             setLastUpdatedAt(new Date());
         } catch (e) {
             if (!mountedRef.current) return;
@@ -419,11 +469,78 @@ export default function RescuerDashboard() {
     const membersInfo =
         normalized.team.memberCount !== null ? `Quân số: ${normalized.team.memberCount} thành viên` : 'Quân số: —';
     const missions = normalized.missions;
+    const heldAssets = normalized.heldAssets;
+    const activeMissions = useMemo(
+        () => missions.filter((m) => ['NEW', 'ASSIGNED', 'IN_PROGRESS'].includes(String(m?.raw?.status || '').toUpperCase())),
+        [missions]
+    );
+    const canReturnAssets = !loading && activeMissions.length === 0 && heldAssets.length > 0;
 
     const updatedTimeText = useMemo(() => {
         if (!lastUpdatedAt) return '--:--:--';
         return lastUpdatedAt.toLocaleTimeString('vi-VN', { hour12: false });
     }, [lastUpdatedAt]);
+
+    const teamGpsText = useMemo(() => {
+        if (!Number.isFinite(normalized.team.latitude) || !Number.isFinite(normalized.team.longitude)) {
+            return 'Chưa có vị trí đội';
+        }
+        return `${normalized.team.latitude.toFixed(6)}, ${normalized.team.longitude.toFixed(6)}`;
+    }, [normalized.team.latitude, normalized.team.longitude]);
+
+    const handleUpdateMyGps = useCallback(() => {
+        if (!navigator.geolocation) {
+            window.alert('Trình duyệt không hỗ trợ GPS.');
+            return;
+        }
+        setUpdatingMyLocation(true);
+        navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+                try {
+                    const latitude = pos.coords.latitude;
+                    const longitude = pos.coords.longitude;
+                    const locationText = `GPS ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+                    await updateRescuerTeamLocation({ latitude, longitude, locationText });
+                    await loadDashboard();
+                } catch (e) {
+                    window.alert(e?.message || 'Không thể cập nhật vị trí đội cứu hộ.');
+                } finally {
+                    setUpdatingMyLocation(false);
+                }
+            },
+            (error) => {
+                setUpdatingMyLocation(false);
+                window.alert(error?.message || 'Không lấy được vị trí GPS.');
+            },
+            { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+        );
+    }, [loadDashboard]);
+
+    const handleReturnAssets = useCallback(async () => {
+        if (!canReturnAssets || returningAssets) return;
+        const ok = window.confirm(`Xác nhận trả ${heldAssets.length} tài sản về trạng thái sẵn sàng?`);
+        if (!ok) return;
+        try {
+            setReturningAssets(true);
+            const resp = await returnRescuerTeamAssets();
+            const count = Number(resp?.returnedAssetCount ?? heldAssets.length);
+            window.alert(`Đã trả ${Number.isFinite(count) ? count : heldAssets.length} tài sản.`);
+            await loadDashboard();
+        } catch (e) {
+            window.alert(e?.message || 'Không thể trả tài sản lúc này.');
+        } finally {
+            setReturningAssets(false);
+        }
+    }, [canReturnAssets, heldAssets.length, loadDashboard, returningAssets]);
+
+    const newReliefRequests = useMemo(
+        () => reliefRequests.filter((r) => {
+            const s = String(r?.deliveryStatus || '').toUpperCase();
+            return s === 'MANAGER_APPROVED' || s === 'REQUESTED' || s === '';
+        }),
+        [reliefRequests]
+    );
+
 
     return (
         <div className="flex flex-col gap-4 pb-6">
@@ -462,6 +579,13 @@ export default function RescuerDashboard() {
                                         </>
                                     )}
                                 </span>
+                                <span>•</span>
+                                <span>
+                                    Phương tiện đang giữ:{' '}
+                                    <span className="font-semibold">
+                                        {heldAssets.length}
+                                    </span>
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -470,36 +594,24 @@ export default function RescuerDashboard() {
                         <Button
                             variant="secondary"
                             size="sm"
-                            disabled={loading || missions.length === 0}
+                            disabled={loading || updatingMyLocation}
+                            onClick={handleUpdateMyGps}
+                        >
+                            <Crosshair className="h-4 w-4" />
+                            {updatingMyLocation ? 'Đang lấy GPS...' : 'Lấy vị trí của tôi'}
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            disabled={loading || activeMissions.length === 0}
                             onClick={() => {
-                                // Open update-status page for the first active mission by default
-                                const mission = missions[0] || null;
-                                const raw = mission?.raw || {};
-                                const rr0 =
-                                    (Array.isArray(raw?.requests) && raw.requests[0]) ||
-                                    (Array.isArray(raw?.rescueRequests) && raw.rescueRequests[0]) ||
-                                    null;
-                                const requestId =
-                                    rr0?.id ||
-                                    (Array.isArray(raw?.rescueRequestIds) ? raw.rescueRequestIds[0] : null) ||
-                                    (Array.isArray(raw?.requestIds) ? raw.requestIds[0] : null) ||
-                                    null;
-                                navigate(RESCUER_ROUTES.UPDATE_STATUS, {
-                                    state: {
-                                        mission,
-                                        requestId,
-                                        code: mission?.code,
-                                        status: mission?.raw?.status || mission?.statusLabel,
-                                        statusLabel: mission?.statusLabel,
-                                        reportTitle: 'Báo cáo: Cứu hộ Quận 1',
-                                        leaderName: normalized?.team?.name || 'Đội cứu hộ',
-                                        timeline: mission?.raw?.timeline || [],
-                                        pendingReports: 0,
-                                    },
-                                });
+                                const mission = activeMissions[0] || null;
+                                const missionId = mission?.raw?.id || mission?.id;
+                                if (!missionId) return;
+                                navigate(RESCUER_ROUTES.ASSIGNMENT_DETAIL.replace(':id', String(missionId)));
                             }}
                         >
-                            Cập nhật trạng thái
+                            Mở nhiệm vụ gần nhất
                         </Button>
                         <Button
                             variant="primary"
@@ -512,6 +624,16 @@ export default function RescuerDashboard() {
                         >
                             Làm mới
                         </Button>
+                        {canReturnAssets && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={returningAssets}
+                                onClick={handleReturnAssets}
+                            >
+                                {returningAssets ? 'Đang trả tài sản...' : 'Trả phương tiện / thiết bị'}
+                            </Button>
+                        )}
                     </div>
                 </div>
                 {!!error && (
@@ -519,6 +641,61 @@ export default function RescuerDashboard() {
                         {error}
                     </div>
                 )}
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                    Vị trí đội hiện tại: <span className="font-mono">{teamGpsText}</span>
+                    {normalized.team.locationText ? ` • ${normalized.team.locationText}` : ''}
+                </div>
+                <div className="overflow-hidden rounded-lg border border-slate-200">
+                    <div className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
+                        Bản đồ vị trí đội cứu hộ
+                    </div>
+                    <div className="h-48">
+                        <MissionMapView
+                            center={
+                                Number.isFinite(normalized.team.latitude) && Number.isFinite(normalized.team.longitude)
+                                    ? { lat: normalized.team.latitude, lng: normalized.team.longitude }
+                                    : { lat: 10.8231, lng: 106.6297 }
+                            }
+                            markerPosition={
+                                Number.isFinite(normalized.team.latitude) && Number.isFinite(normalized.team.longitude)
+                                    ? { lat: normalized.team.latitude, lng: normalized.team.longitude }
+                                    : undefined
+                            }
+                            zoom={Number.isFinite(normalized.team.latitude) && Number.isFinite(normalized.team.longitude) ? 15 : 11}
+                        />
+                    </div>
+                </div>
+
+                <div className="rounded-lg border border-slate-200 bg-white">
+                    <div className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
+                        Phương tiện đội đang giữ ({heldAssets.length})
+                    </div>
+                    {heldAssets.length === 0 ? (
+                        <div className="px-3 py-3 text-xs text-slate-500">
+                            Hiện đội chưa giữ phương tiện nào.
+                        </div>
+                    ) : (
+                        <div className="grid gap-2 p-3 md:grid-cols-2">
+                            {heldAssets.map((asset) => (
+                                <div key={asset.id} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="min-w-0">
+                                            <div className="truncate text-sm font-semibold text-slate-900">
+                                                {asset.name}
+                                            </div>
+                                            <div className="text-xs text-slate-600">
+                                                {asset.code || '—'}{asset.type ? ` • ${asset.type}` : ''}
+                                            </div>
+                                        </div>
+                                        <Badge outline size="sm" className={asset.statusColor + ' text-[10px] font-semibold uppercase'}>
+                                            {asset.statusLabel}
+                                        </Badge>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </Card>
 
             {/* Missions list */}
@@ -546,12 +723,12 @@ export default function RescuerDashboard() {
                         <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 md:col-span-3">
                             Đang tải danh sách nhiệm vụ...
                         </div>
-                    ) : missions.length === 0 ? (
+                    ) : activeMissions.length === 0 ? (
                         <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 md:col-span-3">
                             Hiện tại chưa có nhiệm vụ nào được phân công cho đội.
                         </div>
                     ) : (
-                        missions.map((mission) => (
+                        activeMissions.map((mission) => (
                             <div
                                 key={mission.id}
                                 className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-50/60 shadow-sm"
@@ -626,11 +803,29 @@ export default function RescuerDashboard() {
                                     </div>
 
                                     <div className="mt-2 flex items-center justify-between gap-2">
-                                        <Button variant="primary" size="sm" className="flex-1 justify-center">
+                                        <Button
+                                            variant="primary"
+                                            size="sm"
+                                            className="flex-1 justify-center"
+                                            onClick={() => {
+                                                const missionId = mission?.raw?.id || mission?.id;
+                                                if (!missionId) return;
+                                                const path = RESCUER_ROUTES.ASSIGNMENT_DETAIL.replace(':id', String(missionId));
+                                                navigate(path, { state: { mission: mission?.raw || mission } });
+                                            }}
+                                        >
                                             Xem chi tiết
                                         </Button>
-                                        <Button variant="secondary" size="sm">
-                                            Báo cáo nhanh
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => {
+                                                const missionId = mission?.raw?.id || mission?.id;
+                                                if (!missionId) return;
+                                                navigate(RESCUER_ROUTES.ASSIGNMENT_DETAIL.replace(':id', String(missionId)));
+                                            }}
+                                        >
+                                            Cập nhật trạng thái
                                         </Button>
                                     </div>
                                 </div>
@@ -645,15 +840,83 @@ export default function RescuerDashboard() {
                         Cập nhật lúc <span className="font-mono">{updatedTimeText}</span> · Hệ thống sẽ tự động hiển thị lệnh mới
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        <Button variant="secondary" size="sm">
-                            Báo cáo nhanh
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => {
+                                const mission = activeMissions[0] || null;
+                                const missionId = mission?.raw?.id || mission?.id;
+                                if (!missionId) return;
+                                navigate(RESCUER_ROUTES.ASSIGNMENT_DETAIL.replace(':id', String(missionId)));
+                            }}
+                        >
+                            Cập nhật trạng thái
                         </Button>
-                        <Button variant="primary" size="sm">
-                            Tạo yêu cầu mới
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => navigate(RESCUER_ROUTES.MY_ASSIGNMENTS)}
+                        >
+                            Xem tất cả nhiệm vụ
                         </Button>
                     </div>
                 </div>
             </Card>
+
+            {/* Relief requests assigned to rescuer team */}
+            <Card className="px-5 py-4">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                    <div>
+                        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            Yêu cầu cứu trợ mới
+                        </div>
+                        <div className="mt-0.5 text-[11px] text-slate-500">
+                            Các yêu cầu vừa được giao cho đội và cần đưa vào kế hoạch sắp xếp.
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Badge variant="primary" size="sm">{newReliefRequests.length} mới</Badge>
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => navigate(RESCUER_ROUTES.RELIEF_PRIORITIZE)}
+                        >
+                            Mở bảng sắp xếp
+                        </Button>
+                    </div>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                    {loading ? (
+                        <div className="p-4 text-sm text-slate-500">Đang tải yêu cầu mới...</div>
+                    ) : newReliefRequests.length === 0 ? (
+                        <div className="p-4 text-sm text-slate-500">Không có yêu cầu mới.</div>
+                    ) : (
+                        <table className="w-full min-w-[760px]">
+                            <thead className="bg-slate-50">
+                                <tr>
+                                    <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-slate-500">Mã yêu cầu</th>
+                                    <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-slate-500">Khu vực</th>
+                                    <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-slate-500">Mức độ</th>
+                                    <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-slate-500">Cập nhật</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {newReliefRequests.map((r) => (
+                                    <tr key={r.id} className="border-t border-slate-100">
+                                        <td className="px-3 py-2 text-sm font-semibold text-slate-900">{r.code || `#${r.id}`}</td>
+                                        <td className="px-3 py-2 text-sm text-slate-700">{r.targetArea || r.citizenAddressText || '—'}</td>
+                                        <td className="px-3 py-2 text-sm text-slate-700">{r.priority || '—'}</td>
+                                        <td className="px-3 py-2 text-sm text-slate-600">{fmtDateTime(r.updatedAt || r.createdAt)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            </Card>
+
         </div>
     );
 }

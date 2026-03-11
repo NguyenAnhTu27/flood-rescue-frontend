@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Bell, Settings, ShieldCheck, Users, Boxes, ScrollText, FileText, ArrowRight } from "lucide-react";
+import { Settings, Users, ScrollText, ArrowRight } from "lucide-react";
 import { ADMIN_ROUTES } from "../../app/routes/route.constants.js";
 
 export default function AdminDashboard() {
@@ -47,24 +47,6 @@ export default function AdminDashboard() {
         icon: Users,
       },
       {
-        title: "Vai trò & Phân quyền",
-        description: "Thiết lập nhóm quyền và kiểm soát truy cập hệ thống.",
-        to: ADMIN_ROUTES.ROLES_PERMISSIONS,
-        icon: ShieldCheck,
-      },
-      {
-        title: "Danh mục hệ thống",
-        description: "Cấu hình các danh mục dữ liệu nền (tỉnh thành, đơn vị...).",
-        to: ADMIN_ROUTES.SYSTEM_CATALOG,
-        icon: Boxes,
-      },
-      {
-        title: "Mẫu thông báo",
-        description: "Quản lý các nội dung thông báo đẩy và email cảnh báo.",
-        to: ADMIN_ROUTES.NOTIFICATION_TEMPLATES,
-        icon: Bell,
-      },
-      {
         title: "Cấu hình hệ thống",
         description: "Cài đặt tham số vận hành và tham số kỹ thuật.",
         to: ADMIN_ROUTES.SYSTEM_SETTINGS,
@@ -86,7 +68,7 @@ export default function AdminDashboard() {
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div>
             <h1 className="text-5xl font-black tracking-tight text-slate-900">Quản trị hệ thống</h1>
-            <p className="mt-3 text-2xl text-slate-600">Quản lý người dùng, phân quyền, cấu hình và dữ liệu nền</p>
+            <p className="mt-3 text-2xl text-slate-600">Quản lý người dùng, đội cứu hộ, cấu hình và vận hành hệ thống</p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-right shadow-sm">
             <p className="text-xs uppercase tracking-wide text-slate-500">System Administrator</p>
@@ -135,14 +117,6 @@ export default function AdminDashboard() {
         })}
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5">
-        <div className="flex items-center gap-2 text-slate-700">
-          <FileText size={18} />
-          <p className="text-sm">
-            Tất cả module quản trị đã được kết nối API `/api/admin/**`; thao tác trên UI sẽ ghi nhận vào backend.
-          </p>
-        </div>
-      </section>
     </div>
   );
 }

@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import httpClient from "../../shared/lib/http.js";
+import { ADMIN_ROUTES } from "../../app/routes/route.constants.js";
 
 const DEFAULT_SETTINGS = {
   rescueSlaMinutes: 30,
@@ -12,11 +15,11 @@ const DEFAULT_SETTINGS = {
   footerDescription:
     "Hệ thống hỗ trợ cộng đồng trong tình huống thiên tai khẩn cấp. Thông tin được bảo mật và điều phối theo quy định của cơ quan chức năng.",
   footerTermsLabel: "Điều khoản sử dụng",
-  footerTermsUrl: "#",
+  footerTermsUrl: "/dieu-khoan-su-dung",
   footerPrivacyLabel: "Chính sách bảo mật",
-  footerPrivacyUrl: "#",
+  footerPrivacyUrl: "/chinh-sach-bao-mat",
   footerSupportLabel: "Liên hệ hỗ trợ",
-  footerSupportUrl: "#",
+  footerSupportUrl: "/lien-he-ho-tro",
   footerSupportEmail: "support@cuuho.gov.vn",
   footerFacebookUrl: "#",
   footerTwitterUrl: "#",
@@ -26,30 +29,15 @@ const DEFAULT_SETTINGS = {
 };
 
 export default function SystemSettingsPage() {
-  const API = "http://localhost:8080/api/admin";
-  const token = localStorage.getItem("token");
-
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [message, setMessage] = useState("");
 
   const update = (key, value) => setSettings((prev) => ({ ...prev, [key]: value }));
 
-  const parseResponse = async (res) => {
-    const contentType = res.headers.get("content-type") || "";
-    const data = contentType.includes("application/json") ? await res.json() : await res.text();
-    if (!res.ok) {
-      throw new Error(typeof data === "string" ? data : data?.message || "Request failed");
-    }
-    return data;
-  };
-
   const loadSettings = async () => {
     setMessage("");
     try {
-      const res = await fetch(`${API}/system-settings`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await parseResponse(res);
+      const data = await httpClient.get("/admin/system-settings");
       const values = data?.values || {};
       setSettings({
         rescueSlaMinutes: Number(values.rescueSlaMinutes ?? DEFAULT_SETTINGS.rescueSlaMinutes),
@@ -85,19 +73,12 @@ export default function SystemSettingsPage() {
   const save = async () => {
     setMessage("");
     try {
-      const res = await fetch(`${API}/system-settings`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(settings),
-      });
-      const data = await parseResponse(res);
-      setMessage(typeof data === "string" ? data : "Đã lưu cấu hình");
+      const data = await httpClient.put("/admin/system-settings", settings);
+      setMessage(data?.message || "Đã lưu cấu hình");
+      window.dispatchEvent(new Event("runtime-settings-updated"));
       await loadSettings();
     } catch (e) {
-      setMessage(e.message);
+      setMessage(e?.message || "Lưu cấu hình thất bại");
     }
   };
 
@@ -301,6 +282,12 @@ export default function SystemSettingsPage() {
           <button onClick={save} className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white">
             Lưu cấu hình
           </button>
+          <Link
+            to={ADMIN_ROUTES.CONTENT_PAGES}
+            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Đi tới Nội dung trang
+          </Link>
           {message && <p className="text-sm text-emerald-600">{message}</p>}
         </div>
       </section>
