@@ -3,7 +3,7 @@ import { Plus, Shield, Package, AlertTriangle, PhoneCall, Eye, CheckCircle2, Clo
 import { CITIZEN_ROUTES } from "../../app/routes/route.constants.js";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { getMyRescueRequests } from "../../features/citizen/api.js";
-import GoogleMap from "../../features/map/components/GoogleMap.jsx";
+import GoogleMap from "../../features/map/components/MapBox.jsx";
 import Button from "../../shared/ui/Button.jsx";
 
 export default function CitizenDashboard() {

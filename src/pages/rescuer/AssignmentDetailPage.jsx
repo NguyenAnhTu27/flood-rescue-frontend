@@ -249,7 +249,10 @@ export default function AssignmentDetailPage() {
                     </div>
 
                     <div className="space-y-2">
-                        <button className="flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-100">
+                        <button
+                            onClick={() => navigate(RESCUER_ROUTES.MISSION_MAP.replace(':id', id))}
+                            className="flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
+                        >
                             <Navigation className="h-4 w-4" />
                             Mở bản đồ theo dõi
                         </button>
@@ -264,7 +267,10 @@ export default function AssignmentDetailPage() {
                             <Play className="h-4 w-4" />
                             {isMoving ? 'Đang di chuyển' : 'Bắt đầu di chuyển'}
                         </button>
-                        <button className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                        <button
+                            onClick={() => navigate(RESCUER_ROUTES.FIELD_UPDATE.replace(':id', id))}
+                            className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                        >
                             <RefreshCw className="h-4 w-4" />
                             Cập nhật hiện trường
                         </button>

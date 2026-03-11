@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Environment configuration
  * Access via: import { API_BASE_URL, FILE_BASE_URL } from '@/app/config/env.js'
  */
@@ -9,11 +9,7 @@ export const API_BASE_URL =
 export const APP_NAME = import.meta.env.VITE_APP_NAME || 'Hệ thống Cứu hộ';
 export const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
 
-// Google Maps API Key (giữ để tương thích cũ, sẽ dần thay bằng Mapbox)
-export const GOOGLE_MAPS_API_KEY =
-  import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
-
-// Mapbox configuration
+// Mapbox configuration — token phải đặt trong file .env (VITE_MAPBOX_ACCESS_TOKEN=...)
 export const MAPBOX_ACCESS_TOKEN =
   import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
 
