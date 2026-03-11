@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    MapPin,
     Crosshair,
     AlertTriangle,
     ChevronRight,
@@ -10,14 +9,14 @@ import {
     CheckCircle2,
 } from 'lucide-react';
 import { CITIZEN_ROUTES } from '../../app/routes/route.constants.js';
-import GoogleMap from '../../features/map/components/MapBox.jsx';
-import { MAPBOX_ACCESS_TOKEN } from '../../app/config/env.js';
+import GoogleMap from '../../features/map/components/GoogleMap.jsx';
 import { createRescueRequest, uploadRescueAttachments } from '../../features/rescue/api.js';
 import PrioritySelector from '../../features/rescue/components/PrioritySelector.jsx';
 import AttachmentGallery from '../../features/rescue/components/AttachmentGallery.jsx';
 import Button from '../../shared/ui/Button.jsx';
 import Input from '../../shared/ui/Input.jsx';
 import Textarea from '../../shared/ui/Textarea.jsx';
+import { reverseGeocodeAddress as reverseGeocodeAddressByMap } from '../../features/map/lib/geocoding.js';
 
 const STEPS = [
     { id: 1, label: 'Vị trí cứu hộ' },
@@ -31,7 +30,7 @@ export default function RescueRequestCreatePage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [form, setForm] = useState({
         address: '',
-        ward: '',
+        locationDescription: '',
         description: '',
         peopleCount: '',
         level: 'MEDIUM',
@@ -43,6 +42,10 @@ export default function RescueRequestCreatePage() {
     const [mapCenter, setMapCenter] = useState({ lat: 10.8231, lng: 106.6297 }); // Default: Ho Chi Minh City
     const [markerPosition, setMarkerPosition] = useState(null);
     const [isLoadingGps, setIsLoadingGps] = useState(false);
+    const [gpsError, setGpsError] = useState('');
+
+    const formatGpsFallbackAddress = (lat, lng) =>
+        `Vị trí GPS: ${Number(lat).toFixed(6)}, ${Number(lng).toFixed(6)}`;
 
     const handleChange = (field) => (e) => {
         setForm((prev) => ({
@@ -62,68 +65,40 @@ export default function RescueRequestCreatePage() {
         }));
     };
 
-    // Parse full address into 2 fields: address + ward/area
-    const splitAddressFields = (fullAddress = '') => {
-        const addressParts = fullAddress.split(',').map((part) => part.trim()).filter(Boolean);
-
-        // Swap mapping: first part -> ward, remaining parts -> detailed address
-        const firstPart = addressParts[0] || '';
-        const remaining = addressParts.slice(1).join(', ');
-
-        return {
-            address: remaining || fullAddress || '',
-            ward: firstPart,
-        };
-    };
-
-    // Helper function to reverse geocode coordinates to address via Mapbox
+    // Helper function to reverse geocode coordinates to address
     const reverseGeocodeAddress = async (lat, lng) => {
-        if (!MAPBOX_ACCESS_TOKEN) {
-            console.warn('Mapbox access token not found, cannot geocode');
-            return null;
-        }
+        const fallbackAddress = formatGpsFallbackAddress(lat, lng);
 
         try {
-            const res = await fetch(
-                `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_ACCESS_TOKEN}&language=vi&limit=1`,
-            );
-            const data = await res.json();
-            const feature = data.features?.[0];
-
-            if (feature) {
-                const fullAddress = feature.place_name;
-                const parsed = splitAddressFields(fullAddress);
+            const address = await reverseGeocodeAddressByMap(lat, lng);
+            if (address) {
                 setForm((prev) => ({
                     ...prev,
-                    address: parsed.address,
-                    ward: parsed.ward,
+                    address,
                 }));
-                console.log('[Geocoding Success]', {
-                    lat,
-                    lng,
-                    fullAddress,
-                    addressField: parsed.address,
-                    wardField: parsed.ward,
-                });
-
-                return fullAddress;
+                return address;
             }
-
-            return null;
         } catch (error) {
             console.error('Reverse geocoding error:', error);
-            return null;
         }
+
+        setForm((prev) => ({
+            ...prev,
+            address: prev.address || fallbackAddress,
+        }));
+        return fallbackAddress;
     };
 
     // Get user's current location on mount
     useEffect(() => {
         if (navigator.geolocation) {
             setIsLoadingGps(true);
+            setGpsError('');
             navigator.geolocation.getCurrentPosition(
                 async (position) => {
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
+                    const fallbackAddress = formatGpsFallbackAddress(lat, lng);
 
                     setMapCenter({ lat, lng });
                     setMarkerPosition({ lat, lng });
@@ -131,15 +106,17 @@ export default function RescueRequestCreatePage() {
                         ...prev,
                         latitude: lat,
                         longitude: lng,
+                        address: fallbackAddress,
                     }));
 
-                    // Reverse geocode to get address via Mapbox
+                    // Reverse geocode to get address (will wait for Google Maps if needed)
                     await reverseGeocodeAddress(lat, lng);
                     setIsLoadingGps(false);
                 },
                 (error) => {
                     console.warn('Geolocation error:', error);
                     setIsLoadingGps(false);
+                    setGpsError('Không thể lấy vị trí GPS tự động. Vui lòng bấm "Lấy vị trí GPS của tôi" và cho phép quyền vị trí.');
                     // Keep default center (Ho Chi Minh City)
                 },
                 {
@@ -158,11 +135,13 @@ export default function RescueRequestCreatePage() {
         }
 
         setIsLoadingGps(true);
+        setGpsError('');
 
         navigator.geolocation.getCurrentPosition(
             async (position) => {
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
+                const fallbackAddress = formatGpsFallbackAddress(lat, lng);
 
                 setMapCenter({ lat, lng });
                 setMarkerPosition({ lat, lng });
@@ -170,9 +149,10 @@ export default function RescueRequestCreatePage() {
                     ...prev,
                     latitude: lat,
                     longitude: lng,
+                    address: fallbackAddress,
                 }));
 
-                // Reverse geocode to get address via Mapbox
+                // Reverse geocode to get address (will wait for Google Maps if needed)
                 await reverseGeocodeAddress(lat, lng);
                 setIsLoadingGps(false);
             },
@@ -195,6 +175,7 @@ export default function RescueRequestCreatePage() {
                 }
 
                 alert(errorMessage);
+                setGpsError(errorMessage);
                 console.error('Geolocation error:', error);
             },
             {
@@ -206,29 +187,28 @@ export default function RescueRequestCreatePage() {
     };
 
     const handleLocationSelect = async (location) => {
+        const fallbackAddress = formatGpsFallbackAddress(location.lat, location.lng);
         // Update coordinates first
         setForm((prev) => ({
             ...prev,
             latitude: location.lat,
             longitude: location.lng,
+            address: prev.address || fallbackAddress,
         }));
 
         // Update marker position (this will update the map)
         setMarkerPosition({ lat: location.lat, lng: location.lng });
 
-        // Always auto-fill both fields when address is available
+        // Update address if geocoding succeeded from map
         if (location.address) {
-            const parsed = splitAddressFields(location.address);
             setForm((prev) => ({
                 ...prev,
-                address: parsed.address,
-                ward: parsed.ward,
+                address: location.address,
             }));
-            return;
+        } else {
+            // If no address from map, manually reverse geocode
+            await reverseGeocodeAddress(location.lat, location.lng);
         }
-
-        // If no address from map callback, fallback to reverse geocode
-        await reverseGeocodeAddress(location.lat, location.lng);
     };
 
     const goNext = () => {
@@ -244,7 +224,7 @@ export default function RescueRequestCreatePage() {
         if (isSubmitting) return;
 
         // Validate required fields
-        if (!form.address || !form.description || !form.phone) {
+        if (!form.address || !form.description || !form.phone || !form.locationDescription) {
             alert('Vui lòng điền đầy đủ thông tin bắt buộc');
             return;
         }
@@ -258,10 +238,7 @@ export default function RescueRequestCreatePage() {
 
         try {
             // Map FE form data to BE DTO format
-            // Combine address and ward into addressText
-            const addressText = form.ward
-                ? `${form.address}, ${form.ward}`.trim()
-                : form.address;
+            const addressText = form.address;
 
             // 1) Upload attachments first (if any)
             let attachments = [];
@@ -276,11 +253,10 @@ export default function RescueRequestCreatePage() {
                 affectedPeopleCount: parseInt(form.peopleCount) || 1,
                 description: form.description,
                 addressText: addressText,
-                priority: form.level, // "HIGH" | "MEDIUM" | "LOW"
                 latitude: form.latitude,
                 longitude: form.longitude,
-                lat: form.latitude,
-                lng: form.longitude,
+                locationDescription: form.locationDescription,
+                priority: form.level, // "HIGH" | "MEDIUM" | "LOW"
                 attachments,
             };
 
@@ -357,9 +333,6 @@ export default function RescueRequestCreatePage() {
                         );
                     })}
                 </div>
-                <span className="hidden md:inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-                    Thời gian xử lý ưu tiên cho yêu cầu có vị trí và thông tin rõ ràng
-                </span>
             </div>
 
             {/* Main content */}
@@ -372,18 +345,6 @@ export default function RescueRequestCreatePage() {
                     {/* Google Maps */}
                     <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white">
                         <div className="flex h-[340px] flex-col">
-                            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
-                                <div className="flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1">
-                                    <MapPin className="h-4 w-4 text-blue-600" />
-                                    <span className="text-xs font-medium text-slate-700">
-                                        Bản đồ khu vực cứu hộ
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs text-emerald-700">
-                                    <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                                    Đã kết nối trung tâm điều phối
-                                </div>
-                            </div>
                             <div className="relative flex-1">
                                 <GoogleMap
                                     center={mapCenter}
@@ -392,35 +353,9 @@ export default function RescueRequestCreatePage() {
                                     zoom={15}
                                 />
                             </div>
-                            <div className="px-4 py-2 border-t border-slate-200 bg-slate-50">
-                                <p className="text-[10px] text-slate-500">
-                                    💡 Nhấp vào bản đồ hoặc kéo marker để chọn vị trí cứu hộ
-                                </p>
-                            </div>
                         </div>
                     </div>
 
-                    {/* Step helper text */}
-                    <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs text-blue-800">
-                        {currentStep === 1 && (
-                            <span>
-                                Hãy đảm bảo địa chỉ và vị trí trên bản đồ là chính xác để đội cứu hộ dễ dàng
-                                tiếp cận.
-                            </span>
-                        )}
-                        {currentStep === 2 && (
-                            <span>
-                                Mô tả càng chi tiết, lực lượng điều phối càng có thể chuẩn bị đúng nguồn lực
-                                cần thiết.
-                            </span>
-                        )}
-                        {currentStep === 3 && (
-                            <span>
-                                Hãy kiểm tra lại thông tin liên hệ và tải lên hình ảnh hiện trường (nếu có) để
-                                hỗ trợ đánh giá mức độ khẩn cấp.
-                            </span>
-                        )}
-                    </div>
                 </div>
 
                 {/* Right column: Form steps */}
@@ -429,6 +364,22 @@ export default function RescueRequestCreatePage() {
                         <div className="space-y-5">
                             <h2 className="text-lg font-semibold text-slate-900">Bước 1: Vị trí cứu hộ</h2>
                             <div className="space-y-4">
+                                <div>
+                                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                                        Tọa độ + địa chỉ GPS (không sửa được)
+                                    </label>
+                                    <Input
+                                        type="text"
+                                        value={
+                                            form.latitude && form.longitude && form.address
+                                                ? `${form.latitude.toFixed(6)}, ${form.longitude.toFixed(6)} - ${form.address}`
+                                                : 'Chưa có vị trí GPS'
+                                        }
+                                        readOnly
+                                        disabled
+                                    />
+                                </div>
+
                                 <div>
                                     <label className="mb-2 block text-sm font-medium text-slate-700">
                                         Địa chỉ cụ thể
@@ -441,23 +392,23 @@ export default function RescueRequestCreatePage() {
                                     <Input
                                         type="text"
                                         value={form.address}
-                                        onChange={handleChange('address')}
                                         placeholder={isLoadingGps ? "Đang lấy địa chỉ từ GPS..." : "Ví dụ: Xã Nam Danh, Thị xã Ba Đồn, Tỉnh Quảng Bình"}
                                         required
-                                        disabled={isLoadingGps}
+                                        disabled
                                     />
                                 </div>
 
                                 <div className="grid gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
                                     <div>
                                         <label className="mb-2 block text-sm font-medium text-slate-700">
-                                            Khu vực / Phường
+                                            Mô tả vị trí (điểm nhận biết)
                                         </label>
-                                        <Input
-                                            type="text"
-                                            value={form.ward}
-                                            onChange={handleChange('ward')}
-                                            placeholder="Phường, Quận/Huyện, Tỉnh/TP"
+                                        <Textarea
+                                            rows={2}
+                                            value={form.locationDescription}
+                                            onChange={handleChange('locationDescription')}
+                                            placeholder="Ví dụ: trước cổng trường, hẻm bên trái UBND, gần cầu..."
+                                            required
                                         />
                                     </div>
                                     <div className="flex items-end">
@@ -484,13 +435,11 @@ export default function RescueRequestCreatePage() {
                                     </div>
                                 </div>
 
-                                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 flex gap-2">
-                                    <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-                                    <span>
-                                        Cảnh báo: Vị trí có thể chưa chính xác đến địa chỉ cụ thể. Vui lòng kiểm tra
-                                        kỹ thông tin trước khi tiếp tục.
-                                    </span>
-                                </div>
+                                {gpsError && (
+                                    <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
+                                        {gpsError}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

@@ -18,20 +18,15 @@ export default function RescuePrioritizePage() {
 
     const request = rawRequest
         ? {
-            code: rawRequest.code || rawRequest.id || 'RES-XXXX',
-            address: rawRequest.addressText || rawRequest.address || 'Chưa có địa chỉ',
-            peopleCount: rawRequest.peopleCount ?? rawRequest.affectedPeopleCount ?? 1,
-            description:
-                rawRequest.description ||
-                'Ngập nước nhẹ, mực nước đang dâng cao, có người già hoặc trẻ em trong nhà.',
+            code: rawRequest.code || rawRequest.id || '',
+            address: rawRequest.addressText || rawRequest.address || '',
+            peopleCount: rawRequest.peopleCount ?? rawRequest.affectedPeopleCount ?? 0,
+            description: rawRequest.description || '',
         }
-        : {
-            code: 'RES-1024',
-            address: '123 Đường Lê Lợi, Quận 1, TP. HCM',
-            peopleCount: 5,
-            description:
-                'Ngập nước nhẹ, mực nước đang dâng cao, có người già và trẻ em. Cần đánh giá sớm để điều phối đội cứu hộ.',
-        };
+        : null;
+    const priorityBaseScore = selectedPriority === 'HIGH' ? 100 : selectedPriority === 'MEDIUM' ? 60 : 30;
+    const vulnerableScore = Math.min((Number(request?.peopleCount) || 0) * 5, 40);
+    const totalScore = priorityBaseScore + vulnerableScore;
 
     const handleConfirm = async () => {
         if (!requestId) {
@@ -51,6 +46,21 @@ export default function RescuePrioritizePage() {
             setSaving(false);
         }
     };
+
+    if (!request) {
+        return (
+            <div className="flex flex-col gap-4 pb-10">
+                <Card className="px-4 py-4 text-center text-sm text-slate-700">
+                    Không tìm thấy dữ liệu yêu cầu cứu hộ. Vui lòng mở màn hình này từ danh sách yêu cầu.
+                </Card>
+                <div className="text-center">
+                    <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+                        Quay lại
+                    </Button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col gap-4 pb-10">
@@ -83,7 +93,7 @@ export default function RescuePrioritizePage() {
                         <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                             VỊ TRÍ
                         </div>
-                        <div className="mt-1 text-sm text-slate-900">{request.address}</div>
+                        <div className="mt-1 text-sm text-slate-900">{request.address || 'Chưa có địa chỉ'}</div>
                     </div>
                 </div>
                 <div className="flex items-start gap-2">
@@ -189,7 +199,6 @@ export default function RescuePrioritizePage() {
                 </div>
             </Card>
 
-            {/* Hệ thống điểm ưu tiên (mock UI) */}
             <Card className="grid gap-4 px-4 py-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
                 <div className="space-y-2 text-xs text-slate-700">
                     <div className="flex items-center gap-2">
@@ -201,20 +210,12 @@ export default function RescuePrioritizePage() {
 
                     <div className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-slate-50/60">
                         <div className="flex items-center justify-between px-3 py-2">
-                            <span>Mức độ khẩn cấp (Cao)</span>
-                            <span className="font-semibold text-slate-900">+100đ</span>
+                            <span>Mức độ khẩn cấp ({selectedPriority})</span>
+                            <span className="font-semibold text-slate-900">+{priorityBaseScore}đ</span>
                         </div>
                         <div className="flex items-center justify-between px-3 py-2">
-                            <span>Số người dễ tổn thương (05)</span>
-                            <span className="font-semibold text-slate-900">+25đ</span>
-                        </div>
-                        <div className="flex items-center justify-between px-3 py-2">
-                            <span>Thời gian chờ (15 phút)</span>
-                            <span className="font-semibold text-slate-900">+15đ</span>
-                        </div>
-                        <div className="flex items-center justify-between px-3 py-2">
-                            <span>Cổng thông tin: Mức độ ngập [50%] · Mật độ giao thông [thấp]</span>
-                            <span className="font-semibold text-slate-900">+0đ</span>
+                            <span>Số người cần hỗ trợ ({request?.peopleCount || 0})</span>
+                            <span className="font-semibold text-slate-900">+{vulnerableScore}đ</span>
                         </div>
                     </div>
                 </div>
@@ -223,8 +224,8 @@ export default function RescuePrioritizePage() {
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                         TỔNG ĐIỂM ƯU TIÊN
                     </div>
-                    <div className="mt-2 text-4xl font-extrabold text-blue-600">140</div>
-                    <div className="mt-1 text-[11px] text-slate-500">Ưu tiên hàng đầu trong ca trực</div>
+                    <div className="mt-2 text-4xl font-extrabold text-blue-600">{totalScore}</div>
+                    <div className="mt-1 text-[11px] text-slate-500">Điểm tính theo dữ liệu yêu cầu hiện tại</div>
                 </div>
             </Card>
 
@@ -255,4 +256,3 @@ export default function RescuePrioritizePage() {
         </div>
     );
 }
-

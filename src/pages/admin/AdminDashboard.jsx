@@ -1,105 +1,122 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Users, UserPlus, Settings, Shield, FileText, History, Plus } from 'lucide-react';
-import { ADMIN_ROUTES } from '../../app/routes/route.constants.js';
+import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { Settings, Users, ScrollText, ArrowRight } from "lucide-react";
+import { ADMIN_ROUTES } from "../../app/routes/route.constants.js";
 
 export default function AdminDashboard() {
-    const navigate = useNavigate();
+  const API = "http://localhost:8080/api/admin";
+  const token = localStorage.getItem("token");
 
-    const quickActions = [
-        {
-            title: 'Quản lý Người dùng',
-            description: 'Tạo và quản lý tài khoản người dùng',
-            icon: Users,
-            route: ADMIN_ROUTES.USERS_MANAGEMENT,
-            color: 'bg-blue-500',
-        },
-        {
-            title: 'Quản lý Đội Cứu Hộ',
-            description: 'Tạo và quản lý các đội cứu hộ',
-            icon: UserPlus,
-            route: ADMIN_ROUTES.TEAMS_MANAGEMENT,
-            color: 'bg-green-500',
-        },
-        {
-            title: 'Phân quyền',
-            description: 'Quản lý vai trò và quyền truy cập',
-            icon: Shield,
-            route: ADMIN_ROUTES.ROLES_PERMISSIONS,
-            color: 'bg-purple-500',
-        },
-        {
-            title: 'Cấu hình Hệ thống',
-            description: 'Thiết lập các thông số hệ thống',
-            icon: Settings,
-            route: ADMIN_ROUTES.SYSTEM_SETTINGS,
-            color: 'bg-amber-500',
-        },
-        {
-            title: 'Mẫu Thông báo',
-            description: 'Quản lý các mẫu thông báo',
-            icon: FileText,
-            route: ADMIN_ROUTES.NOTIFICATION_TEMPLATES,
-            color: 'bg-indigo-500',
-        },
-        {
-            title: 'Nhật ký Hệ thống',
-            description: 'Xem lịch sử hoạt động hệ thống',
-            icon: History,
-            route: ADMIN_ROUTES.AUDIT_LOGS,
-            color: 'bg-slate-500',
-        },
-    ];
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    activeUsers: 0,
+    lockedUsers: 0,
+  });
+  const [error, setError] = useState("");
 
-    return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
-                <p className="mt-1 text-sm text-slate-500">
-                    Quản lý hệ thống và người dùng
-                </p>
-            </div>
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch(`${API}/stats`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const contentType = res.headers.get("content-type") || "";
+        const data = contentType.includes("application/json") ? await res.json() : await res.text();
+        if (!res.ok) {
+          throw new Error(typeof data === "string" ? data : data?.message || "Không thể tải thống kê");
+        }
+        setStats({
+          totalUsers: data.totalUsers || 0,
+          activeUsers: data.activeUsers || 0,
+          lockedUsers: data.lockedUsers || 0,
+        });
+      } catch (e) {
+        setError(e.message);
+      }
+    };
 
-            {/* Quick Actions */}
-            <div>
-                <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-slate-900">Lối tắt Quản lý</h2>
-                    <button
-                        onClick={() => navigate(ADMIN_ROUTES.CREATE_TEAM)}
-                        className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
-                    >
-                        <Plus className="h-4 w-4" />
-                        Tạo đội cứu hộ
-                    </button>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {quickActions.map((action) => {
-                        const Icon = action.icon;
-                        return (
-                            <button
-                                key={action.route}
-                                onClick={() => navigate(action.route)}
-                                className="group rounded-xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:shadow-md"
-                            >
-                                <div className="flex items-start gap-4">
-                                    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg ${action.color} text-white transition group-hover:scale-110`}>
-                                        <Icon className="h-6 w-6" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <h3 className="font-semibold text-slate-900 group-hover:text-blue-600">
-                                            {action.title}
-                                        </h3>
-                                        <p className="mt-1 text-sm text-slate-500">
-                                            {action.description}
-                                        </p>
-                                    </div>
-                                </div>
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
+    fetchStats();
+  }, [token]);
+
+  const modules = useMemo(
+    () => [
+      {
+        title: "Quản lý Người dùng",
+        description: "Quản lý tài khoản, thông tin cá nhân và trạng thái hoạt động.",
+        to: ADMIN_ROUTES.USERS_MANAGEMENT,
+        icon: Users,
+      },
+      {
+        title: "Cấu hình hệ thống",
+        description: "Cài đặt tham số vận hành và tham số kỹ thuật.",
+        to: ADMIN_ROUTES.SYSTEM_SETTINGS,
+        icon: Settings,
+      },
+      {
+        title: "Nhật ký hệ thống",
+        description: "Theo dõi lịch sử truy cập và các thay đổi dữ liệu.",
+        to: ADMIN_ROUTES.AUDIT_LOGS,
+        icon: ScrollText,
+      },
+    ],
+    []
+  );
+
+  return (
+    <div className="space-y-6">
+      <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100 p-8">
+        <div className="flex flex-wrap items-start justify-between gap-5">
+          <div>
+            <h1 className="text-5xl font-black tracking-tight text-slate-900">Quản trị hệ thống</h1>
+            <p className="mt-3 text-2xl text-slate-600">Quản lý người dùng, đội cứu hộ, cấu hình và vận hành hệ thống</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-right shadow-sm">
+            <p className="text-xs uppercase tracking-wide text-slate-500">System Administrator</p>
+            <p className="text-lg font-semibold text-slate-900">ADMIN</p>
+          </div>
         </div>
-    );
+
+        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <p className="text-xs uppercase text-slate-500">Tổng người dùng</p>
+            <p className="mt-2 text-3xl font-bold text-slate-900">{stats.totalUsers}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <p className="text-xs uppercase text-slate-500">Đang hoạt động</p>
+            <p className="mt-2 text-3xl font-bold text-emerald-600">{stats.activeUsers}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <p className="text-xs uppercase text-slate-500">Bị khóa</p>
+            <p className="mt-2 text-3xl font-bold text-rose-600">{stats.lockedUsers}</p>
+          </div>
+        </div>
+
+        {error && <p className="mt-4 text-sm text-rose-600">{error}</p>}
+      </section>
+
+      <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+        {modules.map((module) => {
+          const Icon = module.icon;
+          return (
+            <article key={module.title} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+                <Icon size={28} />
+              </div>
+              <h2 className="mt-5 text-4xl font-bold leading-tight text-slate-900">{module.title}</h2>
+              <p className="mt-3 min-h-[56px] text-xl text-slate-600">{module.description}</p>
+
+              <Link
+                to={module.to}
+                className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-lg font-semibold text-white transition hover:bg-blue-700"
+              >
+                Truy cập
+                <ArrowRight size={18} />
+              </Link>
+            </article>
+          );
+        })}
+      </section>
+
+    </div>
+  );
 }

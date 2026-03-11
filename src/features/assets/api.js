@@ -8,6 +8,11 @@ import httpClient from '../../shared/lib/http.js';
 
 // Lấy danh sách tất cả phương tiện
 export async function getAssets(params = {}) {
+  const normalizedParams = { ...(params || {}) };
+  if (typeof normalizedParams.status === 'string') {
+    normalizedParams.status = normalizedParams.status.toUpperCase();
+  }
+
   const candidates = [
     '/assets',  // Thử endpoint chính trước
     '/assets/list',
@@ -17,11 +22,9 @@ export async function getAssets(params = {}) {
   let lastErr;
   for (const path of candidates) {
     try {
-      const res = await httpClient.get(path, { params });
-      console.log(`[getAssets] Successfully loaded from ${path}:`, res);
+      const res = await httpClient.get(path, { params: normalizedParams });
       return res;
     } catch (e) {
-      console.warn(`[getAssets] Failed to load from ${path}:`, e?.status, e?.message);
       lastErr = e;
       // Nếu là 401/403, tiếp tục thử endpoint khác
       // Nếu là 404, tiếp tục thử endpoint khác
@@ -33,7 +36,6 @@ export async function getAssets(params = {}) {
   }
   
   // Nếu tất cả đều fail với 401/403/404, throw error cuối cùng
-  console.error('[getAssets] All endpoints failed. Last error:', lastErr);
   throw lastErr || new Error('Không tìm thấy endpoint danh sách phương tiện');
 }
 
