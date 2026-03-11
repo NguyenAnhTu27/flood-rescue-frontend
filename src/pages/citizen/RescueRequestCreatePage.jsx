@@ -10,7 +10,7 @@ import {
     CheckCircle2,
 } from 'lucide-react';
 import { CITIZEN_ROUTES } from '../../app/routes/route.constants.js';
-import GoogleMap from '../../features/map/components/GoogleMap.jsx';
+import GoogleMap from '../../features/map/components/MapBox.jsx';
 import { MAPBOX_ACCESS_TOKEN } from '../../app/config/env.js';
 import { createRescueRequest, uploadRescueAttachments } from '../../features/rescue/api.js';
 import PrioritySelector from '../../features/rescue/components/PrioritySelector.jsx';

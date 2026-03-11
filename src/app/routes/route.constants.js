@@ -46,6 +46,9 @@ export const PUBLIC_ROUTES = {
     DASHBOARD: '/doi-cuu-ho',
     MY_ASSIGNMENTS: '/doi-cuu-ho/nhiem-vu',
     ASSIGNMENT_DETAIL: '/doi-cuu-ho/nhiem-vu/:id',
+    MISSION_MAP: '/doi-cuu-ho/ban-do-nhiem-vu/:id',
+    FIELD_UPDATE: '/doi-cuu-ho/cap-nhat-hien-truong/:id',
+    COMPLETE_REQUEST: '/doi-cuu-ho/hoan-tat/:id',
     UPDATE_STATUS: '/doi-cuu-ho/cap-nhat-trang-thai',
     SAFETY_GUIDE: '/doi-cuu-ho/huong-dan-an-toan',
   };

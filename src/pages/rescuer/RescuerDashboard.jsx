@@ -626,7 +626,12 @@ export default function RescuerDashboard() {
                                     </div>
 
                                     <div className="mt-2 flex items-center justify-between gap-2">
-                                        <Button variant="primary" size="sm" className="flex-1 justify-center">
+                                        <Button
+                                            variant="primary"
+                                            size="sm"
+                                            className="flex-1 justify-center"
+                                            onClick={() => navigate(RESCUER_ROUTES.ASSIGNMENT_DETAIL.replace(':id', mission.id))}
+                                        >
                                             Xem chi tiết
                                         </Button>
                                         <Button variant="secondary" size="sm">

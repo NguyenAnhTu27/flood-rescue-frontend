@@ -12,7 +12,7 @@ import {
     CheckCircle2,
 } from 'lucide-react';
 
-import GoogleMap from '../../features/map/components/GoogleMap.jsx';
+import GoogleMap from '../../features/map/components/MapBox.jsx';
 import Button from '../../shared/ui/Button.jsx';
 import Card from '../../shared/ui/Card.jsx';
 import Input from '../../shared/ui/Input.jsx';

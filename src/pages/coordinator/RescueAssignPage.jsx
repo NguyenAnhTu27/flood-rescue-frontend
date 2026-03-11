@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Users, Car, MapPin, CheckCircle2, X, Target, Plus, Minus } from 'lucide-react';
 
-import GoogleMap from '../../features/map/components/GoogleMap.jsx';
+import GoogleMap from '../../features/map/components/MapBox.jsx';
 import Button from '../../shared/ui/Button.jsx';
 import Badge from '../../shared/ui/Badge.jsx';
 import { getTeams } from '../../features/teams/api.js';

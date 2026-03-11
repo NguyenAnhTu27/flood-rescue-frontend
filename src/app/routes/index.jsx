@@ -31,6 +31,7 @@ import RescueRequestCreatePage from '../../pages/citizen/RescueRequestCreatePage
 import RescueRequestStatusPage from '../../pages/citizen/RescueRequestStatusPage.jsx';
 import MyRescueRequestsPage from '../../pages/citizen/MyRescueRequestsPage.jsx';
 import RescueRequestUpdatePage from '../../pages/citizen/RescueRequestUpdatePage.jsx';
+import FeedbackPage from '../../pages/citizen/FeedbackPage.jsx';
 
 // Coordinator
 import CoordinatorDashboard from '../../pages/coordinator/CoordinatorDashboardPage.jsx';
@@ -39,10 +40,15 @@ import RescueVerifyPage from '../../pages/coordinator/RescueVerifyPage.jsx';
 import RescuePrioritizePage from '../../pages/coordinator/RescuePrioritizePage.jsx';
 import RescueAssignPage from '../../pages/coordinator/RescueAssignPage.jsx';
 import TeamWorkloadPage from '../../pages/coordinator/TeamWorkloadPage.jsx';
+import GroupRequestsByAreaPage from '../../pages/coordinator/GroupRequestsByAreaPage.jsx';
 
 // Rescuer
 import RescuerDashboard from '../../pages/rescuer/RescuerDashboard.jsx';
 import MyAssignmentsPage from '../../pages/rescuer/MyAssignmentsPage.jsx';
+import AssignmentDetailPage from '../../pages/rescuer/AssignmentDetailPage.jsx';
+import MissionMapTrackingPage from '../../pages/rescuer/MissionMapTrackingPage.jsx';
+import FieldUpdatePage from '../../pages/rescuer/FieldUpdatePage.jsx';
+import DeliveryConfirmPage from '../../pages/rescuer/DeliveryConfirmPage.jsx';
 import RescueUpdateStatusPage from '../../pages/rescuer/RescueUpdateStatusPage.jsx';
 
 // Manager
@@ -61,6 +67,7 @@ import ItemCategoriesPage from '../../pages/manager/kho/ItemCategoriesPage.jsx';
 import ReliefRequestDashboardPage from '../../pages/manager/hang-cuu-tro/ReliefRequestDashboardPage.jsx';
 import ReliefRequestCreatePage from '../../pages/manager/hang-cuu-tro/ReliefRequestCreatePage.jsx';
 import ReliefRequestVerifyPage from '../../pages/manager/hang-cuu-tro/ReliefRequestVerifyPage.jsx';
+import ReportsPage from '../../pages/manager/ReportsPage.jsx';
 
 // Admin
 import AdminDashboard from '../../pages/admin/AdminDashboard.jsx';
@@ -180,6 +187,18 @@ export default function AppRoutes() {
                     </RequireAuth>
                 }
             />
+            <Route
+                path={CITIZEN_ROUTES.FEEDBACK}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['CITIZEN']}>
+                            <RootLayout>
+                                <FeedbackPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
 
             {/* -------- COORDINATOR (Private) -------- */}
             <Route
@@ -254,6 +273,18 @@ export default function AppRoutes() {
                     </RequireAuth>
                 }
             />
+            <Route
+                path={COORDINATOR_ROUTES.DUPLICATE_MANAGEMENT}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['COORDINATOR']}>
+                            <RootLayout>
+                                <GroupRequestsByAreaPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
 
             {/* -------- RESCUER (Private) -------- */}
             <Route
@@ -275,6 +306,54 @@ export default function AppRoutes() {
                         <RequireRole allow={['RESCUER']}>
                             <RootLayout>
                                 <MyAssignmentsPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={RESCUER_ROUTES.ASSIGNMENT_DETAIL}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['RESCUER']}>
+                            <RootLayout>
+                                <AssignmentDetailPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={RESCUER_ROUTES.MISSION_MAP}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['RESCUER']}>
+                            <RootLayout>
+                                <MissionMapTrackingPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={RESCUER_ROUTES.FIELD_UPDATE}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['RESCUER']}>
+                            <RootLayout>
+                                <FieldUpdatePage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={RESCUER_ROUTES.COMPLETE_REQUEST}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['RESCUER']}>
+                            <RootLayout>
+                                <DeliveryConfirmPage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -458,6 +537,18 @@ export default function AppRoutes() {
                             <ManagerLayout>
                                 <AssetsAssignToTask />
                             </ManagerLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={MANAGER_ROUTES.REPORTS}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['MANAGER']}>
+                            <RootLayout>
+                                <ReportsPage />
+                            </RootLayout>
                         </RequireRole>
                     </RequireAuth>
                 }
