@@ -7,36 +7,6 @@ import { getAssets } from '../api.js';
 import { getTaskGroupById, assignTaskGroup } from '../../coordinator/api.js';
 import { listReliefRequests, getReliefRequest } from '../../relief/api.js';
 
-// Mock data – dùng làm fallback khi API không có dữ liệu
-const mockTask = {
-    id: 'MS-9928',
-    title: 'Cứu trợ khẩn cấp Chương Mỹ',
-    location: 'Xã Nam Phương Tiến, Chương Mỹ, Hà Nội',
-    priority: 'URGENT',
-    reliefType: 'Nhu yếu phẩm',
-    weight: '~2.5 Tấn',
-    image: 'https://via.placeholder.com/200x120?text=Flood+Area',
-    lat: 20.8441,
-    lng: 105.75,
-};
-
-const mockVehicles = [
-    {
-        id: 1,
-        code: '29C-123.45',
-        type: 'Xe tải 3.5T',
-        driver: 'Nguyễn Văn Hùng',
-        distance: 3.2,
-        time: 8,
-        capacity: 92,
-        status: 'available',
-        statusLabel: 'Đang chờ lệnh',
-        lat: 20.85,
-        lng: 105.76,
-        vehicleType: 'truck',
-    },
-];
-
 const VEHICLE_ICONS = {
     truck: Truck,
     canoe: Sailboat,
@@ -52,14 +22,11 @@ export default function AssetsAssignToTask() {
     const [reliefRequests, setReliefRequests] = useState([]);
     const [selectedRequestCode, setSelectedRequestCode] = useState(taskCodeFromParams || '');
     const [taskId, setTaskId] = useState(taskIdFromParams || null);
-    const [task, setTask] = useState({
-        ...mockTask,
-        code: taskCodeFromParams || mockTask.id,
-    });
-    const [vehicles, setVehicles] = useState(mockVehicles);
+    const [task, setTask] = useState(null);
+    const [vehicles, setVehicles] = useState([]);
     const [selectedVehicles, setSelectedVehicles] = useState([]);
     const [mapView, setMapView] = useState('terrain'); // 'satellite' or 'terrain'
-    const [mapCenter, setMapCenter] = useState({ lat: mockTask.lat, lng: mockTask.lng });
+    const [mapCenter, setMapCenter] = useState({ lat: 16.0544, lng: 108.2022 });
     const [loading, setLoading] = useState(false);
     const [loadingData, setLoadingData] = useState(true);
     const [loadingRequests, setLoadingRequests] = useState(false);
@@ -175,14 +142,14 @@ export default function AssetsAssignToTask() {
                     const mappedTask = {
                         id: t.id || currentTaskId || numericTaskId,
                         code: selectedRequestCode || t.code || t.taskCode || t.id || currentTaskId,
-                        title: t.title || t.name || t.description || mockTask.title,
-                        location: t.location || t.area || t.address || mockTask.location,
-                        priority: t.priority || t.priorityLevel || mockTask.priority,
-                        reliefType: t.reliefType || t.reliefCategory || mockTask.reliefType,
-                        weight: t.totalWeight || t.estimatedWeight || mockTask.weight,
-                        image: t.imageUrl || mockTask.image,
-                        lat: t.lat || t.latitude || mockTask.lat,
-                        lng: t.lng || t.longitude || mockTask.lng,
+                        title: t.title || t.name || t.description || '',
+                        location: t.location || t.area || t.address || '',
+                        priority: t.priority || t.priorityLevel || '',
+                        reliefType: t.reliefType || t.reliefCategory || '',
+                        weight: t.totalWeight || t.estimatedWeight || '',
+                        image: t.imageUrl || '',
+                        lat: t.lat || t.latitude || 16.0544,
+                        lng: t.lng || t.longitude || 108.2022,
                     };
                     setTask(mappedTask);
                     setMapCenter({ lat: mappedTask.lat, lng: mappedTask.lng });
@@ -196,13 +163,13 @@ export default function AssetsAssignToTask() {
                             id: selectedRequest.id,
                             code: selectedRequest.code || selectedRequest.id,
                             title: `Yêu cầu cứu trợ ${selectedRequest.code || selectedRequest.id}`,
-                            location: selectedRequest.area || selectedRequest.location || mockTask.location,
-                            priority: mockTask.priority,
-                            reliefType: selectedRequest.items?.map((i) => (typeof i === 'string' ? i : i.name)).join(', ') || mockTask.reliefType,
-                            weight: mockTask.weight,
-                            image: mockTask.image,
-                            lat: mockTask.lat,
-                            lng: mockTask.lng,
+                            location: selectedRequest.area || selectedRequest.location || '',
+                            priority: selectedRequest.priority || '',
+                            reliefType: selectedRequest.items?.map((i) => (typeof i === 'string' ? i : i.name)).join(', ') || '',
+                            weight: selectedRequest.totalWeight || selectedRequest.estimatedWeight || '',
+                            image: '',
+                            lat: selectedRequest.latitude || 16.0544,
+                            lng: selectedRequest.longitude || 108.2022,
                         };
                         setTask(mappedTask);
                         setMapCenter({ lat: mappedTask.lat, lng: mappedTask.lng });
@@ -234,22 +201,19 @@ export default function AssetsAssignToTask() {
                                 : asset.status === 'maintenance'
                                     ? 'Bảo trì'
                                     : 'Sẵn sàng'),
-                        lat: asset.lat || asset.latitude || mockTask.lat,
-                        lng: asset.lng || asset.longitude || mockTask.lng,
+                        lat: asset.lat || asset.latitude || 16.0544,
+                        lng: asset.lng || asset.longitude || 108.2022,
                         vehicleType: asset.category || asset.type || 'truck',
                     }));
 
-                    setVehicles(mappedVehicles.length > 0 ? mappedVehicles : mockVehicles);
+                    setVehicles(mappedVehicles);
                 } else {
-                    setVehicles(mockVehicles);
+                    setVehicles([]);
                 }
             } catch (e) {
                 console.error('[AssetsAssignToTask] Load data error:', e);
                 setError(e?.message || 'Không thể tải dữ liệu nhiệm vụ / phương tiện.');
-                setVehicles(mockVehicles);
-                if (!task.code) {
-                    setTask(mockTask);
-                }
+                setVehicles([]);
             } finally {
                 setLoadingData(false);
             }
@@ -280,6 +244,9 @@ export default function AssetsAssignToTask() {
             setError(null);
 
             const numericTaskId = Number(taskId);
+            if (!Number.isFinite(numericTaskId)) {
+                throw new Error('Không tìm thấy taskGroupId hợp lệ để gán phương tiện.');
+            }
             if (Number.isFinite(numericTaskId)) {
                 await Promise.all(
                     selectedVehicles.map((v) =>
@@ -315,6 +282,9 @@ export default function AssetsAssignToTask() {
             setError(null);
 
             const numericTaskId = Number(taskId);
+            if (!Number.isFinite(numericTaskId)) {
+                throw new Error('Không tìm thấy taskGroupId hợp lệ để gán phương tiện.');
+            }
             if (Number.isFinite(numericTaskId)) {
                 await assignTaskGroup({
                     taskGroupId: numericTaskId,
@@ -423,26 +393,28 @@ export default function AssetsAssignToTask() {
                         </div>
                         <div className="mb-3 flex items-center justify-between">
                             <h2 className="text-lg font-bold text-slate-900">
-                                CHI TIẾT NHIỆM VỤ #{task.code || task.id || taskId || '--'}
+                                CHI TIẾT NHIỆM VỤ #{task?.code || task?.id || taskId || '--'}
                             </h2>
                         </div>
-                        <p className="mb-3 text-sm font-medium text-slate-900">{task.title}</p>
-                        <p className="mb-3 text-sm text-slate-600">{task.location}</p>
-                        <div className="mb-3 overflow-hidden rounded-lg">
-                            <img
-                                src={task.image}
-                                alt="Task area"
-                                className="h-24 w-full object-cover"
-                            />
-                        </div>
+                        <p className="mb-3 text-sm font-medium text-slate-900">{task?.title || 'Chưa có thông tin nhiệm vụ'}</p>
+                        <p className="mb-3 text-sm text-slate-600">{task?.location || 'Chưa có địa điểm'}</p>
+                        {task?.image && (
+                            <div className="mb-3 overflow-hidden rounded-lg">
+                                <img
+                                    src={task.image}
+                                    alt="Task area"
+                                    className="h-24 w-full object-cover"
+                                />
+                            </div>
+                        )}
                         <div className="space-y-2 text-sm">
                             <div>
                                 <span className="font-medium text-slate-700">LOẠI CỨU TRỢ:</span>{' '}
-                                <span className="text-slate-900">{task.reliefType}</span>
+                                <span className="text-slate-900">{task?.reliefType || 'Chưa cập nhật'}</span>
                             </div>
                             <div>
                                 <span className="font-medium text-slate-700">KHỐI LƯỢNG:</span>{' '}
-                                <span className="text-slate-900">{task.weight}</span>
+                                <span className="text-slate-900">{task?.weight || 'Chưa cập nhật'}</span>
                             </div>
                         </div>
                     </div>

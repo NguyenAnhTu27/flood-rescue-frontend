@@ -1,38 +1,17 @@
-import React, { useMemo, useState, useEffect } from 'react';
+﻿import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Plus, Trash2 } from 'lucide-react';
 import { MANAGER_ROUTES } from '../../../app/routes/route.constants.js';
-import { createInventoryReceipt, getItemCategories } from '../../../features/relief/api.js';
-
-// Không hardcode itemCategoryId nữa, để user chọn từ dropdown
-const FALLBACK_CATEGORY_OPTIONS = [
-    { id: null, name: 'Lương thực' },
-    { id: null, name: 'Nhu yếu phẩm' },
-    { id: null, name: 'Y tế' },
-    { id: null, name: 'Thiết bị bảo hộ' },
-    { id: null, name: 'Khác' },
-];
+import { approveInventoryReceipt, createInventoryReceipt, getItemCategories } from '../../../features/relief/api.js';
 
 const INITIAL_ITEMS = [
     {
         id: 1,
-        name: 'Mì tôm (Thùng 30 gói)',
-        quantity: 100,
-        unit: 'Thùng',
+        name: '',
+        quantity: 0,
+        unit: '',
         itemCategoryId: null,
-        categoryName: '',
-        itemCode: '', // Mã hàng
-        status: 'active', // active | inactive
-    },
-    {
-        id: 2,
-        name: 'Nước suối (Lốc 6 chai 1.5L)',
-        quantity: 50,
-        unit: 'Lốc',
-        itemCategoryId: null,
-        categoryName: '',
-        itemCode: '', // Mã hàng
-        status: 'active',
+        itemCode: '',
     },
 ];
 
@@ -95,10 +74,8 @@ export default function ReceiptCreatePage() {
                 name: '',
                 quantity: 0,
                 unit: '',
-                itemCategoryId: null, // User phải chọn từ dropdown
-                categoryName: '',
-                itemCode: '', // Mã hàng
-                status: 'active', // Mặc định là active
+                itemCategoryId: null,
+                itemCode: '',
             },
         ]);
     };
@@ -117,50 +94,33 @@ export default function ReceiptCreatePage() {
                     };
                 }
 
-                // Xử lý phân loại (itemCategoryId)
-                if (field === 'itemCategoryId') {
-                    const numericId = value === '' || value === null ? null : Number(value);
-                    console.log('[ReceiptCreatePage] Changing itemCategoryId:', { id, value, numericId });
-
-                    // Tự động fill đơn vị và mã hàng theo loại hàng nếu chưa nhập
-                    let nextUnit = item.unit;
-                    let nextItemCode = item.itemCode || '';
-
-                    if (numericId && Array.isArray(categories) && categories.length > 0) {
-                        const matched = categories.find((c) => Number(c.id) === numericId);
-                        if (matched) {
-                            // Tự động fill đơn vị nếu chưa nhập
-                            if (!nextUnit && matched?.unit) {
-                                nextUnit = matched.unit;
-                                console.log('[ReceiptCreatePage] Auto-filled unit:', nextUnit);
-                            }
-                            // Tự động fill mã hàng từ category code nếu chưa nhập
-                            if (!nextItemCode && matched?.code) {
-                                nextItemCode = matched.code;
-                                console.log('[ReceiptCreatePage] Auto-filled itemCode:', nextItemCode);
-                            }
-                        }
-                    }
-
-                    return {
-                        ...item,
-                        itemCategoryId: numericId,
-                        unit: nextUnit,
-                        itemCode: nextItemCode,
-                    };
-                }
-
                 // Xử lý mã hàng (itemCode)
                 if (field === 'itemCode') {
-                    return { ...item, itemCode: value };
-                }
-
-                if (field === 'categoryName') {
-                    return { ...item, categoryName: value };
-                }
-
-                if (field === 'status') {
-                    return { ...item, status: value };
+                    const selectedCode = String(value || '').trim();
+                    if (!selectedCode) {
+                        return {
+                            ...item,
+                            itemCode: '',
+                            itemCategoryId: null,
+                            name: '',
+                            unit: '',
+                        };
+                    }
+                    const matched = categories.find((c) => {
+                        const code = String(c.code || '').trim();
+                        if (code) return code === selectedCode;
+                        return `ID:${c.id}` === selectedCode;
+                    });
+                    if (!matched) {
+                        return { ...item, itemCode: selectedCode };
+                    }
+                    return {
+                        ...item,
+                        itemCode: selectedCode,
+                        itemCategoryId: matched.id ?? null,
+                        name: matched.name || matched.categoryName || '',
+                        unit: matched.unit || '',
+                    };
                 }
 
                 return { ...item, [field]: value };
@@ -184,9 +144,7 @@ export default function ReceiptCreatePage() {
         }
 
         // Validate: phải có itemCategoryId cho mỗi dòng hợp lệ
-        const itemsWithoutCategory = items.filter(
-            (it) => it.name && Number(it.quantity) > 0 && !it.itemCategoryId
-        );
+        const itemsWithoutCategory = items.filter((it) => Number(it.quantity) > 0 && !it.itemCategoryId);
         if (itemsWithoutCategory.length > 0) {
             window.alert('Vui lòng chọn Danh mục hàng cho tất cả các dòng trước khi lưu phiếu.');
             return;
@@ -215,10 +173,6 @@ export default function ReceiptCreatePage() {
             sourceType: sourceType === 'donation' ? 'DONATION' : 'PURCHASE',
             note: null,
             lines: validItems.map((it) => {
-                // Lấy tên category từ danh sách categories đã load
-                const selectedCategory = categories.find((cat) => Number(cat.id) === Number(it.itemCategoryId));
-                const categoryName = selectedCategory?.name || selectedCategory?.categoryName || '';
-
                 // Lấy tên mặt hàng từ input, đảm bảo không null/undefined
                 // itemName sẽ được lưu vào bảng inventory_receipt_lines
                 const itemName = (it.name && String(it.name).trim()) || '';
@@ -229,7 +183,6 @@ export default function ReceiptCreatePage() {
                     name: it.name,
                     qty: it.quantity,
                     unit: it.unit,
-                    categoryName: categoryName,
                 });
 
                 // Đảm bảo itemCategoryId và qty là số hợp lệ
@@ -251,9 +204,7 @@ export default function ReceiptCreatePage() {
                 const linePayload = {
                     itemCategoryId: itemCategoryId,
                     qty: qty,
-                    // Một số BE dùng field quantity thay vì qty
-                    quantity: qty,
-                    unit: (it.unit || '').trim() || 'Thùng',
+                    unit: (it.unit || '').trim(),
                     // Gửi itemName để backend lưu vào bảng inventory_receipt_lines
                     // Nếu user không nhập tên mặt hàng, gửi empty string
                     itemName: itemName,
@@ -273,8 +224,14 @@ export default function ReceiptCreatePage() {
             setSubmitting(true);
             setError(null);
 
-            const response = await createInventoryReceipt(payload);
-            console.log('[ReceiptCreatePage] createInventoryReceipt response:', response);
+            const createdReceipt = await createInventoryReceipt(payload);
+            console.log('[ReceiptCreatePage] createInventoryReceipt response:', createdReceipt);
+
+            let response = createdReceipt;
+            if (createdReceipt?.id) {
+                response = await approveInventoryReceipt(createdReceipt.id);
+                console.log('[ReceiptCreatePage] approveInventoryReceipt response:', response);
+            }
 
             const receiptCode =
                 response?.code ||
@@ -284,8 +241,8 @@ export default function ReceiptCreatePage() {
 
             window.alert(
                 receiptCode
-                    ? `Tạo phiếu nhập kho thành công: ${receiptCode}`
-                    : 'Tạo phiếu nhập kho thành công!'
+                    ? `Tạo và cập nhật kho thành công: ${receiptCode}`
+                    : 'Tạo phiếu nhập kho và cập nhật tồn kho thành công!'
             );
             navigate(MANAGER_ROUTES.INVENTORY_OVERVIEW);
         } catch (e) {
@@ -386,15 +343,15 @@ export default function ReceiptCreatePage() {
                 </section>
 
                 {/* Section 2: Danh sách hàng hóa */}
-                <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                    <header className="flex items-center justify-between border-b border-slate-100 bg-slate-50/60 px-5 py-3">
+                <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+                    <header className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
                         <h2 className="text-sm font-semibold text-slate-900">
                             2. Danh sách hàng hóa
                         </h2>
                         <button
                             type="button"
                             onClick={handleAddItem}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
+                            className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
                         >
                             <Plus className="h-3.5 w-3.5" />
                             Thêm mặt hàng
@@ -404,20 +361,20 @@ export default function ReceiptCreatePage() {
                     <div className="p-6 overflow-x-auto">
                         <table className="w-full min-w-[760px]">
                             <thead>
-                                <tr className="border-b border-slate-200 bg-slate-50">
-                                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                        Phân loại
+                                <tr className="border-b border-slate-200">
+                                    <th className="pb-4 px-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                        Mã hàng
                                     </th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    <th className="pb-4 px-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                        Tên hàng
+                                    </th>
+                                    <th className="pb-4 px-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                                         Đơn vị
                                     </th>
-                                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    <th className="pb-4 px-4 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
                                         Số lượng
                                     </th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                        Trạng thái
-                                    </th>
-                                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    <th className="pb-4 px-4 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
                                         Thao tác
                                     </th>
                                 </tr>
@@ -430,103 +387,49 @@ export default function ReceiptCreatePage() {
                                             className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50"
                                         >
                                             <td className="py-4 px-4">
-                                                {loadingCategories ? (
-                                                    <div className="h-9 w-full rounded-md border border-slate-200 bg-slate-100 px-3 flex items-center text-xs text-slate-500">
-                                                        Đang tải...
-                                                    </div>
-                                                ) : categories.length > 0 ? (
-                                                    <select
-                                                        value={item.itemCategoryId || ''}
-                                                        onChange={(e) => {
-                                                            const selectedId = e.target.value;
-                                                            if (selectedId) {
-                                                                const selectedCat = categories.find((c) => Number(c.id) === Number(selectedId));
-                                                                if (selectedCat) {
-                                                                    // Tự động fill tất cả các field từ category đã chọn
-                                                                    setItems((prev) =>
-                                                                        prev.map((it) => {
-                                                                            if (it.id !== item.id) return it;
-                                                                            return {
-                                                                                ...it,
-                                                                                itemCategoryId: Number(selectedId),
-                                                                                itemCode: it.itemCode || selectedCat.code || '',
-                                                                                name: it.name || selectedCat.name || '',
-                                                                                unit: it.unit || selectedCat.unit || '',
-                                                                                quantity: it.quantity || selectedCat.stockQuantity || selectedCat.stockQty || 0,
-                                                                                status: selectedCat.isActive !== false ? 'active' : 'inactive',
-                                                                            };
-                                                                        })
-                                                                    );
-                                                                    console.log('[ReceiptCreatePage] Auto-filled all fields from category:', selectedCat);
-                                                                }
-                                                            } else {
-                                                                handleChangeItem(item.id, 'itemCategoryId', '');
-                                                            }
-                                                        }}
-                                                        className={`h-10 w-full rounded-lg border px-3 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 ${!item.itemCategoryId
-                                                            ? 'border-rose-300 bg-rose-50'
-                                                            : 'border-slate-200 bg-white'
-                                                            }`}
-                                                    >
-                                                        <option value="">-- Chọn phân loại --</option>
-                                                        {categories.map((cat) => (
-                                                            <option key={cat.id} value={cat.id}>
-                                                                {cat.name || cat.categoryName || `Loại ${cat.id}`}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                ) : (
-                                                    <select
-                                                        value={item.categoryName || ''}
-                                                        onChange={(e) =>
-                                                            handleChangeItem(item.id, 'categoryName', e.target.value)
-                                                        }
-                                                        className="h-9 w-full rounded-md border border-amber-300 bg-amber-50 px-3 text-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-100"
-                                                    >
-                                                        <option value="">-- Chọn danh mục (DB chưa có) --</option>
-                                                        {FALLBACK_CATEGORY_OPTIONS.map((c) => (
-                                                            <option key={c.name} value={c.name}>
-                                                                {c.name}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                )}
+                                                <select
+                                                    value={item.itemCode || ''}
+                                                    onChange={(e) => handleChangeItem(item.id, 'itemCode', e.target.value)}
+                                                    className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-100"
+                                                >
+                                                    <option value="">-- Chọn mã hàng --</option>
+                                                    {categories.map((cat) => (
+                                                        <option key={cat.id} value={cat.code || `ID:${cat.id}`}>
+                                                            {cat.code || `Mã ${cat.id}`}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </td>
+                                            <td className="py-4 px-4">
+                                                <input
+                                                    type="text"
+                                                    value={item.name || ''}
+                                                    readOnly
+                                                    placeholder="Tự động hiển thị khi chọn mã hàng"
+                                                    className="h-9 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700"
+                                                />
                                             </td>
                                             <td className="py-4 px-4">
                                                 <input
                                                     type="text"
                                                     value={item.unit}
-                                                    onChange={(e) =>
-                                                        handleChangeItem(item.id, 'unit', e.target.value)
-                                                    }
-                                                    placeholder="Đơn vị (tự động điền khi chọn phân loại)"
-                                                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                                    readOnly
+                                                    placeholder="Theo mã hàng"
+                                                    className="h-9 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700"
                                                 />
                                             </td>
                                             <td className="py-4 px-4">
                                                 <input
                                                     type="number"
                                                     min={0}
-                                                    step="1"
+                                                    step="0.01"
                                                     value={item.quantity || ''}
                                                     onChange={(e) =>
                                                         handleChangeItem(item.id, 'quantity', e.target.value)
                                                     }
-                                                    placeholder="Số lượng (tự động điền khi chọn phân loại)"
-                                                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-right text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                                    placeholder="Số lượng (tự động điền khi chọn mã)"
+                                                    className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-right text-sm text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-100"
                                                 />
-                                            </td>
-                                            <td className="py-4 px-4">
-                                                <select
-                                                    value={item.status || 'active'}
-                                                    onChange={(e) =>
-                                                        handleChangeItem(item.id, 'status', e.target.value)
-                                                    }
-                                                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                                                >
-                                                    <option value="active">Đang hoạt động</option>
-                                                    <option value="inactive">Ngừng hoạt động</option>
-                                                </select>
                                             </td>
                                             <td className="py-4 px-4">
                                                 <div className="flex justify-end">
@@ -534,7 +437,7 @@ export default function ReceiptCreatePage() {
                                                         type="button"
                                                         onClick={() => handleRemoveItem(item.id)}
                                                         disabled={items.length === 1}
-                                                        className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40"
+                                                        className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40"
                                                         title="Xóa dòng"
                                                     >
                                                         <Trash2 className="h-4 w-4" />
@@ -550,7 +453,7 @@ export default function ReceiptCreatePage() {
                         <button
                             type="button"
                             onClick={handleAddItem}
-                            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 py-2.5 text-xs font-semibold text-slate-600 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                            className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 py-2 text-xs font-medium text-slate-600 hover:border-blue-300 hover:text-blue-600"
                         >
                             <Plus className="h-3.5 w-3.5" />
                             Thêm mặt hàng mới
@@ -641,4 +544,3 @@ export default function ReceiptCreatePage() {
         </div>
     );
 }
-

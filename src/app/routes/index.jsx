@@ -1,5 +1,5 @@
 import React from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 
 import {
     PUBLIC_ROUTES,
@@ -19,6 +19,7 @@ import RequireRole from '../../shared/guards/RequireRole.jsx';
 import HomePage from '../../pages/public/HomePage.jsx';
 import EmergencyGuidePage from '../../pages/public/EmergencyGuidePage.jsx';
 import NotFoundPage from '../../pages/public/NotFoundPage.jsx';
+import StaticContentPage from '../../pages/public/StaticContentPage.jsx';
 
 // Auth
 import LoginPage from '../../pages/auth/LoginPage.jsx';
@@ -26,21 +27,26 @@ import RegisterPage from '../../pages/auth/RegisterPage.jsx';
 
 // Citizen
 import CitizenDashboard from '../../pages/citizen/CItizenDashboard.jsx';
-import RescueDetailRequestPage from '../../pages/citizen/RescueDetailRequestPage.jsx';
 import RescueRequestCreatePage from '../../pages/citizen/RescueRequestCreatePage.jsx';
 import RescueRequestStatusPage from '../../pages/citizen/RescueRequestStatusPage.jsx';
 import MyRescueRequestsPage from '../../pages/citizen/MyRescueRequestsPage.jsx';
 import RescueRequestUpdatePage from '../../pages/citizen/RescueRequestUpdatePage.jsx';
+import ReliefRequestUpdatePage from '../../pages/citizen/ReliefRequestUpdatePage.jsx';
 import FeedbackPage from '../../pages/citizen/FeedbackPage.jsx';
+import MyReliefRequestsPage from '../../pages/citizen/MyReliefRequestsPage.jsx';
+import ReliefRequestStatusPage from '../../pages/citizen/ReliefRequestStatusPage.jsx';
 
 // Coordinator
 import CoordinatorDashboard from '../../pages/coordinator/CoordinatorDashboardPage.jsx';
-import RescueQueuePage from '../../pages/coordinator/RescueQueuePage.jsx';
 import RescueVerifyPage from '../../pages/coordinator/RescueVerifyPage.jsx';
-import RescuePrioritizePage from '../../pages/coordinator/RescuePrioritizePage.jsx';
 import RescueAssignPage from '../../pages/coordinator/RescueAssignPage.jsx';
+import RescueRequestHandle from '../../pages/coordinator/RescueRequestHandle.jsx';
+import RescueHistoryPage from '../../pages/coordinator/RescueHistoryPage.jsx';
 import TeamWorkloadPage from '../../pages/coordinator/TeamWorkloadPage.jsx';
 import GroupRequestsByAreaPage from '../../pages/coordinator/GroupRequestsByAreaPage.jsx';
+import RescuePrioritizePage from '../../pages/coordinator/RescuePrioritizePage.jsx';
+import DuplicateManagementPage from '../../pages/coordinator/DuplicateManagementPage.jsx';
+import BlockedCitizensPage from '../../pages/coordinator/BlockedCitizensPage.jsx';
 
 // Rescuer
 import RescuerDashboard from '../../pages/rescuer/RescuerDashboard.jsx';
@@ -48,8 +54,8 @@ import MyAssignmentsPage from '../../pages/rescuer/MyAssignmentsPage.jsx';
 import AssignmentDetailPage from '../../pages/rescuer/AssignmentDetailPage.jsx';
 import MissionMapTrackingPage from '../../pages/rescuer/MissionMapTrackingPage.jsx';
 import FieldUpdatePage from '../../pages/rescuer/FieldUpdatePage.jsx';
-import DeliveryConfirmPage from '../../pages/rescuer/DeliveryConfirmPage.jsx';
 import RescueUpdateStatusPage from '../../pages/rescuer/RescueUpdateStatusPage.jsx';
+import ReliefPrioritizeDetailPage from '../../pages/rescuer/ReliefPrioritizeDetailPage.jsx';
 
 // Manager
 import ManagerDashboard from '../../pages/manager/ManagerDashboard.jsx';
@@ -64,16 +70,27 @@ import ReceiptCreatePage from '../../pages/manager/kho/ReceiptCreatePage.jsx';
 import ReceiptApprovalPage from '../../pages/manager/kho/ReceiptApprovalPage.jsx';
 import IssueCreatePage from '../../pages/manager/kho/IssueCreatePage.jsx';
 import ItemCategoriesPage from '../../pages/manager/kho/ItemCategoriesPage.jsx';
+import ItemClassificationsPage from '../../pages/manager/ItemClassificationsPage.jsx';
+import ItemUnitsPage from '../../pages/manager/ItemUnitsPage.jsx';
 import ReliefRequestDashboardPage from '../../pages/manager/hang-cuu-tro/ReliefRequestDashboardPage.jsx';
 import ReliefRequestCreatePage from '../../pages/manager/hang-cuu-tro/ReliefRequestCreatePage.jsx';
 import ReliefRequestVerifyPage from '../../pages/manager/hang-cuu-tro/ReliefRequestVerifyPage.jsx';
+import ReliefRequestsPage from '../../pages/manager/ReliefRequestsPage.jsx';
+import ReliefTeamManagementPage from '../../pages/manager/ReliefTeamManagementPage.jsx';
+import ApprovedReliefIssueRequestsPage from '../../pages/manager/ApprovedReliefIssueRequestsPage.jsx';
+import ReliefPrioritizePage from '../../pages/manager/ReliefPrioritizePage.jsx';
 import ReportsPage from '../../pages/manager/ReportsPage.jsx';
 
 // Admin
 import AdminDashboard from '../../pages/admin/AdminDashboard.jsx';
 import UserManagementPage from '../../pages/admin/UserManagementPage.jsx';
+import SystemSettingsPage from '../../pages/admin/SystemSettingsPage.jsx';
+import AuditLogsPage from '../../pages/admin/AuditLogsPage.jsx';
 import TeamsManagementPage from '../../pages/admin/TeamsManagementPage.jsx';
 import TeamCreatePage from '../../pages/admin/TeamCreatePage.jsx';
+import SystemFeedbacksPage from '../../pages/admin/SystemFeedbacksPage.jsx';
+import ContentPagesSettingsPage from '../../pages/admin/ContentPagesSettingsPage.jsx';
+
 
 /* =========================
    5) Route tree
@@ -84,14 +101,37 @@ export default function AppRoutes() {
             {/* -------- PUBLIC -------- */}
             <Route
                 path={PUBLIC_ROUTES.HOME}
-                element={
-                    <HomePage />}
+                element={<HomePage />}
             />
             <Route
                 path={PUBLIC_ROUTES.EMERGENCY_GUIDE}
                 element={
                     <RootLayout>
                         <EmergencyGuidePage />
+                    </RootLayout>
+                }
+            />
+            <Route
+                path={PUBLIC_ROUTES.TERMS_OF_USE}
+                element={
+                    <RootLayout>
+                        <StaticContentPage />
+                    </RootLayout>
+                }
+            />
+            <Route
+                path={PUBLIC_ROUTES.PRIVACY_POLICY}
+                element={
+                    <RootLayout>
+                        <StaticContentPage />
+                    </RootLayout>
+                }
+            />
+            <Route
+                path={PUBLIC_ROUTES.SUPPORT_CONTACT}
+                element={
+                    <RootLayout>
+                        <StaticContentPage />
                     </RootLayout>
                 }
             />
@@ -140,24 +180,46 @@ export default function AppRoutes() {
                 }
             />
             <Route
-                path={CITIZEN_ROUTES.RESCUE_DETAIL}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['CITIZEN']}>
-                            <RootLayout>
-                                <RescueDetailRequestPage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
                 path={CITIZEN_ROUTES.RESCUE_REQUEST_STATUS}
                 element={
                     <RequireAuth>
                         <RequireRole allow={['CITIZEN']}>
                             <RootLayout>
                                 <RescueRequestStatusPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={CITIZEN_ROUTES.CREATE_RELIEF_REQUEST}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['CITIZEN']}>
+                            <Navigate to={CITIZEN_ROUTES.DASHBOARD} replace />
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={CITIZEN_ROUTES.MY_RELIEF_REQUESTS}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['CITIZEN']}>
+                            <RootLayout>
+                                <MyReliefRequestsPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={CITIZEN_ROUTES.RELIEF_REQUEST_STATUS}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['CITIZEN']}>
+                            <RootLayout>
+                                <ReliefRequestStatusPage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -182,6 +244,18 @@ export default function AppRoutes() {
                         <RequireRole allow={['CITIZEN']}>
                             <RootLayout>
                                 <RescueRequestUpdatePage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={CITIZEN_ROUTES.UPDATE_RELIEF_REQUEST}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['CITIZEN']}>
+                            <RootLayout>
+                                <ReliefRequestUpdatePage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -214,36 +288,12 @@ export default function AppRoutes() {
                 }
             />
             <Route
-                path={COORDINATOR_ROUTES.RESCUE_QUEUE}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['COORDINATOR']}>
-                            <RootLayout>
-                                <RescueQueuePage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
                 path={COORDINATOR_ROUTES.VERIFY_REQUEST}
                 element={
                     <RequireAuth>
                         <RequireRole allow={['COORDINATOR']}>
                             <RootLayout>
                                 <RescueVerifyPage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
-                path={COORDINATOR_ROUTES.PRIORITIZE_REQUEST}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['COORDINATOR']}>
-                            <RootLayout>
-                                <RescuePrioritizePage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -262,6 +312,30 @@ export default function AppRoutes() {
                 }
             />
             <Route
+                path={COORDINATOR_ROUTES.TASK_MONITOR}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['COORDINATOR']}>
+                            <RootLayout>
+                                <RescueRequestHandle />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={COORDINATOR_ROUTES.TASK_HISTORY}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['COORDINATOR']}>
+                            <RootLayout>
+                                <RescueHistoryPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
                 path={COORDINATOR_ROUTES.TEAM_WORKLOAD}
                 element={
                     <RequireAuth>
@@ -274,12 +348,36 @@ export default function AppRoutes() {
                 }
             />
             <Route
+                path={COORDINATOR_ROUTES.PRIORITIZE_REQUEST}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['COORDINATOR']}>
+                            <RootLayout>
+                                <RescuePrioritizePage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
                 path={COORDINATOR_ROUTES.DUPLICATE_MANAGEMENT}
                 element={
                     <RequireAuth>
                         <RequireRole allow={['COORDINATOR']}>
                             <RootLayout>
-                                <GroupRequestsByAreaPage />
+                                <DuplicateManagementPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={COORDINATOR_ROUTES.BLOCKED_CITIZENS}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['COORDINATOR']}>
+                            <RootLayout>
+                                <BlockedCitizensPage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -348,24 +446,60 @@ export default function AppRoutes() {
                 }
             />
             <Route
-                path={RESCUER_ROUTES.COMPLETE_REQUEST}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['RESCUER']}>
-                            <RootLayout>
-                                <DeliveryConfirmPage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
                 path={RESCUER_ROUTES.UPDATE_STATUS}
                 element={
                     <RequireAuth>
                         <RequireRole allow={['RESCUER']}>
                             <RootLayout>
                                 <RescueUpdateStatusPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={RESCUER_ROUTES.SAFETY_GUIDE}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['RESCUER']}>
+                            <RootLayout>
+                                <MyAssignmentsPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path="/doi-cuu-ho/huong-dan-an-toan"
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['RESCUER']}>
+                            <RootLayout>
+                                <MyAssignmentsPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={RESCUER_ROUTES.RELIEF_PRIORITIZE}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['RESCUER']}>
+                            <RootLayout>
+                                <ReliefPrioritizePage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={RESCUER_ROUTES.RELIEF_PRIORITIZE_DETAIL}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['RESCUER']}>
+                            <RootLayout>
+                                <ReliefPrioritizeDetailPage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -381,6 +515,18 @@ export default function AppRoutes() {
                             <ManagerLayout>
                                 <ManagerDashboard />
                             </ManagerLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={MANAGER_ROUTES.RELIEF_REQUESTS}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['MANAGER']}>
+                            <RootLayout>
+                                <ReliefRequestsPage />
+                            </RootLayout>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -410,24 +556,36 @@ export default function AppRoutes() {
                 }
             />
             <Route
-                path={MANAGER_ROUTES.CREATE_RECEIPT}
+                path={MANAGER_ROUTES.ITEM_CLASSIFICATIONS}
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
                             <ManagerLayout>
-                                <ReceiptCreatePage />
+                                <ItemClassificationsPage />
                             </ManagerLayout>
                         </RequireRole>
                     </RequireAuth>
                 }
             />
             <Route
-                path={MANAGER_ROUTES.RECEIPT_APPROVAL}
+                path={MANAGER_ROUTES.ITEM_UNITS}
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
                             <ManagerLayout>
-                                <ReceiptApprovalPage />
+                                <ItemUnitsPage />
+                            </ManagerLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={MANAGER_ROUTES.CREATE_RECEIPT}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['MANAGER']}>
+                            <ManagerLayout>
+                                <ReceiptCreatePage />
                             </ManagerLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -441,6 +599,30 @@ export default function AppRoutes() {
                             <ManagerLayout>
                                 <IssueCreatePage />
                             </ManagerLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={MANAGER_ROUTES.RELIEF_TEAM_MANAGEMENT}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['MANAGER']}>
+                            <RootLayout>
+                                <ReliefTeamManagementPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={MANAGER_ROUTES.RELIEF_APPROVED_ISSUES}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['MANAGER']}>
+                            <RootLayout>
+                                <ApprovedReliefIssueRequestsPage />
+                            </RootLayout>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -598,6 +780,54 @@ export default function AppRoutes() {
                         <RequireRole allow={['ADMIN']}>
                             <RootLayout>
                                 <TeamCreatePage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={ADMIN_ROUTES.SYSTEM_SETTINGS}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['ADMIN']}>
+                            <RootLayout>
+                                <SystemSettingsPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={ADMIN_ROUTES.AUDIT_LOGS}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['ADMIN']}>
+                            <RootLayout>
+                                <AuditLogsPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={ADMIN_ROUTES.SYSTEM_FEEDBACKS}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['ADMIN']}>
+                            <RootLayout>
+                                <SystemFeedbacksPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={ADMIN_ROUTES.CONTENT_PAGES}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['ADMIN']}>
+                            <RootLayout>
+                                <ContentPagesSettingsPage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>

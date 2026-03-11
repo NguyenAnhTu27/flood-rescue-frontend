@@ -45,13 +45,33 @@ export default function MyRescueRequestsPage() {
         }
     };
 
-    const formatStatus = (status) => {
+    const formatStatus = (status, waitingForTeam) => {
+        if (waitingForTeam) {
+            return {
+                label: 'Đang chờ đội',
+                color: 'bg-blue-50 text-blue-700 border-blue-200',
+                icon: Clock,
+                iconColor: 'text-blue-600'
+            };
+        }
         const statusMap = {
             PENDING: {
                 label: 'Chờ xử lý',
                 color: 'bg-yellow-50 text-yellow-700 border-yellow-200',
                 icon: Clock,
                 iconColor: 'text-yellow-600'
+            },
+            VERIFIED: {
+                label: 'Đã xác minh',
+                color: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+                icon: CheckCircle2,
+                iconColor: 'text-indigo-600'
+            },
+            ASSIGNED: {
+                label: 'Đã phân công đội',
+                color: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+                icon: CheckCircle2,
+                iconColor: 'text-cyan-600'
             },
             IN_PROGRESS: {
                 label: 'Đang xử lý',
@@ -98,8 +118,8 @@ export default function MyRescueRequestsPage() {
     };
 
     const handleRequestClick = (request) => {
-        navigate(CITIZEN_ROUTES.RESCUE_DETAIL, {
-            state: { request },
+        navigate(CITIZEN_ROUTES.RESCUE_REQUEST_STATUS, {
+            state: { requestId: request?.id, request },
         });
     };
 
@@ -210,7 +230,7 @@ export default function MyRescueRequestsPage() {
                 /* Compact Requests list */
                 <section className="space-y-3">
                     {requests.map((request, index) => {
-                        const statusInfo = formatStatus(request.status);
+                        const statusInfo = formatStatus(request.status, Boolean(request.waitingForTeam));
                         const StatusIcon = statusInfo.icon;
 
                         return (

@@ -121,6 +121,10 @@ export async function listInventoryIssues(params = {}) {
   throw lastErr || new Error('Không tìm thấy endpoint phiếu xuất kho');
 }
 
+export async function getTemporaryInventoryIssues() {
+  return httpClient.get('/inventory/issues/temporary');
+}
+
 /**
  * DISTRIBUTION VOUCHERS (phiếu điều phối giao hàng)
  * Backend tách riêng khỏi nghiệp vụ kho.
@@ -198,7 +202,7 @@ export async function getInventoryStock(params = {}) {
  */
 
 // Lấy danh sách tất cả danh mục / loại hàng hóa
-export async function getItemCategories() {
+export async function getItemCategories(params = {}) {
   const candidates = [
     // BE hiện tại: GET /api/inventory/items trả về danh sách loại hàng (ItemCategoryResponse)
     '/inventory/items',
@@ -213,7 +217,7 @@ export async function getItemCategories() {
   let lastErr;
   for (const path of candidates) {
     try {
-      const res = await httpClient.get(path);
+      const res = await httpClient.get(path, { params });
       return res;
     } catch (e) {
       lastErr = e;
@@ -253,6 +257,34 @@ export async function createItemCategory(payload) {
   throw lastErr || new Error('Không tìm thấy endpoint tạo danh mục hàng hóa');
 }
 
+export async function deleteItemCategory(id) {
+  return httpClient.delete(`/inventory/items/${id}`);
+}
+
+export async function getItemClassifications() {
+  return httpClient.get('/inventory/item-classifications');
+}
+
+export async function createItemClassification(payload) {
+  return httpClient.post('/inventory/item-classifications', payload);
+}
+
+export async function deleteItemClassification(id) {
+  return httpClient.delete(`/inventory/item-classifications/${id}`);
+}
+
+export async function getItemUnits() {
+  return httpClient.get('/inventory/item-units');
+}
+
+export async function createItemUnit(payload) {
+  return httpClient.post('/inventory/item-units', payload);
+}
+
+export async function deleteItemUnit(id) {
+  return httpClient.delete(`/inventory/item-units/${id}`);
+}
+
 /**
  * RELIEF REQUESTS (yêu cầu cứu trợ)
  */
@@ -260,7 +292,15 @@ export async function createItemCategory(payload) {
 // Lấy danh sách yêu cầu cứu trợ
 // Backend: GET /api/relief/requests  (base prefix /api đã được httpClient thêm sẵn)
 export async function listReliefRequests(params = {}) {
-  return httpClient.get('/relief/requests', { params });
+  try {
+    return await httpClient.get('/relief/requests', { params });
+  } catch (e) {
+    // Fallback cho backend chỉ expose namespace manager
+    if ([401, 403, 404].includes(Number(e?.status))) {
+      return httpClient.get('/manager/relief/requests', { params });
+    }
+    throw e;
+  }
 }
 
 // Lấy chi tiết yêu cầu cứu trợ
@@ -284,6 +324,37 @@ export async function createReliefRequest(payload) {
   return httpClient.post('/relief/requests', payload);
 }
 
+export async function getMyCitizenReliefRequests(params = {}) {
+  return httpClient.get('/relief/citizen/requests', { params });
+}
+
+export async function updateMyCitizenReliefRequest(id, payload) {
+  return httpClient.put(`/relief/citizen/requests/${id}`, payload);
+}
+
+export async function cancelMyCitizenReliefRequest(id, reason) {
+  const query = reason && String(reason).trim()
+    ? `?reason=${encodeURIComponent(String(reason).trim())}`
+    : '';
+  return httpClient.delete(`/relief/citizen/requests/${id}${query}`);
+}
+
+export async function approveAndDispatchReliefRequest(id, payload) {
+  return httpClient.put(`/relief/requests/${id}/approve-dispatch`, payload);
+}
+
+export async function rejectReliefRequestByManager(id, reason) {
+  return httpClient.put(`/relief/requests/${id}/reject`, { reason });
+}
+
+export async function getRescuerReliefRequests(params = {}) {
+  return httpClient.get('/relief/rescuer/requests', { params });
+}
+
+export async function updateRescuerReliefStatus(id, payload) {
+  return httpClient.put(`/relief/rescuer/requests/${id}/delivery-status`, payload);
+}
+
 // Lưu nháp yêu cầu cứu trợ
 export async function saveReliefRequestDraft(payload) {
   // Nếu BE không có endpoint riêng cho draft, ta vẫn POST lên /relief/requests với status = DRAFT
@@ -293,51 +364,11 @@ export async function saveReliefRequestDraft(payload) {
 
 // Tạo mã phiếu tự động
 export async function generateReliefRequestCode() {
-  const candidates = [
-    '/relief/requests/generate-code',
-    '/relief/manager/requests/generate-code',
-    '/manager/relief/requests/generate-code',
-  ];
+  return httpClient.get('/relief/requests/generate-code');
+}
 
-  let lastErr;
-  for (const path of candidates) {
-    try {
-      const res = await httpClient.get(path);
-      // Nếu response có code, return ngay
-      if (res?.code) {
-        return res;
-      }
-      // Nếu response là object có data.code
-      if (res?.data?.code) {
-        return { code: res.data.code };
-      }
-      // Nếu response trả về trực tiếp code
-      return res;
-    } catch (e) {
-      lastErr = e;
-      // Nếu gặp 401 (Unauthorized), có thể endpoint không tồn tại hoặc yêu cầu auth
-      // Fallback về client-side generation ngay
-      if (e?.status === 401) {
-        console.warn(`[generateReliefRequestCode] Endpoint ${path} returned 401, falling back to client-side generation`);
-        break;
-      }
-      // Nếu gặp 404 hoặc 403, tiếp tục thử endpoint khác
-      if (e?.status === 404 || e?.status === 403) {
-        continue;
-      }
-      // Nếu là lỗi khác (500, network error, etc.), throw ngay
-      throw e;
-    }
-  }
-  
-  // Fallback: generate code client-side
-  // Format: REQ-YYYY-XXXX (YYYY = năm, XXXX = số ngẫu nhiên 4 chữ số)
-  const year = new Date().getFullYear();
-  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-  const generatedCode = `REQ-${year}-${random}`;
-  
-  console.log(`[generateReliefRequestCode] Generated client-side code: ${generatedCode}`);
-  return { code: generatedCode };
+export async function generateInventoryIssueCode() {
+  return httpClient.get('/inventory/issues/generate-code');
 }
 
 // Lấy danh sách khu vực/địa điểm
@@ -361,12 +392,5 @@ export async function getAreas() {
       }
     }
   }
-  // Fallback: return mock areas
-  return [
-    { id: 1, name: 'Huyện Lệ Thủy, Quảng Bình' },
-    { id: 2, name: 'Thị xã Ba Đồn, Quảng Bình' },
-    { id: 3, name: 'Huyện Cam Lộ, Quảng Trị' },
-    { id: 4, name: 'Huyện Hương Khê, Hà Tĩnh' },
-    { id: 5, name: 'Huyện Kỳ Anh, Hà Tĩnh' },
-  ];
+  throw lastErr || new Error('Không tìm thấy endpoint khu vực');
 }

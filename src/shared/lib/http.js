@@ -6,71 +6,15 @@
  * Then replace this file with axios version (see API_SETUP_GUIDE.md)
  */
 
-import { getToken, removeToken } from './storage.js';
-import { USE_MOCK_API } from '../../app/config/env.js';
+import { getToken } from './storage.js';
 
 // Get API base URL from environment or use default
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
-
-// Mock API handler
-const mockApiHandler = {
-    '/auth/login': async (data) => {
-        const { mockLogin } = await import('./mockApi.js');
-        return mockLogin(data);
-    },
-    '/auth/register': async (data) => {
-        const { mockRegister } = await import('./mockApi.js');
-        return mockRegister(data);
-    },
-    '/citizen/rescue-requests': async () => {
-        const { mockGetRescueRequests } = await import('./mockApi.js');
-        return mockGetRescueRequests();
-    },
-    '/rescue/requests': async (data) => {
-        if (data && typeof data === 'object' && !Array.isArray(data)) {
-            // POST request
-            const { mockCreateRescueRequest } = await import('./mockApi.js');
-            return mockCreateRescueRequest(data);
-        }
-        // GET request
-        const { mockGetRescueRequests } = await import('./mockApi.js');
-        return mockGetRescueRequests();
-    },
-};
 
 /**
  * Main HTTP client function
  */
 async function httpClient(url, options = {}) {
-    // Check if mock mode is enabled
-    if (USE_MOCK_API) {
-        // Find matching mock handler (check exact match or path prefix)
-        let mockHandler = mockApiHandler[url];
-        
-        // If no exact match, try to find by path prefix
-        if (!mockHandler) {
-            const urlPath = url.split('?')[0]; // Remove query params
-            for (const [path, handler] of Object.entries(mockApiHandler)) {
-                if (urlPath === path || urlPath.startsWith(path)) {
-                    mockHandler = handler;
-                    break;
-                }
-            }
-        }
-        
-        if (mockHandler) {
-            console.log(`[MOCK API] ${options.method || 'GET'} ${url}`, options.body ? JSON.parse(options.body) : {});
-            try {
-                const mockData = options.body ? JSON.parse(options.body) : {};
-                return await mockHandler(mockData);
-            } catch (err) {
-                throw err;
-            }
-        } else {
-            console.warn(`[MOCK API] No mock handler for ${url}, falling back to real API`);
-        }
-    }
-
     const token = getToken();
     
     // Default headers

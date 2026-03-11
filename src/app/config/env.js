@@ -27,6 +27,3 @@ export const IS_PROD = import.meta.env.PROD;
 // Base URL cho file/ảnh upload (không có /api)
 export const FILE_BASE_URL =
   import.meta.env.VITE_FILE_BASE_URL || 'http://localhost:8080';
-
-// Mock mode
-export const USE_MOCK_API = false;

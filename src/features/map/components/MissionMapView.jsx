@@ -1,17 +1,26 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { MAPBOX_ACCESS_TOKEN, MAPBOX_STYLE_URL } from '../../../app/config/env.js';
+import { MAPBOX_ACCESS_TOKEN } from '../../../app/config/env.js';
 
-mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
+const FALLBACK_STYLE = {
+    version: 8,
+    sources: {
+        osm: {
+            type: 'raster',
+            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            attribution: '© OpenStreetMap contributors',
+        },
+    },
+    layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
+};
 
-/**
- * Mission Map View - Read-only Mapbox map for displaying mission location
- * @param {Object} props
- * @param {Object} props.center - Center position { lat, lng }
- * @param {Object} props.markerPosition - Marker position { lat, lng }
- * @param {number} props.zoom - Map zoom level (default: 15)
- */
+function getMapStyle() {
+    if (MAPBOX_ACCESS_TOKEN) return 'mapbox://styles/mapbox/streets-v12';
+    return FALLBACK_STYLE;
+}
+
 export default function MissionMapView({
     center = { lat: 10.8231, lng: 106.6297 },
     markerPosition,
@@ -21,53 +30,56 @@ export default function MissionMapView({
     const mapRef = useRef(null);
     const markerRef = useRef(null);
     const [isLoaded, setIsLoaded] = useState(false);
+    const target = useMemo(() => markerPosition || center, [center, markerPosition]);
 
-    // Initialize read-only map once
     useEffect(() => {
         if (!containerRef.current || mapRef.current) return;
-
-        const pos = markerPosition || center;
+        mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN || '';
 
         const map = new mapboxgl.Map({
             container: containerRef.current,
-            style: MAPBOX_STYLE_URL,
-            center: [pos.lng, pos.lat],
-            zoom,
-            interactive: false, // read-only
+            style: getMapStyle(),
+            center: [Number(target.lng), Number(target.lat)],
+            zoom: Number(zoom) || 15,
+            interactive: false,
         });
 
-        const marker = new mapboxgl.Marker()
-            .setLngLat([pos.lng, pos.lat])
-            .addTo(map);
-
         map.on('load', () => setIsLoaded(true));
+
+        const marker = new mapboxgl.Marker({ draggable: false, color: '#ef4444' })
+            .setLngLat([Number(target.lng), Number(target.lat)])
+            .addTo(map);
 
         mapRef.current = map;
         markerRef.current = marker;
 
         return () => {
+            marker.remove();
             map.remove();
-            mapRef.current = null;
             markerRef.current = null;
+            mapRef.current = null;
+            setIsLoaded(false);
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [target, zoom]);
 
-    // Update marker position when prop changes
     useEffect(() => {
-        if (!mapRef.current || !markerRef.current || !markerPosition) return;
-
-        markerRef.current.setLngLat([markerPosition.lng, markerPosition.lat]);
-        mapRef.current.flyTo({ center: [markerPosition.lng, markerPosition.lat] });
-    }, [markerPosition]);
+        const map = mapRef.current;
+        const marker = markerRef.current;
+        if (!map || !marker) return;
+        if (!Number.isFinite(Number(target.lat)) || !Number.isFinite(Number(target.lng))) return;
+        const lng = Number(target.lng);
+        const lat = Number(target.lat);
+        marker.setLngLat([lng, lat]);
+        map.jumpTo({ center: [lng, lat] });
+    }, [target]);
 
     return (
-        <div className="relative w-full h-full">
-            <div ref={containerRef} className="w-full h-full" />
+        <div className="relative h-full w-full">
+            <div ref={containerRef} className="h-full w-full" />
             {!isLoaded && (
                 <div className="absolute inset-0 flex items-center justify-center bg-slate-100">
                     <div className="text-center">
-                        <div className="inline-block h-6 w-6 animate-spin rounded-full border-3 border-solid border-blue-600 border-r-transparent" />
+                        <div className="inline-block h-6 w-6 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent" />
                         <p className="mt-1 text-[10px] text-slate-600">Đang tải...</p>
                     </div>
                 </div>

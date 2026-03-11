@@ -1,579 +1,450 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import {
-    MapPin,
-    Clock,
-    Users,
-    AlertCircle,
-    Image as ImageIcon,
-    Plus,
-    Minus,
-    ArrowLeft,
-    CheckCircle2,
-} from 'lucide-react';
-
-import GoogleMap from '../../features/map/components/MapBox.jsx';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { AlertCircle, ArrowLeft, Clock, MapPin, Users } from 'lucide-react';
+import GoogleMap from '../../features/map/components/GoogleMap.jsx';
 import Button from '../../shared/ui/Button.jsx';
 import Card from '../../shared/ui/Card.jsx';
-import Input from '../../shared/ui/Input.jsx';
-import Textarea from '../../shared/ui/Textarea.jsx';
 import Badge from '../../shared/ui/Badge.jsx';
 import PriorityBadge from '../../features/rescue/components/PriorityBadge.jsx';
 import {
-    getCoordinatorRescueRequest,
+    getCoordinatorRescueQueue,
+    getCoordinatorRescueRequestByCode,
+    getCoordinatorRescueRequestById,
+    setCitizenBlockByRequest,
     verifyRescueRequest,
-    changeRescueRequestStatus,
 } from '../../features/coordinator/api.js';
+import { COORDINATOR_ROUTES } from '../../app/routes/route.constants.js';
 import { FILE_BASE_URL } from '../../app/config/env.js';
+
+function parseId(value) {
+    const n = Number(value);
+    return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function fmtDate(value) {
+    if (!value) return '—';
+    try {
+        return new Date(value).toLocaleString('vi-VN');
+    } catch {
+        return String(value);
+    }
+}
+
+function statusChip(status) {
+    const s = String(status || 'PENDING').toUpperCase();
+    const map = {
+        PENDING: { label: 'Chờ xác minh', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+        VERIFIED: { label: 'Đã xác minh', cls: 'bg-blue-50 text-blue-700 border-blue-200' },
+        ASSIGNED: { label: 'Đã phân công', cls: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+        IN_PROGRESS: { label: 'Đang xử lý', cls: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+        COMPLETED: { label: 'Hoàn thành', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+        CANCELLED: { label: 'Đã hủy', cls: 'bg-rose-50 text-rose-700 border-rose-200' },
+        DUPLICATE: { label: 'Trùng lặp', cls: 'bg-slate-100 text-slate-700 border-slate-200' },
+    };
+    return map[s] || map.PENDING;
+}
 
 export default function RescueVerifyPage() {
     const location = useLocation();
     const navigate = useNavigate();
-    const fileInputRef = useRef(null);
+    const [searchParams] = useSearchParams();
 
-    // Request được truyền từ hàng đợi (CoordinatorDashboard) qua location.state
-    const rawRequest = location.state?.request || null;
+    const stateRequest = location.state?.request || null;
+    const queryId = searchParams.get('id');
 
-    const toValidNumber = (value) => {
-        const num = Number(value);
-        return Number.isFinite(num) ? num : null;
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [cancelSaving, setCancelSaving] = useState(false);
+    const [blockSaving, setBlockSaving] = useState(false);
+    const [error, setError] = useState('');
+    const [request, setRequest] = useState(stateRequest);
+    const [note, setNote] = useState('');
+    const [cancelAction, setCancelAction] = useState('DELETE');
+    const [cancelReason, setCancelReason] = useState('');
+    const [blockReason, setBlockReason] = useState('');
+    const [verifiedRequests, setVerifiedRequests] = useState([]);
+    const [loadingVerifiedList, setLoadingVerifiedList] = useState(false);
+
+    const requestId = useMemo(() => parseId(stateRequest?.id) || parseId(queryId), [stateRequest?.id, queryId]);
+
+    const loadDetail = async (idOrCode, byCode = false) => {
+        setLoading(true);
+        setError('');
+        try {
+            const detail = byCode
+                ? await getCoordinatorRescueRequestByCode(idOrCode)
+                : await getCoordinatorRescueRequestById(idOrCode);
+            setRequest(detail);
+            setNote('');
+            setCancelAction('DELETE');
+            setCancelReason('');
+            setBlockReason('');
+        } catch (e) {
+            setRequest(null);
+            setError(e?.message || 'Không thể tải dữ liệu yêu cầu từ hệ thống.');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const getCoordinate = (obj, type) => {
-        if (!obj) return null;
-
-        const latKeys = ['latitude', 'lat', 'gpsLat', 'locationLat'];
-        const lngKeys = ['longitude', 'lng', 'lon', 'gpsLng', 'gpsLon', 'locationLng', 'locationLon'];
-        const keys = type === 'lat' ? latKeys : lngKeys;
-
-        // flat keys
-        for (const key of keys) {
-            const value = toValidNumber(obj[key]);
-            if (value !== null) return value;
-        }
-
-        // nested keys
-        const nestedSources = [obj.location, obj.coordinates, obj.geo, obj.position, obj.coordinate];
-        for (const source of nestedSources) {
-            if (!source) continue;
-            for (const key of keys) {
-                const value = toValidNumber(source[key]);
-                if (value !== null) return value;
-            }
-        }
-
-        return null;
-    };
-
-    const initialRequest = rawRequest
-        ? {
-            id: rawRequest.id,
-            code: rawRequest.code,
-            status: rawRequest.status || 'PENDING',
-            priority: rawRequest.priority || 'MEDIUM',
-            peopleCount: rawRequest.peopleCount ?? 1,
-            addressText: rawRequest.addressText || rawRequest.address || 'Chưa có địa chỉ chi tiết',
-            latitude: getCoordinate(rawRequest, 'lat'),
-            longitude: getCoordinate(rawRequest, 'lng'),
-            description: rawRequest.description || '',
-            createdAt: rawRequest.timeAgo || rawRequest.createdAt || '',
-            attachments: rawRequest.attachments || rawRequest.images || rawRequest.evidences || [],
-        }
-        : {
-            id: 'RRQ-1024',
-            code: 'RRQ-1024',
-            status: 'PENDING',
-            priority: 'HIGH',
-            peopleCount: 4,
-            addressText: '123 Đường Trần Hưng Đạo, Phường 2, Quận 5, TP.HCM',
-            latitude: 10.768579,
-            longitude: 106.697389,
-            description:
-                'Gia đình có 2 người già và 2 trẻ nhỏ. Nước đang dâng cao khoảng 1m, đã ngắt điện. Cần được đội cứu nạn tiếp cận và thu dọn nước.',
-            createdAt: '10 phút trước',
-            attachments: [],
-        };
-
-    const [status, setStatus] = useState(initialRequest.status || 'PENDING');
-    const [priority, setPriority] = useState(initialRequest.priority || 'MEDIUM');
-    const [peopleCount, setPeopleCount] = useState(initialRequest.peopleCount || 1);
-    const [address, setAddress] = useState(initialRequest.addressText || '');
-    const [longitude, setLongitude] = useState(initialRequest.longitude ?? '');
-    const [latitude, setLatitude] = useState(initialRequest.latitude ?? '');
-
-    const DEFAULT_COORDINATES = {
-        lat: 10.768579,
-        lng: 106.697389,
-    };
-    const [note, setNote] = useState(initialRequest.description || '');
-    const [attachments, setAttachments] = useState(initialRequest.attachments || []);
-    const [loadingDetail, setLoadingDetail] = useState(false);
-    const [verifying, setVerifying] = useState(false);
-
-    // Fetch full request details from BE to get all saved data
     useEffect(() => {
-        const fetchDetail = async () => {
-            if (!rawRequest?.id) return;
+        if (requestId) {
+            loadDetail(requestId, false);
+            return;
+        }
+        if (queryId) {
+            loadDetail(queryId, true);
+            return;
+        }
+        if (stateRequest?.id) {
+            loadDetail(stateRequest.id, false);
+            return;
+        }
+        setRequest(null);
+        setError('');
+        setLoading(false);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [queryId, requestId, stateRequest?.id]);
 
+    useEffect(() => {
+        const loadVerified = async () => {
             try {
-                setLoadingDetail(true);
-                const resp = await getCoordinatorRescueRequest(rawRequest.id);
-
-                // Handle different response formats
-                let detail = resp;
-                if (resp?.data) detail = resp.data;
-                else if (resp?.content) detail = resp.content;
-                else if (resp?.item) detail = resp.item;
-
-                if (!detail) return;
-
-                // Update all form fields với dữ liệu mới nhất từ DB
-                if (detail.status) setStatus(detail.status);
-                if (detail.priority) setPriority(detail.priority);
-                if (detail.affectedPeopleCount !== undefined || detail.peopleCount !== undefined) {
-                    setPeopleCount(detail.affectedPeopleCount ?? detail.peopleCount ?? 1);
-                }
-                if (detail.addressText || detail.address) {
-                    setAddress(detail.addressText || detail.address || '');
-                }
-                const detailLongitude = getCoordinate(detail, 'lng');
-                const detailLatitude = getCoordinate(detail, 'lat');
-
-                if (detailLongitude !== null) {
-                    setLongitude(String(detailLongitude));
-                }
-                if (detailLatitude !== null) {
-                    setLatitude(String(detailLatitude));
-                }
-                if (detail.description) {
-                    setNote(detail.description);
-                }
-                if (detail.attachments || detail.images || detail.evidences) {
-                    const beAttachments = detail.attachments || detail.images || detail.evidences || [];
-                    setAttachments(Array.isArray(beAttachments) ? beAttachments : []);
-                }
-            } catch (err) {
-                console.error('[RescueVerifyPage] Error loading detail from BE:', err);
-                // Silently fail - use initialRequest data as fallback
+                setLoadingVerifiedList(true);
+                const resp = await getCoordinatorRescueQueue({ status: 'VERIFIED', page: 0, size: 50 });
+                const list = Array.isArray(resp?.content) ? resp.content : Array.isArray(resp) ? resp : [];
+                setVerifiedRequests(list);
+            } catch {
+                setVerifiedRequests([]);
             } finally {
-                setLoadingDetail(false);
+                setLoadingVerifiedList(false);
             }
         };
-
-        fetchDetail();
-    }, [rawRequest?.id]);
-
-    const parsedLatitude = toValidNumber(latitude);
-    const parsedLongitude = toValidNumber(longitude);
+        loadVerified();
+    }, []);
 
     const mapCenter = {
-        lat: parsedLatitude ?? DEFAULT_COORDINATES.lat,
-        lng: parsedLongitude ?? DEFAULT_COORDINATES.lng,
+        lat: Number(request?.latitude) || Number(request?.lat) || 16.0544,
+        lng: Number(request?.longitude) || Number(request?.lng) || 108.2022,
     };
 
-    const handleChangePeople = (delta) => {
-        setPeopleCount((prev) => {
-            const next = prev + delta;
-            if (next < 1) return 1;
-            if (next > 50) return 50;
-            return next;
-        });
-    };
-
-    const getStatusChip = (value) => {
-        const map = {
-            PENDING: { label: 'Chờ xác minh', color: 'bg-amber-50 text-amber-700 border-amber-200' },
-            VERIFIED: { label: 'Đã xác minh', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-            ESCALATED: { label: 'Ưu tiên cao', color: 'bg-rose-50 text-rose-700 border-rose-200' },
-        };
-        return map[value] || map.PENDING;
-    };
-
-    const statusChip = getStatusChip(status);
-
-    const handleVerifyRequest = async () => {
-        if (!initialRequest.id) return;
-
+    const handleVerify = async () => {
+        if (!request?.id) return;
         try {
-            setVerifying(true);
-
-            // 1. Gửi request xác minh vị trí + ghi chú xuống BE
-            await verifyRescueRequest(initialRequest.id, {
+            setSaving(true);
+            await verifyRescueRequest(request.id, {
                 locationVerified: true,
                 note,
+                cancelRequest: false,
+                cancelAction: null,
+                cancelReason: null,
             });
-
-            // 2. Nếu trạng thái đã được chọn khác PENDING thì cập nhật status
-            if (status && status !== initialRequest.status) {
-                await changeRescueRequestStatus(initialRequest.id, status, note);
-            }
-
-            window.alert('Xác minh yêu cầu thành công. Thông tin đã được lưu xuống hệ thống.');
-            navigate(-1);
-        } catch (error) {
-            console.error('[RescueVerifyPage] Lỗi khi xác minh yêu cầu:', error);
-            window.alert('Có lỗi xảy ra khi xác minh yêu cầu. Vui lòng thử lại sau.');
+            const refreshed = await getCoordinatorRescueRequestById(request.id);
+            setRequest(refreshed);
+            window.alert('Đã xác minh yêu cầu thành công. Chuyển sang trang phân công.');
+            navigate(COORDINATOR_ROUTES.ASSIGN_RESCUE, {
+                state: {
+                    request: refreshed,
+                    autoSelectRequestId: refreshed.id,
+                    fromVerify: true,
+                },
+            });
+        } catch (e) {
+            window.alert(e?.message || 'Xác minh thất bại.');
         } finally {
-            setVerifying(false);
+            setSaving(false);
         }
     };
 
-    const handleAddMoreImagesClick = () => {
-        if (fileInputRef.current) {
-            fileInputRef.current.click();
+    const handleCancelRequest = async () => {
+        if (!request?.id) return;
+        if (!cancelReason.trim()) {
+            window.alert('Vui lòng nhập lý do hủy/chờ đội.');
+            return;
+        }
+        try {
+            setCancelSaving(true);
+            await verifyRescueRequest(request.id, {
+                locationVerified: false,
+                note: note || null,
+                cancelRequest: true,
+                cancelAction,
+                cancelReason: cancelReason.trim(),
+            });
+            const refreshed = await getCoordinatorRescueRequestById(request.id);
+            setRequest(refreshed);
+            window.alert('Đã xử lý hủy yêu cầu thành công.');
+        } catch (e) {
+            window.alert(e?.message || 'Không thể hủy yêu cầu.');
+        } finally {
+            setCancelSaving(false);
         }
     };
 
-    const handleFilesSelected = (event) => {
-        const files = Array.from(event.target.files || []);
-        if (!files.length) return;
-
-        const localAttachments = files.map((file) => ({
-            id: `local-${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`,
-            file,
-            fileUrl: URL.createObjectURL(file),
-            fileName: file.name,
-            isLocal: true,
-        }));
-
-        setAttachments((prev) => [...localAttachments, ...(prev || [])]);
-
-        // reset input để có thể chọn lại cùng 1 file nếu cần
-        event.target.value = '';
+    const handleBlockCitizen = async () => {
+        if (!request?.id) return;
+        if (!blockReason.trim()) {
+            window.alert('Vui lòng nhập lý do khóa citizen.');
+            return;
+        }
+        try {
+            setBlockSaving(true);
+            await setCitizenBlockByRequest(request.id, {
+                blocked: true,
+                reason: blockReason.trim(),
+            });
+            window.alert('Đã khóa citizen thành công.');
+            setBlockReason('');
+            navigate(COORDINATOR_ROUTES.DASHBOARD);
+        } catch (e) {
+            window.alert(e?.message || 'Không thể khóa citizen.');
+        } finally {
+            setBlockSaving(false);
+        }
     };
+
+    if (loading) {
+        return <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500">Đang tải chi tiết yêu cầu...</div>;
+    }
+
+    if (error) {
+        return (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 p-8 text-center">
+                <div className="mb-2 inline-flex items-center gap-2 font-semibold text-rose-700"><AlertCircle className="h-4 w-4" />Không thể mở trang xác minh</div>
+                <p className="text-sm text-rose-600">{error}</p>
+                <button
+                    type="button"
+                    onClick={() => navigate(COORDINATOR_ROUTES.DASHBOARD)}
+                    className="mt-4 rounded-lg border border-rose-200 bg-white px-4 py-2 text-sm font-medium text-rose-700"
+                >
+                    Về dashboard
+                </button>
+            </div>
+        );
+    }
+
+    if (!request) {
+        return (
+            <div className="space-y-4">
+                <Card className="p-4">
+                    <h1 className="text-lg font-bold text-slate-900">Danh sách yêu cầu đã xác minh</h1>
+                    <p className="mt-1 text-sm text-slate-600">
+                        Chọn một yêu cầu `VERIFIED` từ danh sách bên dưới để xem chi tiết xác minh.
+                    </p>
+                </Card>
+
+                <Card className="p-4">
+                    {loadingVerifiedList ? (
+                        <p className="text-sm text-slate-500">Đang tải danh sách yêu cầu đã xác minh...</p>
+                    ) : verifiedRequests.length === 0 ? (
+                        <p className="text-sm text-slate-500">Hiện chưa có yêu cầu nào ở trạng thái VERIFIED.</p>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[760px]">
+                                <thead className="bg-slate-50">
+                                    <tr>
+                                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">Mã</th>
+                                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">Công dân</th>
+                                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">Địa chỉ</th>
+                                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">Thời gian</th>
+                                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {verifiedRequests.map((r) => (
+                                        <tr key={r.id} className="border-t border-slate-100">
+                                            <td className="px-4 py-2 text-sm font-semibold text-slate-900">{r.code || `#${r.id}`}</td>
+                                            <td className="px-4 py-2 text-sm text-slate-700">{r.citizenName || '—'}</td>
+                                            <td className="px-4 py-2 text-sm text-slate-700">{r.addressText || '—'}</td>
+                                            <td className="px-4 py-2 text-sm text-slate-600">{fmtDate(r.updatedAt || r.createdAt)}</td>
+                                            <td className="px-4 py-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => loadDetail(r.id, false)}
+                                                    className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                                                >
+                                                    Xem chi tiết
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </Card>
+            </div>
+        );
+    }
+
+    const chip = statusChip(request?.status);
 
     return (
-        <div className="flex flex-col gap-4 pb-10 lg:min-h-[calc(100vh-8rem)] lg:flex-row">
-            {/* Left: Thông tin chi tiết */}
-            <div className="flex w-full flex-col gap-3 lg:flex-[1.15]">
-                {/* Top bar */}
-                <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white/90 p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex items-start gap-3">
-                        <button
-                            type="button"
-                            onClick={() => navigate(-1)}
-                            className="mr-1 hidden rounded-full border border-slate-200 bg-slate-50 p-1.5 text-slate-500 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 lg:inline-flex"
-                        >
-                            <ArrowLeft className="h-4 w-4" />
-                        </button>
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+            <div className="space-y-4">
+                <Card className="p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
+                            <button
+                                type="button"
+                                onClick={() => navigate(-1)}
+                                className="mb-2 inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700"
+                            >
+                                <ArrowLeft className="h-3 w-3" /> Quay lại
+                            </button>
                             <div className="flex flex-wrap items-center gap-2">
-                                <h1 className="text-lg font-bold tracking-tight text-slate-900">
-                                    Xác minh &amp; thẩm định yêu cầu
-                                </h1>
-                                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-                                    ID: {initialRequest.code}
-                                </span>
-                                <Badge outline size="sm" className={statusChip.color}>
-                                    {statusChip.label}
-                                </Badge>
+                                <h1 className="text-2xl font-bold text-slate-900">Xác minh yêu cầu #{request.code || request.id}</h1>
+                                <Badge outline size="sm" className={chip.cls}>{chip.label}</Badge>
+                                <PriorityBadge level={request.priority || 'MEDIUM'} size="sm" />
                             </div>
-                            <p className="mt-1 text-xs text-slate-500">
-                                Điều phối viên kiểm tra lại thông tin trước khi chuyển sang bước điều phối đội cứu hộ.
-                            </p>
+                            <p className="mt-1 text-xs text-slate-500">Tất cả dữ liệu bên dưới được lấy từ database hiện tại.</p>
                         </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                        <PriorityBadge level={priority} size="sm" />
-                        <Button variant="outline" size="sm">
-                            Lưu nháp
-                        </Button>
-                        <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={handleVerifyRequest}
-                            disabled={verifying}
-                        >
-                            <CheckCircle2 className="h-4 w-4" />
-                            {verifying ? 'Đang xác minh...' : 'Xác minh yêu cầu'}
-                        </Button>
-                    </div>
-                </div>
-
-                {/* Alert trạng thái */}
-                <Card
-                    variant="outlined"
-                    className="border-amber-200 bg-gradient-to-r from-amber-50/80 via-amber-50/40 to-transparent"
-                >
-                    <div className="flex flex-col gap-2 px-3 py-2 text-xs text-amber-800 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="flex items-start gap-2">
-                            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                            <div>
-                                <div className="font-semibold">Kiểm tra thông tin trước khi xác minh</div>
-                                <p>
-                                    Đối chiếu vị trí trên bản đồ, số người cần cứu hộ và mô tả tình huống. Bạn có thể
-                                    chỉnh sửa lại cho chính xác.
-                                </p>
-                            </div>
-                        </div>
-                        <div className="mt-1 flex items-center gap-1 text-[11px] text-amber-700 sm:mt-0">
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
                             <Clock className="h-3.5 w-3.5" />
-                            <span>Mới: {initialRequest.createdAt || '—'}</span>
+                            {fmtDate(request.createdAt)}
                         </div>
                     </div>
                 </Card>
 
-                {/* Loading indicator */}
-                {loadingDetail && (
-                    <Card variant="outlined" className="border-blue-200 bg-blue-50/80">
-                        <div className="flex items-center gap-2 px-3 py-2 text-xs text-blue-800">
-                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                            <span>Đang tải dữ liệu từ database...</span>
+                <Card className="space-y-4 p-4">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                            <p className="text-xs font-semibold uppercase text-slate-500">Công dân</p>
+                            <p className="text-sm font-medium text-slate-900">{request.citizenName || '—'}</p>
+                            <p className="text-xs text-slate-500">{request.citizenPhone || '—'}</p>
                         </div>
-                    </Card>
-                )}
-
-                {/* Form chi tiết */}
-                <Card className="space-y-6 p-5">
-                    {/* Hàng 1: trạng thái + số người */}
-                    <div className="grid gap-4 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-slate-700">Trạng thái thẩm định</label>
-                            <select
-                                value={status}
-                                onChange={(e) => setStatus(e.target.value)}
-                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                            >
-                                <option value="PENDING">Chờ xác minh</option>
-                                <option value="VERIFIED">Đã xác minh</option>
-                                <option value="ESCALATED">Ưu tiên cao</option>
-                            </select>
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-slate-700">Số người cần cứu hộ</label>
-                            <div className="flex overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm">
-                                <button
-                                    type="button"
-                                    onClick={() => handleChangePeople(-1)}
-                                    className="inline-flex items-center justify-center border-r border-slate-200 px-3 text-slate-600 transition hover:bg-slate-50"
-                                >
-                                    <Minus className="h-4 w-4" />
-                                </button>
-                                <div className="flex flex-1 items-center justify-center gap-1 px-3 text-sm font-semibold text-slate-900">
-                                    <Users className="h-4 w-4 text-slate-500" />
-                                    <span>{peopleCount}</span>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => handleChangePeople(1)}
-                                    className="inline-flex items-center justify-center border-l border-slate-200 px-3 text-slate-600 transition hover:bg-slate-50"
-                                >
-                                    <Plus className="h-4 w-4" />
-                                </button>
-                            </div>
+                        <div>
+                            <p className="text-xs font-semibold uppercase text-slate-500">Số người cần hỗ trợ</p>
+                            <p className="text-sm font-medium text-slate-900 inline-flex items-center gap-1"><Users className="h-4 w-4" />{request.affectedPeopleCount ?? '—'}</p>
                         </div>
                     </div>
 
-                    {/* Hàng 2: địa chỉ */}
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-medium text-slate-700">Địa chỉ chi tiết</label>
-                        <div className="relative">
-                            <MapPin className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                            <Input
-                                className="pl-9"
-                                value={address}
-                                onChange={(e) => setAddress(e.target.value)}
-                                placeholder="Nhập địa chỉ cụ thể (số nhà, tên đường, phường/xã...)"
-                            />
-                        </div>
+                    <div>
+                        <p className="text-xs font-semibold uppercase text-slate-500">Địa chỉ</p>
+                        <p className="mt-1 text-sm text-slate-800 inline-flex gap-1"><MapPin className="mt-0.5 h-4 w-4 text-slate-500" />{request.addressText || '—'}</p>
                     </div>
 
-                    {/* Hàng 3: toạ độ */}
-                    <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-slate-700">Kinh độ (Longitude)</label>
-                            <Input
-                                type="number"
-                                step="any"
-                                value={longitude}
-                                onChange={(e) => setLongitude(e.target.value)}
-                                className="bg-slate-50"
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-slate-700">Vĩ độ (Latitude)</label>
-                            <Input
-                                type="number"
-                                step="any"
-                                value={latitude}
-                                onChange={(e) => setLatitude(e.target.value)}
-                                className="bg-slate-50"
-                            />
-                        </div>
+                    <div>
+                        <p className="text-xs font-semibold uppercase text-slate-500">Mô tả tình huống</p>
+                        <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{request.description || '—'}</p>
                     </div>
 
-                    {/* Hàng 4: mô tả */}
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-medium text-slate-700">Mô tả tình huống (có thể chỉnh sửa)</label>
-                        <Textarea
-                            rows={4}
+                    <div>
+                        <label className="mb-1 block text-xs font-medium text-slate-700">Ghi chú điều phối</label>
+                        <input
                             value={note}
                             onChange={(e) => setNote(e.target.value)}
-                            placeholder="Ghi rõ mức nước, tình trạng người gặp nạn, chướng ngại vật, đường tiếp cận..."
+                            placeholder="Nhập ghi chú xác minh"
+                            className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm"
                         />
                     </div>
+                    <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">
+                        <div className="text-xs font-semibold text-rose-800">Hủy yêu cầu của citizen</div>
+                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                            <select
+                                value={cancelAction}
+                                onChange={(e) => setCancelAction(e.target.value)}
+                                className="h-10 rounded-lg border border-rose-200 bg-white px-3 text-sm"
+                            >
+                                <option value="DELETE">Hủy yêu cầu</option>
+                                <option value="WAITING_TEAM">Đưa về hàng đợi: chờ có đội</option>
+                            </select>
+                            <input
+                                value={cancelReason}
+                                onChange={(e) => setCancelReason(e.target.value)}
+                                placeholder="Lý do hủy/chờ đội"
+                                className="h-10 rounded-lg border border-rose-200 bg-white px-3 text-sm"
+                            />
+                        </div>
+                        <div className="mt-2">
+                            <Button variant="outline" size="sm" onClick={handleCancelRequest} disabled={cancelSaving}>
+                                {cancelSaving ? 'Đang xử lý...' : 'OK - Hủy yêu cầu'}
+                            </Button>
+                        </div>
+                    </div>
 
-                    {/* Hàng 5: ảnh minh chứng */}
-                    <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                        {attachments &&
-                            attachments.length > 0 &&
-                            attachments.slice(0, 3).map((att, index) => {
-                                const rawUrl = att.fileUrl || att.url || att.path || att.imageUrl;
-                                if (!rawUrl) return null;
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                        <div className="text-xs font-semibold text-amber-900">
+                            Khóa citizen (nghi ngờ spam), không cho gửi yêu cầu mới
+                        </div>
+                        <input
+                            value={blockReason}
+                            onChange={(e) => setBlockReason(e.target.value)}
+                            placeholder="Lý do khóa"
+                            className="mt-2 h-10 w-full rounded-lg border border-amber-300 bg-white px-3 text-sm"
+                        />
+                        <div className="mt-2">
+                            <Button variant="outline" size="sm" onClick={handleBlockCitizen} disabled={blockSaving}>
+                                {blockSaving ? 'Đang xử lý...' : 'OK - Khóa citizen'}
+                            </Button>
+                        </div>
+                    </div>
 
-                                // Nếu là blob (local preview) hoặc http(s) thì dùng trực tiếp
-                                // Nếu BE trả về "/uploads/..." thì ghép với FILE_BASE_URL
-                                const finalUrl =
-                                    rawUrl.startsWith('http') || rawUrl.startsWith('blob:')
-                                        ? rawUrl
-                                        : `${FILE_BASE_URL}${rawUrl}`;
+                    <div className="flex flex-wrap gap-2">
+                        <Button variant="primary" size="sm" onClick={handleVerify} disabled={saving}>
+                            {saving ? 'Đang lưu...' : 'Xác minh yêu cầu'}
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(COORDINATOR_ROUTES.PRIORITIZE_REQUEST, { state: { request } })}
+                        >
+                            Phân loại ưu tiên
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(COORDINATOR_ROUTES.DUPLICATE_MANAGEMENT, { state: { sourceRequest: request } })}
+                        >
+                            Đánh dấu trùng lặp
+                        </Button>
+                    </div>
+                </Card>
 
+                <Card className="p-4">
+                    <p className="mb-2 text-xs font-semibold uppercase text-slate-500">Ảnh đính kèm</p>
+                    {!Array.isArray(request.attachments) || request.attachments.length === 0 ? (
+                        <p className="text-sm text-slate-500">Không có ảnh đính kèm.</p>
+                    ) : (
+                        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                            {request.attachments.map((att) => {
+                                const raw = att.fileUrl || '';
+                                const src = raw.startsWith('http') ? raw : `${FILE_BASE_URL}${raw}`;
                                 return (
-                                    <div
-                                        key={att.id || att.fileUrl || index}
-                                        className="group relative overflow-hidden rounded-lg border border-slate-200 bg-slate-100"
-                                    >
-                                        <img src={finalUrl} alt="Ảnh minh chứng" />
-                                    </div>
+                                    <a key={att.id || raw} href={src} target="_blank" rel="noreferrer" className="overflow-hidden rounded-lg border border-slate-200">
+                                        <img src={src} alt="attachment" className="h-28 w-full object-cover" />
+                                    </a>
                                 );
                             })}
-
-                        {/* input ẩn để chọn file */}
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            className="hidden"
-                            onChange={handleFilesSelected}
-                        />
-
-                        {/* nút thêm ảnh */}
-                        <button
-                            type="button"
-                            className="flex h-24 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-500 transition hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 md:h-28"
-                            onClick={handleAddMoreImagesClick}
-                        >
-                            <ImageIcon className="h-5 w-5" />
-                            <span>Thêm ảnh khác</span>
-                        </button>
-                    </div>
-
-                    {/* Footer actions */}
-                    <div className="mt-2 flex flex-col-reverse gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex flex-wrap gap-2">
-                            <Button type="button" variant="danger" size="sm">
-                                Đánh dấu trùng lặp
-                            </Button>
-                            <Button type="button" variant="outline" size="sm">
-                                Hủy bỏ
-                            </Button>
                         </div>
-                        <div className="flex w-full justify-end sm:w-auto">
-                            <Button
-                                type="button"
-                                variant="primary"
-                                size="sm"
-                                className="w-full sm:w-auto"
-                                onClick={() =>
-                                    navigate('/dieu-phoi/phan-loai', {
-                                        state: { request: rawRequest || initialRequest },
-                                    })
-                                }
-                            >
-                                Phân loại ưu tiên
-                            </Button>
-                        </div>
-                    </div>
+                    )}
                 </Card>
             </div>
 
-            {/* Right: Bối cảnh khu vực + Map */}
-            <div className="flex w-full flex-col gap-3 lg:flex-[0.9]">
-                <Card className="flex min-h-[260px] flex-1 flex-col overflow-hidden">
-                    {/* Header */}
-                    <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/80 px-4 py-3">
-                        <div>
-                            <h3 className="text-sm font-semibold text-slate-900">Bối cảnh khu vực</h3>
-                            <p className="text-[11px] text-slate-500">
-                                Vòng tròn thể hiện bán kính ~500m quanh vị trí yêu cầu.
-                            </p>
-                        </div>
-                        <div className="flex flex-col items-end gap-1 text-[11px] text-slate-500">
-                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 font-medium">
-                                <Clock className="h-3.5 w-3.5" />
-                                <span>{initialRequest.createdAt || 'Thời gian không xác định'}</span>
-                            </span>
-                            <span className="text-[10px] text-slate-400">Dữ liệu bản đồ chỉ mang tính tham khảo</span>
-                        </div>
+            <div className="space-y-4">
+                <Card className="overflow-hidden p-0">
+                    <div className="border-b border-slate-200 px-4 py-3">
+                        <h2 className="text-sm font-semibold text-slate-900">Vị trí yêu cầu</h2>
                     </div>
-
-                    {/* Map + controls */}
-                    <div className="relative flex-1">
+                    <div className="h-[360px]">
                         <GoogleMap center={mapCenter} zoom={14} />
-
-                        {/* Vùng bán kính (overlay minh hoạ) */}
-                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                            <div className="h-40 w-40 rounded-full border-2 border-dashed border-blue-400 bg-blue-200/10 shadow-[0_0_0_1px_rgba(37,99,235,0.25)]" />
-                        </div>
-
-                        {/* Panel filter nhỏ bên trái */}
-                        <div className="absolute left-3 top-3 w-52 rounded-xl border border-slate-200 bg-white/95 p-3 text-xs text-slate-600 shadow-md backdrop-blur">
-                            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-800">
-                                LỚP THÔNG TIN
-                            </p>
-                            <div className="space-y-1.5">
-                                <label className="flex items-center gap-2">
-                                    <input type="radio" name="scope" defaultChecked className="h-3 w-3 text-blue-600" />
-                                    <span className="text-xs">Yêu cầu cứu hộ liên quan</span>
-                                </label>
-                                <label className="flex items-center gap-2">
-                                    <input type="radio" name="scope" className="h-3 w-3 text-blue-600" />
-                                    <span className="text-xs">Đội cứu hộ khả dụng</span>
-                                </label>
-                                <label className="flex items-center gap-2">
-                                    <input type="radio" name="scope" className="h-3 w-3 text-blue-600" />
-                                    <span className="text-xs">Vùng nguy cơ ngập</span>
-                                </label>
-                            </div>
-                        </div>
                     </div>
+                </Card>
 
-                    {/* Danh sách yêu cầu gần đó */}
-                    <div className="border-t border-slate-200 bg-slate-50/90 px-4 py-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
-                            <span className="font-semibold text-slate-800">
-                                Yêu cầu gần đó trong bán kính 500m
-                            </span>
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px]">2 yêu cầu</span>
-                        </div>
-                        <div className="mt-2 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
-                            <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2">
-                                <div>
-                                    <div className="text-[11px] font-semibold text-slate-900">
-                                        RRQ-0896 · Cách 185m
-                                    </div>
-                                    <div className="mt-0.5 text-[11px] text-slate-500">2 người cần hỗ trợ</div>
+                <Card className="p-4">
+                    <p className="mb-2 text-xs font-semibold uppercase text-slate-500">Timeline từ hệ thống</p>
+                    {!Array.isArray(request.timeline) || request.timeline.length === 0 ? (
+                        <p className="text-sm text-slate-500">Chưa có timeline.</p>
+                    ) : (
+                        <div className="space-y-2">
+                            {request.timeline.map((t) => (
+                                <div key={t.id || `${t.eventType}-${t.createdAt}`} className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                                    <div className="text-xs font-semibold text-slate-800">{t.eventType || 'EVENT'}</div>
+                                    <div className="mt-0.5 text-xs text-slate-600">{t.note || '—'}</div>
+                                    <div className="mt-0.5 text-[11px] text-slate-500">{fmtDate(t.createdAt)} • {t.actorName || 'Hệ thống'}</div>
                                 </div>
-                                <span className="rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                                    Chưa xử lý
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2">
-                                <div>
-                                    <div className="text-[11px] font-semibold text-slate-900">
-                                        RRQ-0915 · Cách 328m
-                                    </div>
-                                    <div className="mt-0.5 text-[11px] text-slate-500">Đã điều đội</div>
-                                </div>
-                                <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                                    Đang xử lý
-                                </span>
-                            </div>
+                            ))}
                         </div>
-                    </div>
+                    )}
                 </Card>
             </div>
         </div>

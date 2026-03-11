@@ -18,14 +18,6 @@ import Button from '../../shared/ui/Button.jsx';
 import Badge from '../../shared/ui/Badge.jsx';
 import { updateRescueRequestStatusAsRescuer } from '../../features/rescuer/api.js';
 
-function fmtTime(d) {
-    try {
-        return d.toLocaleTimeString('vi-VN', { hour12: false });
-    } catch {
-        return '--:--:--';
-    }
-}
-
 function pickFirstTruthy(...vals) {
     for (const v of vals) {
         if (v !== undefined && v !== null && String(v).trim() !== '') return v;
@@ -82,8 +74,8 @@ export default function RescueUpdateStatusPage() {
     const [headerStatus, setHeaderStatus] = useState(
         String(pickFirstTruthy(state?.statusLabel, state?.status, 'CHỜ BÁO CÁO'))
     );
-    const reportTitle = String(pickFirstTruthy(state?.reportTitle, 'Báo cáo: Cứu hộ Quận 1'));
-    const leaderName = String(pickFirstTruthy(state?.leaderName, state?.teamLeaderName, 'Nguyễn Văn A'));
+    const reportTitle = String(pickFirstTruthy(state?.reportTitle, 'Báo cáo nhiệm vụ'));
+    const leaderName = String(pickFirstTruthy(state?.leaderName, state?.teamLeaderName, 'Chưa cập nhật'));
     const pendingReports = Number(pickFirstTruthy(state?.pendingReports, 0)) || 0;
 
     const gpsText = useMemo(() => {
@@ -165,23 +157,13 @@ export default function RescueUpdateStatusPage() {
     const timeline = useMemo(() => {
         const t = Array.isArray(state?.timeline) ? state.timeline : [];
         if (t.length > 0) return t;
-        // Minimal placeholder timeline (UI only)
-        return [
-            {
-                id: 't0',
-                label: 'Tiếp nhận nhiệm vụ',
-                time: fmtTime(new Date()),
-                meta: `GPS: ${gpsText}`,
-            },
-        ];
+        return [];
     }, [state, gpsText]);
 
     async function handleSendNow() {
-        // UI only (user said map/status logic can be done later)
-        setSending(true);
         try {
-            await new Promise((r) => window.setTimeout(r, 600));
-            window.alert('Đã lưu báo cáo (UI demo). Bạn có thể nối API sau.');
+            setSending(true);
+            await handleSelectStep(selectedStep);
         } finally {
             setSending(false);
         }
@@ -222,7 +204,7 @@ export default function RescueUpdateStatusPage() {
                     <button
                         type="button"
                         className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700"
-                        onClick={() => window.alert('Tính năng gửi lại sẽ làm sau.')}
+                        onClick={handleSendNow}
                     >
                         <RefreshCcw className="h-3.5 w-3.5" />
                         THỬ LẠI
@@ -293,6 +275,9 @@ export default function RescueUpdateStatusPage() {
                     Lịch sử mốc thời gian
                 </div>
                 <div className="mt-3 space-y-3">
+                    {timeline.length === 0 && (
+                        <div className="text-xs text-slate-500">Chưa có lịch sử trạng thái từ hệ thống.</div>
+                    )}
                     {timeline.map((t) => (
                         <div key={t.id || t.time} className="flex gap-3">
                             <div className="mt-1 h-2 w-2 rounded-full bg-slate-400" />
@@ -314,7 +299,7 @@ export default function RescueUpdateStatusPage() {
                     <button
                         type="button"
                         className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 hover:bg-slate-50"
-                        onClick={() => window.alert('Trang nhắn tin sẽ làm sau.')}
+                        disabled
                     >
                         <MessageCircle className="h-4 w-4" />
                         Nhắn tin
@@ -322,7 +307,7 @@ export default function RescueUpdateStatusPage() {
                     <button
                         type="button"
                         className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 hover:bg-slate-50"
-                        onClick={() => window.alert('Gọi đội sẽ làm sau.')}
+                        disabled
                     >
                         <Phone className="h-4 w-4" />
                         Gọi đội

@@ -1,270 +1,345 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from "react";
 
-import { createTeam, getTeams } from '../../features/admin/api.js';
-import { createAsset } from '../../features/assets/api.js';
-import Button from '../../shared/ui/Button.jsx';
-import Input from '../../shared/ui/Input.jsx';
+export default function AdminDashboard() {
 
-export default function AdminTeamAssetPage() {
-    // ===== TEAM =====
-    const [teamName, setTeamName] = useState('');
-    const [teamDesc, setTeamDesc] = useState('');
-    const [teamStatus, setTeamStatus] = useState('AVAILABLE'); // Rảnh
-    const [teams, setTeams] = useState([]);
-    const [loadingTeam, setLoadingTeam] = useState(false);
+    const token = localStorage.getItem("token");
 
-    // ===== ASSET =====
-    const [assetCode, setAssetCode] = useState('');
-    const [assetName, setAssetName] = useState('');
-    const [assetType, setAssetType] = useState('BOAT');
-    const [assetCapacity, setAssetCapacity] = useState('');
-    const [assetTeamId, setAssetTeamId] = useState('');
-    const [assetNote, setAssetNote] = useState('');
-    const [assetStatus, setAssetStatus] = useState('AVAILABLE'); // Rảnh
-    const [loadingAsset, setLoadingAsset] = useState(false);
+    const API = "http://localhost:8080/api/admin";
 
-    useEffect(() => {
-        loadTeams();
-    }, []);
+    const [users, setUsers] = useState([]);
+    const [message, setMessage] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
+    const [resetPasswords, setResetPasswords] = useState({});
 
-    async function loadTeams() {
-        try {
-            const data = await getTeams();
-            setTeams(data || []);
-        } catch (e) {
-            console.error('[AdminTeamAssetPage] loadTeams error:', e);
-        }
-    }
+    const [keyword, setKeyword] = useState("");
+    const [roleId, setRoleId] = useState("");
 
-    async function handleCreateTeam(e) {
-        e.preventDefault();
-        if (!teamName.trim()) {
-            window.alert('Vui lòng nhập tên đội cứu hộ');
+    const [form, setForm] = useState({
+        fullName: "",
+        email: "",
+        phone: "",
+        password: "",
+        roleId: 1
+    });
+
+    // =========================
+    // ICONS
+    // =========================
+
+    const EyeIcon = () => (
+        <svg width="20" height="20" viewBox="0 0 24 24">
+            <path
+                fill="currentColor"
+                d="M12 5C6 5 2 12 2 12s4 7 10 7s10-7 10-7s-4-7-10-7Zm0 11a4 4 0 1 1 0-8a4 4 0 0 1 0 8Z"
+            />
+        </svg>
+    );
+
+    const EyeSlashIcon = () => (
+        <svg width="20" height="20" viewBox="0 0 24 24">
+            <path
+                fill="currentColor"
+                d="M2 5l2-2l18 18l-2 2l-4.2-4.2A10.6 10.6 0 0 1 12 19c-6 0-10-7-10-7a21.8 21.8 0 0 1 5.2-5.8L2 5Zm20 7s-4-7-10-7c-1.4 0-2.7.3-4 .8l1.6 1.6A4 4 0 0 1 16.6 14L22 12Z"
+            />
+        </svg>
+    );
+
+    // =========================
+    // CREATE USER
+    // =========================
+
+    const createUser = async () => {
+
+        const res = await fetch(`${API}/create-user`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify(form)
+        });
+
+        const data = await res.json();
+
+        setMessage(data.message || "User created");
+
+        getUsers();
+    };
+
+    // =========================
+    // GET USERS
+    // =========================
+
+    const getUsers = async () => {
+
+        const query = new URLSearchParams({
+            keyword,
+            roleId,
+            page:0
+        });
+
+        const res = await fetch(`${API}/users?${query}`, {
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        });
+
+        const data = await res.json();
+
+        setUsers(data.content || []);
+    };
+
+    useEffect(()=>{
+        getUsers();
+    },[]);
+
+    // =========================
+    // DELETE USER
+    // =========================
+
+    const deleteUser = async (id) => {
+
+        const res = await fetch(`${API}/delete-user/${id}`, {
+            method: "DELETE",
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        });
+
+        const data = await res.json();
+
+        setMessage(data.message || "Deleted");
+
+        getUsers();
+    };
+
+    // =========================
+    // RESET PASSWORD
+    // =========================
+
+    const resetPassword = async (id) => {
+
+        const password = resetPasswords[id];
+
+        if (!password) {
+            setMessage("Nhập password mới");
             return;
         }
 
-        try {
-            setLoadingTeam(true);
-            // Build payload - chỉ gửi các field có giá trị
-            const payload = {
-                name: teamName.trim(),
-            };
+        const res = await fetch(`${API}/reset-password/${id}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify({ password })
+        });
 
-            // Chỉ thêm description nếu có giá trị (không gửi null hoặc empty)
-            if (teamDesc?.trim()) {
-                payload.description = teamDesc.trim();
-            }
+        const data = await res.json();
 
-            // Thử không gửi status khi tạo mới (BE có thể tự set mặc định)
-            // Nếu BE yêu cầu status, uncomment dòng dưới
-            // payload.status = teamStatus;
+        setMessage(data.message || "Password updated");
 
-            console.log('[AdminTeamAssetPage] Creating team with payload:', payload);
-            const result = await createTeam(payload);
-            console.log('[AdminTeamAssetPage] Team created successfully:', result);
+        setResetPasswords({
+            ...resetPasswords,
+            [id]: ""
+        });
+    };
 
-            window.alert('Tạo đội cứu hộ thành công');
-            setTeamName('');
-            setTeamDesc('');
-            setTeamStatus('AVAILABLE');
-            await loadTeams();
-        } catch (e) {
-            console.error('[AdminTeamAssetPage] createTeam error:', e);
-            const errorMessage = e?.message || e?.data?.message || e?.data?.error || 'Không xác định được lỗi';
-            console.error('[AdminTeamAssetPage] Error details:', {
-                message: errorMessage,
-                status: e?.status,
-                data: e?.data,
-                fullError: e,
-            });
-            window.alert(`Tạo đội cứu hộ thất bại: ${errorMessage}`);
-        } finally {
-            setLoadingTeam(false);
-        }
-    }
+    // =========================
+    // UPDATE STATUS
+    // =========================
 
-    async function handleCreateAsset(e) {
-        e.preventDefault();
-        if (!assetCode.trim() || !assetName.trim() || !assetType.trim()) return;
+    const toggleStatus = async (id,status) => {
 
-        try {
-            setLoadingAsset(true);
-            const payload = {
-                code: assetCode.trim(),
-                name: assetName.trim(),
-                assetType: assetType.trim(),
-                assignedTeamId: assetTeamId ? Number(assetTeamId) : null,
-            };
+        const res = await fetch(`${API}/update-status/${id}`,{
+            method:"PUT",
+            headers:{
+                "Content-Type":"application/json",
+                "Authorization":"Bearer "+token
+            },
+            body:JSON.stringify({
+                status: !status
+            })
+        });
 
-            if (assetCapacity) {
-                payload.capacity = Number(assetCapacity);
-            }
+        const data = await res.json();
 
-            if (assetNote && assetNote.trim()) {
-                payload.note = assetNote.trim();
-            }
+        setMessage(data.message || "Status updated");
 
-            // Tạm thời KHÔNG gửi status khi tạo mới để tránh xung đột DTO
-            // Nếu BE yêu cầu status, có thể mở lại dòng dưới
-            // payload.status = assetStatus;
-
-            console.log('[AdminTeamAssetPage] Creating asset with payload:', payload);
-            await createAsset(payload);
-            window.alert('Tạo phương tiện thành công');
-            setAssetCode('');
-            setAssetName('');
-            setAssetType('BOAT');
-            setAssetCapacity('');
-            setAssetTeamId('');
-            setAssetNote('');
-            setAssetStatus('AVAILABLE');
-        } catch (e) {
-            console.error('[AdminTeamAssetPage] createAsset error:', e);
-            window.alert('Tạo phương tiện thất bại');
-        } finally {
-            setLoadingAsset(false);
-        }
-    }
+        getUsers();
+    };
 
     return (
-        <div className="mx-auto flex max-w-5xl flex-col gap-6 p-4">
-            {/* Form tạo đội */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <h2 className="mb-3 text-sm font-semibold text-slate-900">Tạo Đội Cứu hộ</h2>
+        <div className="rounded-xl border bg-white p-6 space-y-6">
 
-                <form className="space-y-3" onSubmit={handleCreateTeam}>
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-slate-700">Tên đội cứu hộ *</label>
-                        <Input
-                            value={teamName}
-                            onChange={(e) => setTeamName(e.target.value)}
-                            placeholder="Ví dụ: Đội Cứu hộ số 1"
+            <h1 className="text-2xl font-semibold">
+                Admin Dashboard
+            </h1>
+
+            {/* CREATE USER */}
+
+            <div className="border p-4 rounded-lg space-y-3">
+
+                <h2 className="font-semibold">
+                    Tạo Account
+                </h2>
+
+                <div className="flex flex-wrap gap-2">
+
+                    <input
+                        className="border p-2"
+                        placeholder="Full name"
+                        onChange={(e)=>setForm({...form, fullName:e.target.value})}
+                    />
+
+                    <input
+                        className="border p-2"
+                        placeholder="Email"
+                        onChange={(e)=>setForm({...form, email:e.target.value})}
+                    />
+
+                    <input
+                        className="border p-2"
+                        placeholder="Phone"
+                        onChange={(e)=>setForm({...form, phone:e.target.value})}
+                    />
+
+                    <div className="flex items-center border rounded">
+
+                        <input
+                            className="p-2 outline-none"
+                            placeholder="Password"
+                            type={showPassword ? "text" : "password"}
+                            onChange={(e)=>setForm({...form, password:e.target.value})}
                         />
-                    </div>
 
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-slate-700">Mô tả</label>
-                        <Input
-                            value={teamDesc}
-                            onChange={(e) => setTeamDesc(e.target.value)}
-                            placeholder="Mô tả ngắn về đội"
-                        />
-                    </div>
-
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-slate-700">Trạng thái đội</label>
-                        <select
-                            className="h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-sm"
-                            value={teamStatus}
-                            onChange={(e) => setTeamStatus(e.target.value)}
+                        <button
+                            type="button"
+                            onClick={()=>setShowPassword(!showPassword)}
+                            className="px-2 text-gray-500"
                         >
-                            <option value="AVAILABLE">Rảnh (AVAILABLE)</option>
-                            <option value="BUSY">Đang bận (BUSY)</option>
-                            <option value="ON_MISSION">Đang thực hiện nhiệm vụ (ON_MISSION)</option>
-                        </select>
+                            {showPassword ? <EyeSlashIcon/> : <EyeIcon/>}
+                        </button>
+
                     </div>
 
-                    <div className="flex justify-end">
-                        <Button type="submit" size="sm" disabled={loadingTeam}>
-                            {loadingTeam ? 'Đang tạo...' : 'Tạo đội'}
-                        </Button>
-                    </div>
-                </form>
+                    <select
+                        className="border p-2"
+                        value={form.roleId}
+                        onChange={(e)=>setForm({...form, roleId:Number(e.target.value)})}
+                    >
+                        <option value="1">CITIZEN</option>
+                        <option value="2">COORDINATOR</option>
+                        <option value="3">RESCUER</option>
+                        <option value="4">MANAGER</option>
+                    </select>
+
+                    <button
+                        onClick={createUser}
+                        className="bg-blue-500 text-white px-4 py-2 rounded"
+                    >
+                        Tạo
+                    </button>
+
+                </div>
+
             </div>
 
-            {/* Form tạo phương tiện */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <h2 className="mb-3 text-sm font-semibold text-slate-900">Tạo Phương tiện / Thiết bị</h2>
+            {/* SEARCH */}
 
-                <form className="grid gap-3 md:grid-cols-2" onSubmit={handleCreateAsset}>
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-slate-700">Mã phương tiện *</label>
-                        <Input
-                            value={assetCode}
-                            onChange={(e) => setAssetCode(e.target.value)}
-                            placeholder="ASSET-BOAT-01"
-                        />
-                    </div>
+            <div className="flex gap-2">
 
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-slate-700">Tên phương tiện *</label>
-                        <Input
-                            value={assetName}
-                            onChange={(e) => setAssetName(e.target.value)}
-                            placeholder="Tàu cứu hộ 01"
-                        />
-                    </div>
+                <input
+                    className="border p-2"
+                    placeholder="Search keyword"
+                    onChange={(e)=>setKeyword(e.target.value)}
+                />
 
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-slate-700">Loại phương tiện *</label>
-                        <select
-                            className="h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-sm"
-                            value={assetType}
-                            onChange={(e) => setAssetType(e.target.value)}
-                        >
-                            <option value="BOAT">Thuyền / Tàu (BOAT)</option>
-                            <option value="TRUCK">Xe tải (TRUCK)</option>
-                            <option value="CAR">Xe ô tô (CAR)</option>
-                            <option value="OTHER">Khác (OTHER)</option>
-                        </select>
-                    </div>
+                <select
+                    className="border p-2"
+                    onChange={(e)=>setRoleId(e.target.value)}
+                >
+                    <option value="">ALL</option>
+                    <option value="1">CITIZEN</option>
+                    <option value="2">COORDINATOR</option>
+                    <option value="3">RESCUER</option>
+                    <option value="4">MANAGER</option>
+                </select>
 
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-slate-700">Sức chứa (số người / kg)</label>
-                        <Input
-                            type="number"
-                            value={assetCapacity}
-                            onChange={(e) => setAssetCapacity(e.target.value)}
-                            placeholder="Ví dụ: 10"
-                        />
-                    </div>
+                <button
+                    onClick={getUsers}
+                    className="bg-green-500 text-white px-4 py-2 rounded"
+                >
+                    Search
+                </button>
 
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-slate-700">Gán cho đội (tuỳ chọn)</label>
-                        <select
-                            className="h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-sm"
-                            value={assetTeamId}
-                            onChange={(e) => setAssetTeamId(e.target.value)}
-                        >
-                            <option value="">-- Chưa gán --</option>
-                            {teams.map((team) => (
-                                <option key={team.id} value={team.id}>
-                                    {team.name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-slate-700">Trạng thái phương tiện</label>
-                        <select
-                            className="h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-sm"
-                            value={assetStatus}
-                            onChange={(e) => setAssetStatus(e.target.value)}
-                        >
-                            <option value="AVAILABLE">Rảnh (AVAILABLE)</option>
-                            <option value="BUSY">Đang bận (BUSY)</option>
-                            <option value="ON_MISSION">Đang thực hiện nhiệm vụ (ON_MISSION)</option>
-                        </select>
-                    </div>
-
-                    <div className="space-y-1 md:col-span-2">
-                        <label className="text-xs font-medium text-slate-700">Ghi chú</label>
-                        <Input
-                            value={assetNote}
-                            onChange={(e) => setAssetNote(e.target.value)}
-                            placeholder="Ghi chú thêm (biển số, vị trí đậu, ...)"
-                        />
-                    </div>
-
-                    <div className="md:col-span-2 flex justify-end">
-                        <Button type="submit" size="sm" disabled={loadingAsset}>
-                            {loadingAsset ? 'Đang tạo...' : 'Tạo phương tiện'}
-                        </Button>
-                    </div>
-                </form>
             </div>
+
+            {/* USER TABLE */}
+
+            <div className="border rounded">
+
+                {users.map(user => (
+
+                    <div
+                        key={user.id}
+                        className="flex items-center justify-between px-4 py-2 border-t"
+                    >
+
+                        <div className="text-sm">
+                            {user.id} | {user.fullName} | {user.email} | {user.role?.name}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+
+                            <input
+                                className="border p-1 text-sm"
+                                placeholder="new password"
+                                type="password"
+                                value={resetPasswords[user.id] || ""}
+                                onChange={(e)=>
+                                    setResetPasswords({
+                                        ...resetPasswords,
+                                        [user.id]: e.target.value
+                                    })
+                                }
+                            />
+
+                            <button
+                                onClick={()=>resetPassword(user.id)}
+                                className="bg-yellow-500 text-white px-2 py-1 rounded text-sm"
+                            >
+                                Reset
+                            </button>
+
+                            <button
+                                onClick={()=>toggleStatus(user.id,user.active)}
+                                className="bg-gray-500 text-white px-2 py-1 rounded text-sm"
+                            >
+                                {user.active ? "Disable" : "Enable"}
+                            </button>
+
+                            <button
+                                onClick={()=>deleteUser(user.id)}
+                                className="text-red-500"
+                            >
+                                Xoá
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                ))}
+
+            </div>
+
+            {message && (
+                <div className="text-blue-600">
+                    {message}
+                </div>
+            )}
+
         </div>
     );
 }
-

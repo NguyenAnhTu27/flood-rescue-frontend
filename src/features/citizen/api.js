@@ -9,8 +9,19 @@ import httpClient from '../../shared/lib/http.js';
  * @returns {Promise} Dashboard statistics and recent requests
  */
 export async function getCitizenDashboard() {
-    const response = await httpClient.get('/citizen/dashboard');
-    return response;
+    const page = await httpClient.get('/rescue/citizen/requests', {
+        params: { page: 0, size: 20 },
+    });
+
+    const items = Array.isArray(page?.content) ? page.content : [];
+    const latest = items[0] || null;
+
+    return {
+        latestRequest: latest,
+        totalRequests: page?.totalElements ?? items.length,
+        inProgressCount: items.filter((r) => r?.status === 'IN_PROGRESS').length,
+        completedCount: items.filter((r) => r?.status === 'COMPLETED').length,
+    };
 }
 
 /**
@@ -64,6 +75,21 @@ export async function updateRescueRequest(id, data) {
 }
 
 /**
+ * Upload rescue request attachments (images)
+ * @param {File[]} files
+ * @returns {Promise<Array<{fileUrl: string, fileType: string}>>}
+ */
+export async function uploadRescueAttachments(files) {
+    const formData = new FormData();
+    files.forEach((file) => {
+        formData.append('files', file);
+    });
+
+    const response = await httpClient.post('/rescue/citizen/attachments', formData);
+    return response;
+}
+
+/**
  * Cancel rescue request
  * @param {string} id - Request ID
  * @returns {Promise}
@@ -81,4 +107,20 @@ export async function cancelRescueRequest(id) {
 export async function getRescueRequestById(id) {
     const response = await httpClient.get(`/rescue/citizen/requests/${id}`);
     return response;
+}
+
+/**
+ * Citizen confirms whether rescue result is successful in real life.
+ * @param {string|number} id
+ * @param {{rescued:boolean, reason?:string}} payload
+ * @returns {Promise<{rescued:boolean, originalRequestId:number, followUpRequestId:number|null, message:string}>}
+ */
+export async function confirmRescueResult(id, payload) {
+    return httpClient.post(`/rescue/citizen/requests/${id}/confirm-result`, payload);
+}
+
+export async function reopenCancelledRequest(id, reason) {
+    return httpClient.post(`/rescue/citizen/requests/${id}/reopen`, {
+        reason: reason || null,
+    });
 }
