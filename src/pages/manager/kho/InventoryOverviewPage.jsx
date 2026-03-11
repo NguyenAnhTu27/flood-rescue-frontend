@@ -5,10 +5,10 @@ import { MANAGER_ROUTES } from '../../../app/routes/route.constants.js';
 import { getInventoryStock, listInventoryReceipts, listInventoryIssues, getItemCategories, getTemporaryInventoryIssues } from '../../../features/relief/api.js';
 
 const DEFAULT_STATS = [
-    { id: 'total-items', label: 'Tß╗öNG Mß║╢T H├ÇNG', value: '0', color: 'text-slate-800' },
-    { id: 'current-stock', label: 'Tß╗ÆN KHO HIß╗åN Tß║áI', value: '0', color: 'text-blue-600' },
-    { id: 'import-today', label: 'NHß║¼P TRONG NG├ÇY', value: '0', color: 'text-green-600' },
-    { id: 'export-today', label: 'XUß║ñT TRONG NG├ÇY', value: '0', color: 'text-red-600' },
+    { id: 'total-items', label: 'TỔNG MẶT HÀNG', value: '0', color: 'text-slate-800' },
+    { id: 'current-stock', label: 'TỒN KHO HIỆN TẠI', value: '0', color: 'text-blue-600' },
+    { id: 'import-today', label: 'NHẬP TRONG NGÀY', value: '0', color: 'text-green-600' },
+    { id: 'export-today', label: 'XUẤT TRONG NGÀY', value: '0', color: 'text-red-600' },
 ];
 
 export default function InventoryOverviewPage() {
@@ -19,7 +19,7 @@ export default function InventoryOverviewPage() {
     const [temporaryIssues, setTemporaryIssues] = useState([]);
     const [stats, setStats] = useState(DEFAULT_STATS);
 
-    // Load dß╗» liß╗çu tß╗ôn kho tß╗½ backend
+    // Load dữ liệu tồn kho từ backend
     const loadInventory = async () => {
         try {
             setLoading(true);
@@ -27,15 +27,15 @@ export default function InventoryOverviewPage() {
 
             let inventoryData = [];
 
-            // Strategy 1: Thß╗¡ lß║Ñy tß╗½ API tß╗ôn kho trß╗▒c tiß║┐p (/api/inventory/stock)
-            // API n├áy ─æß╗ìc tß╗½ bß║úng stock_balances, chß╗ë c├│ dß╗» liß╗çu khi c├│ phiß║┐u nhß║¡p status = DONE
+            // Strategy 1: Thử lấy từ API tồn kho trực tiếp (/api/inventory/stock)
+            // API này đọc từ bảng stock_balances, chỉ có dữ liệu khi có phiếu nhập status = DONE
             let stockDataLoaded = false;
             try {
                 console.log('[InventoryOverviewPage] Trying getInventoryStock (from stock_balances table)...');
                 const stockData = await getInventoryStock();
                 console.log('[InventoryOverviewPage] getInventoryStock response:', stockData);
 
-                // Parse response (c├│ thß╗â l├á array hoß║╖c { data: [], content: [] })
+                // Parse response (có thể là array hoặc { data: [], content: [] })
                 if (Array.isArray(stockData)) {
                     inventoryData = stockData;
                 } else if (Array.isArray(stockData?.data)) {
@@ -50,13 +50,13 @@ export default function InventoryOverviewPage() {
                     inventoryData = stockData.lines;
                 }
 
-                // Nß║┐u API trß║ú vß╗ü mß║úng rß╗ùng [], c├│ ngh─⌐a l├á ch╞░a c├│ phiß║┐u nhß║¡p n├áo ─æ╞░ß╗úc approve (DONE)
-                // ΓåÆ Fallback sang strategy kh├íc ─æß╗â t├¡nh tß╗ôn kho tß╗½ receipts - issues
+                // Nếu API trả về mảng rỗng [], có nghĩa là chưa có phiếu nhập nào được approve (DONE)
+                // → Fallback sang strategy khác để tính tồn kho từ receipts - issues
                 if (inventoryData.length === 0) {
                     console.log('[InventoryOverviewPage] stock_balances is empty (no DONE receipts yet), falling back to calculate from receipts-issues');
-                    stockDataLoaded = false; // ─É├ính dß║Ñu ─æß╗â fallback
+                    stockDataLoaded = false; // Đánh dấu để fallback
                 } else {
-                    stockDataLoaded = true; // C├│ dß╗» liß╗çu tß╗½ stock_balances
+                    stockDataLoaded = true; // Có dữ liệu từ stock_balances
                     console.log('[InventoryOverviewPage] Loaded', inventoryData.length, 'items from stock_balances');
                 }
             } catch (stockErr) {
@@ -64,12 +64,12 @@ export default function InventoryOverviewPage() {
                 stockDataLoaded = false;
             }
 
-            // Nß║┐u Strategy 1 kh├┤ng c├│ dß╗» liß╗çu (mß║úng rß╗ùng hoß║╖c lß╗ùi), t├¡nh tß╗½ receipts/issues DONE
+            // Nếu Strategy 1 không có dữ liệu (mảng rỗng hoặc lỗi), tính từ receipts/issues DONE
             if (!stockDataLoaded || inventoryData.length === 0) {
                 try {
                     console.log('[InventoryOverviewPage] Calculating stock from receipts - issues...');
 
-                    // Lß║Ñy danh s├ích item categories ─æß╗â map th├┤ng tin
+                    // Lấy danh sách item categories để map thông tin
                     let categoriesMap = new Map();
                     try {
                         const categoriesResponse = await getItemCategories();
@@ -86,8 +86,8 @@ export default function InventoryOverviewPage() {
                             if (cat.id) {
                                 categoriesMap.set(cat.id, {
                                     code: cat.code || `#CAT-${cat.id}`,
-                                    name: cat.name || 'Danh mß╗Ñc',
-                                    unit: cat.unit || '─É╞ín vß╗ï',
+                                    name: cat.name || 'Danh mục',
+                                    unit: cat.unit || 'Đơn vị',
                                 });
                             }
                         });
@@ -128,9 +128,9 @@ export default function InventoryOverviewPage() {
                                 id: itemCategoryId,
                                 itemCategoryId,
                                 code: categoryInfo.code || line.itemCode || `#ITEM-${itemCategoryId}`,
-                                name: categoryInfo.name || line.itemName || line.itemCategoryName || 'Mß║╖t h├áng',
-                                category: categoryInfo.name || line.itemCategoryName || 'Kh├íc',
-                                unit: categoryInfo.unit || line.unit || '─É╞ín vß╗ï',
+                                name: categoryInfo.name || line.itemName || line.itemCategoryName || 'Mặt hàng',
+                                category: categoryInfo.name || line.itemCategoryName || 'Khác',
+                                unit: categoryInfo.unit || line.unit || 'Đơn vị',
                                 qty: 0,
                             };
                             existing.qty += Number(line.qty || line.quantity || 0);
@@ -161,9 +161,9 @@ export default function InventoryOverviewPage() {
             }
 
             // Normalize inventory data
-            // Hß╗ù trß╗ú nhiß╗üu format tß╗½ API stock_balances hoß║╖c tß╗½ t├¡nh to├ín receipts-issues
+            // Hỗ trợ nhiều format từ API stock_balances hoặc từ tính toán receipts-issues
             const normalizedInventory = inventoryData.map((item, idx) => {
-                // Parse sß╗æ l╞░ß╗úng tß╗½ nhiß╗üu field kh├íc nhau
+                // Parse số lượng từ nhiều field khác nhau
                 const donationQty = Number(item.donationQty ?? item.donation_qty ?? 0);
                 const purchaseQty = Number(item.purchaseQty ?? item.purchase_qty ?? 0);
                 const totalQtyFromSource = item.totalQty ?? item.total_qty;
@@ -190,28 +190,28 @@ export default function InventoryOverviewPage() {
                                         || 0
                                     );
 
-                // Parse itemCategoryId tß╗½ nhiß╗üu field
+                // Parse itemCategoryId từ nhiều field
                 const itemCategoryId = item.itemCategoryId || item.itemId || item.categoryId || item.id;
 
                 return {
                     id: itemCategoryId || item.id || `item-${idx}`,
                     code: item.code || item.itemCode || item.categoryCode || `#ITEM-${String(idx + 1).padStart(3, '0')}`,
-                    name: item.name || item.itemName || item.itemCategoryName || item.categoryName || 'Mß║╖t h├áng',
-                    category: item.category || item.categoryName || item.itemCategoryName || 'Kh├íc',
-                    unit: item.unit || item.uom || item.unitOfMeasure || '─É╞ín vß╗ï',
+                    name: item.name || item.itemName || item.itemCategoryName || item.categoryName || 'Mặt hàng',
+                    category: item.category || item.categoryName || item.itemCategoryName || 'Khác',
+                    unit: item.unit || item.uom || item.unitOfMeasure || 'Đơn vị',
                     qty: qty,
-                    status: item.status || (qty > 0 ? 'ß╗ön ─æß╗ïnh' : 'Hß║┐t h├áng'),
+                    status: item.status || (qty > 0 ? 'Ổn định' : 'Hết hàng'),
                     statusType: item.statusType || (qty > 0 && qty < 100 ? 'low' : 'stable'),
                 };
             });
 
             console.log('[InventoryOverviewPage] Normalized inventory:', normalizedInventory);
-            // Chß╗ë set data tß╗½ backend, kh├┤ng fallback vß╗ü mock nß║┐u kh├┤ng c├│ data
+            // Chỉ set data từ backend, không fallback về mock nếu không có data
             setInventory(normalizedInventory);
 
-            // T├¡nh stats theo dß╗» liß╗çu thß╗▒c tß║┐:
-            // - total-items / current-stock lß║Ñy tß╗½ tß╗ôn kho hiß╗çn c├│
-            // - import/export trong ng├áy chß╗ë t├¡nh phiß║┐u DONE
+            // Tính stats theo dữ liệu thực tế:
+            // - total-items / current-stock lấy từ tồn kho hiện có
+            // - import/export trong ngày chỉ tính phiếu DONE
             const [receiptsForStatsResp, issuesForStatsResp] = await Promise.allSettled([
                 listInventoryReceipts({}),
                 listInventoryIssues({}),
@@ -257,10 +257,10 @@ export default function InventoryOverviewPage() {
             const totalCurrentStock = normalizedInventory.reduce((sum, item) => sum + Number(item?.qty || 0), 0);
 
             setStats([
-                { id: 'total-items', label: 'Tß╗öNG Mß║╢T H├ÇNG', value: String(normalizedInventory.length), color: 'text-slate-800' },
-                { id: 'current-stock', label: 'Tß╗ÆN KHO HIß╗åN Tß║áI', value: totalCurrentStock.toLocaleString('vi-VN'), color: 'text-blue-600' },
-                { id: 'import-today', label: 'NHß║¼P TRONG NG├ÇY', value: importTodayQty.toLocaleString('vi-VN'), color: 'text-green-600' },
-                { id: 'export-today', label: 'XUß║ñT TRONG NG├ÇY', value: exportTodayQty.toLocaleString('vi-VN'), color: 'text-red-600' },
+                { id: 'total-items', label: 'TỔNG MẶT HÀNG', value: String(normalizedInventory.length), color: 'text-slate-800' },
+                { id: 'current-stock', label: 'TỒN KHO HIỆN TẠI', value: totalCurrentStock.toLocaleString('vi-VN'), color: 'text-blue-600' },
+                { id: 'import-today', label: 'NHẬP TRONG NGÀY', value: importTodayQty.toLocaleString('vi-VN'), color: 'text-green-600' },
+                { id: 'export-today', label: 'XUẤT TRONG NGÀY', value: exportTodayQty.toLocaleString('vi-VN'), color: 'text-red-600' },
             ]);
 
             try {
@@ -278,10 +278,10 @@ export default function InventoryOverviewPage() {
             }
         } catch (err) {
             console.error('[InventoryOverviewPage] loadInventory error:', err);
-            setError(err?.message || 'Kh├┤ng thß╗â tß║úi dß╗» liß╗çu tß╗ôn kho');
-            // Kh├┤ng set mock data khi c├│ lß╗ùi - ─æß╗â hiß╗ân thß╗ï empty state
+            setError(err?.message || 'Không thể tải dữ liệu tồn kho');
+            // Không set mock data khi có lỗi - để hiển thị empty state
             setInventory([]);
-            // Giß╗» stats mß║╖c ─æß╗ïnh nß║┐u c├│ lß╗ùi
+            // Giữ stats mặc định nếu có lỗi
             setStats(DEFAULT_STATS);
             setTemporaryIssues([]);
         } finally {
@@ -310,10 +310,10 @@ export default function InventoryOverviewPage() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900">
-                        Quß║ún l├╜ Kho Trung t├óm
+                        Quản lý Kho Trung tâm
                     </h1>
                     <p className="mt-1 text-sm text-slate-500">
-                        Hß╗ç thß╗æng quß║ún l├╜ h├áng cß╗⌐u trß╗ú b├úo lß╗Ñt
+                        Hệ thống quản lý hàng cứu trợ bão lụt
                     </p>
                 </div>
 
@@ -323,13 +323,13 @@ export default function InventoryOverviewPage() {
                         className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
                     >
                         <Plus className="h-4 w-4" />
-                        Tß║ío phiß║┐u nhß║¡p
+                        Tạo phiếu nhập
                     </Link>
                     <Link
                         to={MANAGER_ROUTES.DASHBOARD}
                         className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
                     >
-                        Xß╗¡ l├╜ y├¬u cß║ºu cß╗⌐u trß╗ú
+                        Xử lý yêu cầu cứu trợ
                     </Link>
                 </div>
             </div>
@@ -355,7 +355,7 @@ export default function InventoryOverviewPage() {
             <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <h2 className="text-lg font-semibold text-slate-900">
-                        Bß║úng tß╗ôn kho hiß╗çn c├│
+                        Bảng tồn kho hiện có
                     </h2>
                     <div className="flex items-center gap-2">
                         <Link
@@ -363,21 +363,21 @@ export default function InventoryOverviewPage() {
                             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
                         >
                             <Tag className="h-3.5 w-3.5" />
-                            Danh mß╗Ñc h├áng
+                            Danh mục hàng
                         </Link>
                         <Link
                             to={MANAGER_ROUTES.ITEM_CLASSIFICATIONS}
                             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
                         >
                             <Tag className="h-3.5 w-3.5" />
-                            Ph├ón loß║íi h├áng
+                            Phân loại hàng
                         </Link>
                         <Link
                             to={MANAGER_ROUTES.ITEM_UNITS}
                             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
                         >
                             <Tag className="h-3.5 w-3.5" />
-                            ─É╞ín vß╗ï quß║ún l├╜
+                            Đơn vị quản lý
                         </Link>
                         <button
                             type="button"
@@ -386,13 +386,13 @@ export default function InventoryOverviewPage() {
                             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
                         >
                             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-                            L├ám mß╗¢i
+                            Làm mới
                         </button>
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                             <input
                                 type="text"
-                                placeholder="T├¼m kiß║┐m mß║╖t h├áng..."
+                                placeholder="Tìm kiếm mặt hàng..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-4 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100 sm:w-64"
@@ -410,11 +410,11 @@ export default function InventoryOverviewPage() {
                 {loading ? (
                     <div className="py-10 text-center text-sm text-slate-500">
                         <RefreshCw className="mx-auto h-6 w-6 animate-spin text-slate-400" />
-                        <p className="mt-2">─Éang tß║úi dß╗» liß╗çu tß╗ôn kho...</p>
+                        <p className="mt-2">Đang tải dữ liệu tồn kho...</p>
                     </div>
                 ) : filteredInventory.length === 0 ? (
                     <div className="py-10 text-center text-sm text-slate-500">
-                        Ch╞░a c├│ h├áng tß╗ôn kho. H├úy tß║ío phiß║┐u nhß║¡p ─æß╗â th├¬m h├áng v├áo kho.
+                        Chưa có hàng tồn kho. Hãy tạo phiếu nhập để thêm hàng vào kho.
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
@@ -422,19 +422,19 @@ export default function InventoryOverviewPage() {
                             <thead>
                                 <tr className="border-b border-slate-200">
                                     <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                        M├ú h├áng
+                                        Mã hàng
                                     </th>
                                     <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                        Ph├ón loß║íi
+                                        Phân loại
                                     </th>
                                     <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                        ─É╞ín vß╗ï
+                                        Đơn vị
                                     </th>
                                     <th className="pb-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                        Sß╗æ l╞░ß╗úng tß╗ôn
+                                        Số lượng tồn
                                     </th>
                                     <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                        Trß║íng th├íi
+                                        Trạng thái
                                     </th>
                                 </tr>
                             </thead>
@@ -481,23 +481,23 @@ export default function InventoryOverviewPage() {
 
             {/* ===== COORDINATION NOTE ===== */}
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-                <h3 className="text-sm font-semibold text-amber-900">Tß║ím trß╗½ theo ─æß╗Öi ─æang nhß║¡n h├áng</h3>
+                <h3 className="text-sm font-semibold text-amber-900">Tạm trừ theo đội đang nhận hàng</h3>
                 {temporaryIssues.length === 0 ? (
-                    <p className="mt-1 text-xs text-amber-800">Hiß╗çn kh├┤ng c├│ phiß║┐u xuß║Ñt n├áo ß╗ƒ trß║íng th├íi tß║ím trß╗½.</p>
+                    <p className="mt-1 text-xs text-amber-800">Hiện không có phiếu xuất nào ở trạng thái tạm trừ.</p>
                 ) : (
                     <div className="mt-2 space-y-2">
                         {temporaryIssues.map((issue) => (
                             <div key={issue.id} className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs text-slate-700">
                                 <div className="font-semibold text-slate-900">
-                                    {issue.code} - ─Éß╗Öi: {issue.assignedTeamName || issue.assignedTeamCode || issue.assignedTeamId || 'ΓÇö'}
+                                    {issue.code} - Đội: {issue.assignedTeamName || issue.assignedTeamCode || issue.assignedTeamId || '—'}
                                 </div>
                                 <div className="mt-1">
-                                    L├╜ do tß║ím trß╗½: {issue.note || '─Éß╗Öi ─æang lß║Ñy h├áng ─æi cß╗⌐u trß╗ú (trß║íng th├íi ─æ├ú tß╗¢i ─æiß╗âm cß╗⌐u trß╗ú).'}
+                                    Lý do tạm trừ: {issue.note || 'Đội đang lấy hàng đi cứu trợ (trạng thái đã tới điểm cứu trợ).'}
                                 </div>
                                 <div className="mt-1">
-                                    Tß║ím trß╗½:
+                                    Tạm trừ:
                                     {' '}
-                                    {(issue.lines || []).map((l) => `${l.itemCode || l.itemName}: ${l.qty} ${l.unit}`).join(' | ') || 'ΓÇö'}
+                                    {(issue.lines || []).map((l) => `${l.itemCode || l.itemName}: ${l.qty} ${l.unit}`).join(' | ') || '—'}
                                 </div>
                             </div>
                         ))}
@@ -510,10 +510,10 @@ export default function InventoryOverviewPage() {
                     <Info className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                    <h3 className="font-semibold text-slate-900">L╞░u ├╜ ─æiß╗üu phß╗æi</h3>
+                    <h3 className="font-semibold text-slate-900">Lưu ý điều phối</h3>
                     <p className="mt-1 text-sm text-slate-600">
-                        Hß╗ç thß╗æng ─æang ß╗ƒ chß║┐ ─æß╗Ö Kho Trung t├óm duy nhß║Ñt. Mß╗ìi phiß║┐u nhß║¡p/xuß║Ñt
-                        sß║╜ ─æ╞░ß╗úc ghi nhß║¡n trß╗▒c tiß║┐p v├áo tß╗òng tß╗ôn kho.
+                        Hệ thống đang ở chế độ Kho Trung tâm duy nhất. Mọi phiếu nhập/xuất
+                        sẽ được ghi nhận trực tiếp vào tổng tồn kho.
                     </p>
                 </div>
             </div>

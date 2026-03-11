@@ -68,7 +68,7 @@ export default function ItemCategoriesPage() {
             setError(null);
             await Promise.all([loadClassifications(), loadUnits(), loadCategories()]);
         } catch (e) {
-            setError(e?.message || 'Kh├┤ng thß╗â tß║úi dß╗» liß╗çu danh mß╗Ñc h├áng');
+            setError(e?.message || 'Không thể tải dữ liệu danh mục hàng');
         } finally {
             setLoading(false);
         }
@@ -81,7 +81,7 @@ export default function ItemCategoriesPage() {
 
     useEffect(() => {
         loadCategories(selectedClassificationFilter).catch((e) => {
-            setError(e?.message || 'Kh├┤ng thß╗â lß╗ìc danh mß╗Ñc theo ph├ón loß║íi');
+            setError(e?.message || 'Không thể lọc danh mục theo phân loại');
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedClassificationFilter]);
@@ -106,19 +106,19 @@ export default function ItemCategoriesPage() {
         const parsedClassificationId = Number(classificationId);
 
         if (!trimmedCode) {
-            window.alert('Vui l├▓ng nhß║¡p m├ú loß║íi h├áng.');
+            window.alert('Vui lòng nhập mã loại hàng.');
             return;
         }
         if (!trimmedName) {
-            window.alert('Vui l├▓ng nhß║¡p t├¬n loß║íi h├áng.');
+            window.alert('Vui lòng nhập tên loại hàng.');
             return;
         }
         if (!trimmedUnit) {
-            window.alert('Vui l├▓ng nhß║¡p ─æ╞ín vß╗ï t├¡nh.');
+            window.alert('Vui lòng nhập đơn vị tính.');
             return;
         }
         if (!parsedClassificationId) {
-            window.alert('Vui l├▓ng chß╗ìn ph├ón loß║íi h├áng.');
+            window.alert('Vui lòng chọn phân loại hàng.');
             return;
         }
 
@@ -137,9 +137,9 @@ export default function ItemCategoriesPage() {
             setName('');
             setUnit('');
             await loadCategories();
-            window.alert('Tß║ío danh mß╗Ñc th├ánh c├┤ng!');
+            window.alert('Tạo danh mục thành công!');
         } catch (e) {
-            const msg = e?.data?.message || e?.message || 'Kh├┤ng thß╗â tß║ío danh mß╗Ñc';
+            const msg = e?.data?.message || e?.message || 'Không thể tạo danh mục';
             setError(msg);
             window.alert(msg);
         } finally {
@@ -148,12 +148,12 @@ export default function ItemCategoriesPage() {
     };
 
     const handleDeleteCategory = async (item) => {
-        if (!window.confirm(`X├│a danh mß╗Ñc "${item.name}"?`)) return;
+        if (!window.confirm(`Xóa danh mục "${item.name}"?`)) return;
         try {
             await deleteItemCategory(item.id);
             await loadCategories();
         } catch (e) {
-            window.alert(e?.message || 'Kh├┤ng thß╗â x├│a danh mß╗Ñc h├áng.');
+            window.alert(e?.message || 'Không thể xóa danh mục hàng.');
         }
     };
 
@@ -161,9 +161,9 @@ export default function ItemCategoriesPage() {
         <div className="space-y-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Danh mß╗Ñc h├áng</h1>
+                    <h1 className="text-2xl font-bold text-slate-900">Danh mục hàng</h1>
                     <p className="mt-1 text-sm text-slate-500">
-                        Danh mß╗Ñc h├áng ─æ╞░ß╗úc gß║»n theo ph├ón loß║íi ─æß╗â d├╣ng khi lß║¡p phiß║┐u nhß║¡p/xuß║Ñt kho.
+                        Danh mục hàng được gắn theo phân loại để dùng khi lập phiếu nhập/xuất kho.
                     </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -171,13 +171,13 @@ export default function ItemCategoriesPage() {
                         to={MANAGER_ROUTES.ITEM_CLASSIFICATIONS}
                         className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                     >
-                        Quß║ún l├╜ ph├ón loß║íi
+                        Quản lý phân loại
                     </Link>
                     <Link
                         to={MANAGER_ROUTES.ITEM_UNITS}
                         className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                     >
-                        Quß║ún l├╜ ─æ╞ín vß╗ï
+                        Quản lý đơn vị
                     </Link>
                     <button
                         type="button"
@@ -185,14 +185,14 @@ export default function ItemCategoriesPage() {
                         className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                     >
                         <RefreshCw className="h-4 w-4" />
-                        L├ám mß╗¢i
+                        Làm mới
                     </button>
                 </div>
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="mb-4">
-                    <h2 className="text-lg font-semibold text-slate-900">Tß║ío danh mß╗Ñc mß╗¢i</h2>
+                    <h2 className="text-lg font-semibold text-slate-900">Tạo danh mục mới</h2>
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
@@ -200,14 +200,14 @@ export default function ItemCategoriesPage() {
                         type="text"
                         value={code}
                         onChange={(e) => setCode(e.target.value)}
-                        placeholder="M├ú h├áng"
+                        placeholder="Mã hàng"
                         className="h-10 rounded-lg border border-slate-200 px-3 text-sm"
                     />
                     <input
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder="T├¬n loß║íi h├áng"
+                        placeholder="Tên loại hàng"
                         className="h-10 rounded-lg border border-slate-200 px-3 text-sm"
                     />
                     <select
@@ -215,7 +215,7 @@ export default function ItemCategoriesPage() {
                         onChange={(e) => setUnit(e.target.value)}
                         className="h-10 rounded-lg border border-slate-200 px-3 text-sm"
                     >
-                        <option value="">Chß╗ìn ─æ╞ín vß╗ï</option>
+                        <option value="">Chọn đơn vị</option>
                         {units.map((u) => (
                             <option key={u.id} value={u.code}>
                                 {u.code} - {u.name}
@@ -227,7 +227,7 @@ export default function ItemCategoriesPage() {
                         onChange={(e) => setClassificationId(e.target.value)}
                         className="h-10 rounded-lg border border-slate-200 px-3 text-sm"
                     >
-                        <option value="">Chß╗ìn ph├ón loß║íi h├áng</option>
+                        <option value="">Chọn phân loại hàng</option>
                         {classifications.map((c) => (
                             <option key={c.id} value={c.id}>{c.name}</option>
                         ))}
@@ -235,7 +235,7 @@ export default function ItemCategoriesPage() {
                 </div>
                 {units.length === 0 && (
                     <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                        Ch╞░a c├│ ─æ╞ín vß╗ï. Vui l├▓ng tß║ío ß╗ƒ mß╗Ñc <Link to={MANAGER_ROUTES.ITEM_UNITS} className="font-semibold underline">Quß║ún l├╜ ─æ╞ín vß╗ï</Link>.
+                        Chưa có đơn vị. Vui lòng tạo ở mục <Link to={MANAGER_ROUTES.ITEM_UNITS} className="font-semibold underline">Quản lý đơn vị</Link>.
                     </div>
                 )}
 
@@ -247,7 +247,7 @@ export default function ItemCategoriesPage() {
                         className="inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-70"
                     >
                         <Plus className="h-4 w-4" />
-                        {creating ? '─Éang tß║ío...' : 'Tß║ío danh mß╗Ñc'}
+                        {creating ? 'Đang tạo...' : 'Tạo danh mục'}
                     </button>
                 </div>
                 {error && (
@@ -259,14 +259,14 @@ export default function ItemCategoriesPage() {
 
             <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
                 <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 md:flex-row md:items-center md:justify-between">
-                    <h2 className="text-base font-semibold text-slate-900">Danh s├ích danh mß╗Ñc</h2>
+                    <h2 className="text-base font-semibold text-slate-900">Danh sách danh mục</h2>
                     <div className="flex flex-wrap items-center gap-2">
                         <select
                             value={selectedClassificationFilter}
                             onChange={(e) => setSelectedClassificationFilter(e.target.value)}
                             className="h-9 rounded-lg border border-slate-200 px-3 text-sm"
                         >
-                            <option value="">Tß║Ñt cß║ú ph├ón loß║íi</option>
+                            <option value="">Tất cả phân loại</option>
                             {classifications.map((c) => (
                                 <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
@@ -276,7 +276,7 @@ export default function ItemCategoriesPage() {
                             onChange={(e) => setSelectedUnitFilter(e.target.value)}
                             className="h-9 rounded-lg border border-slate-200 px-3 text-sm"
                         >
-                            <option value="">Tß║Ñt cß║ú ─æ╞ín vß╗ï</option>
+                            <option value="">Tất cả đơn vị</option>
                             {units.map((u) => (
                                 <option key={u.id} value={u.code}>
                                     {u.code} - {u.name}
@@ -288,7 +288,7 @@ export default function ItemCategoriesPage() {
                             <input
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                placeholder="T├¼m danh mß╗Ñc..."
+                                placeholder="Tìm danh mục..."
                                 className="h-9 w-64 rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm"
                             />
                         </div>
@@ -297,19 +297,19 @@ export default function ItemCategoriesPage() {
 
                 <div className="p-5">
                     {loading ? (
-                        <div className="py-10 text-center text-sm text-slate-500">─Éang tß║úi...</div>
+                        <div className="py-10 text-center text-sm text-slate-500">Đang tải...</div>
                     ) : filtered.length === 0 ? (
-                        <div className="py-10 text-center text-sm text-slate-500">Ch╞░a c├│ danh mß╗Ñc n├áo.</div>
+                        <div className="py-10 text-center text-sm text-slate-500">Chưa có danh mục nào.</div>
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="min-w-full text-sm">
                                 <thead>
                                     <tr className="border-b border-slate-200 text-left text-slate-500">
-                                        <th className="px-3 py-2">M├ú</th>
-                                        <th className="px-3 py-2">T├¬n</th>
-                                        <th className="px-3 py-2">Ph├ón loß║íi</th>
-                                        <th className="px-3 py-2">─É╞ín vß╗ï</th>
-                                        <th className="px-3 py-2">Thao t├íc</th>
+                                        <th className="px-3 py-2">Mã</th>
+                                        <th className="px-3 py-2">Tên</th>
+                                        <th className="px-3 py-2">Phân loại</th>
+                                        <th className="px-3 py-2">Đơn vị</th>
+                                        <th className="px-3 py-2">Thao tác</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -317,7 +317,7 @@ export default function ItemCategoriesPage() {
                                         <tr key={c.id} className="border-b border-slate-100">
                                             <td className="px-3 py-2 font-medium text-slate-800">{c.code}</td>
                                             <td className="px-3 py-2 text-slate-700">{c.name}</td>
-                                            <td className="px-3 py-2 text-slate-700">{c.classificationName || 'ΓÇö'}</td>
+                                            <td className="px-3 py-2 text-slate-700">{c.classificationName || '—'}</td>
                                             <td className="px-3 py-2 text-slate-700">{c.unit}</td>
                                             <td className="px-3 py-2">
                                                 <button
@@ -325,7 +325,7 @@ export default function ItemCategoriesPage() {
                                                     onClick={() => handleDeleteCategory(c)}
                                                     className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50"
                                                 >
-                                                    <Trash2 className="h-3.5 w-3.5" /> X├│a
+                                                    <Trash2 className="h-3.5 w-3.5" /> Xóa
                                                 </button>
                                             </td>
                                         </tr>
