@@ -7,7 +7,6 @@ import {
     ChevronRight,
     ChevronLeft,
     Phone,
-    CheckCircle2,
 } from 'lucide-react';
 import { CITIZEN_ROUTES } from '../../app/routes/route.constants.js';
 import GoogleMap from '../../features/map/components/GoogleMap.jsx';
@@ -15,6 +14,7 @@ import { uploadRescueAttachments } from '../../features/rescue/api.js';
 import { createReliefRequest, updateMyCitizenReliefRequest } from '../../features/relief/api.js';
 import PrioritySelector from '../../features/rescue/components/PrioritySelector.jsx';
 import AttachmentGallery from '../../features/rescue/components/AttachmentGallery.jsx';
+import CitizenRequestHeader from '../../features/citizen/components/CitizenRequestHeader.jsx';
 import Button from '../../shared/ui/Button.jsx';
 import Input from '../../shared/ui/Input.jsx';
 import Textarea from '../../shared/ui/Textarea.jsx';
@@ -436,62 +436,23 @@ export default function ReliefRequestCreatePage({
         }
     };
 
+    const hasGps = Number.isFinite(Number(form.latitude)) && Number.isFinite(Number(form.longitude));
+
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-col gap-2">
-                <h1 className="text-2xl font-bold text-slate-900">
-                    {isEditMode ? 'Cập nhật yêu cầu cứu trợ' : 'Tạo yêu cầu cứu trợ khẩn cấp'}
-                </h1>
-                <p className="max-w-2xl text-sm text-slate-600">
-                    {isEditMode
-                        ? 'Chỉnh sửa thông tin mới nhất để đội cứu trợ nhận đúng tình trạng thực tế.'
-                        : 'Vui lòng cung cấp chính xác vị trí, tình huống và thông tin liên lạc để lực lượng cứu trợ có thể hỗ trợ nhanh nhất.'}
-                </p>
-            </div>
-
-            {/* Step indicator */}
-            <div className="rounded-xl border border-slate-200 bg-white px-6 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-6">
-                    {STEPS.map((step, index) => {
-                        const isActive = currentStep === step.id;
-                        const isDone = currentStep > step.id;
-                        return (
-                            <div key={step.id} className="flex items-center gap-3">
-                                <div
-                                    className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${isActive
-                                        ? 'bg-blue-600 text-white'
-                                        : isDone
-                                            ? 'bg-emerald-500 text-white'
-                                            : 'bg-slate-100 text-slate-500'
-                                        }`}
-                                >
-                                    {isDone ? (
-                                        <CheckCircle2 className="h-5 w-5" />
-                                    ) : (
-                                        step.id
-                                    )}
-                                </div>
-                                <div className="flex flex-col">
-                                    <span
-                                        className={`text-sm font-medium ${isActive ? 'text-slate-900' : 'text-slate-500'
-                                            }`}
-                                    >
-                                        Bước {step.id}
-                                    </span>
-                                    <span className="text-xs text-slate-500">{step.label}</span>
-                                </div>
-                                {index < STEPS.length - 1 && (
-                                    <div className="hidden md:block h-px w-12 bg-slate-200" />
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-                <span className="hidden md:inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-                    Thời gian xử lý ưu tiên cho yêu cầu có vị trí và thông tin rõ ràng
-                </span>
-            </div>
+            <CitizenRequestHeader
+                requestType="RELIEF"
+                isEditMode={isEditMode}
+                currentStep={currentStep}
+                steps={STEPS}
+                hasGps={hasGps}
+                priority={form.level}
+                title={isEditMode ? 'Cập nhật yêu cầu cứu trợ' : 'Tạo yêu cầu cứu trợ khẩn cấp'}
+                subtitle={isEditMode
+                    ? 'Chỉnh sửa thông tin mới nhất để đội cứu trợ nhận đúng tình trạng thực tế.'
+                    : 'Vui lòng cung cấp chính xác vị trí, tình huống và thông tin liên lạc để lực lượng cứu trợ có thể hỗ trợ nhanh nhất.'}
+                helperNote="Thời gian xử lý ưu tiên cho yêu cầu có vị trí và thông tin rõ ràng."
+            />
 
             {/* Main content */}
             <form

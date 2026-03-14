@@ -187,7 +187,7 @@ export default function CitizenDashboard() {
             )
         )
     ) && latestId !== Number(handledRescueConfirmRequestId || 0)
-      && !dismissedRescueConfirmIds.includes(latestId);
+        && !dismissedRescueConfirmIds.includes(latestId);
     const showCancelledPrompt = statusRaw === 'CANCELLED' && !hideCancelPrompt;
     const showRejectedReliefPrompt = Boolean(latestRejectedRelief?.id);
 
@@ -338,36 +338,6 @@ export default function CitizenDashboard() {
                 </section>
             )}
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h1 className="text-2xl font-bold text-slate-900">Bảng điều khiển công dân</h1>
-                <p className="mt-1 text-sm text-slate-600">
-                    Chọn một thao tác bên dưới để tạo yêu cầu cứu hộ mới hoặc xem các yêu cầu đã tạo.
-                </p>
-
-                <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                    <Button
-                        type="button"
-                        variant="primary"
-                        size="lg"
-                        fullWidth
-                        disabled={Boolean(citizenBlock?.blocked)}
-                        onClick={() => navigate(CITIZEN_ROUTES.CREATE_RESCUE_REQUEST)}
-                    >
-                        <Plus className="h-4 w-4" />
-                        Tạo yêu cầu cứu hộ
-                    </Button>
-                    <Button
-                        to={CITIZEN_ROUTES.MY_RESCUE_REQUESTS}
-                        variant="secondary"
-                        size="lg"
-                        fullWidth
-                    >
-                        <List className="h-4 w-4" />
-                        Xem yêu cầu đã tạo
-                    </Button>
-                </div>
-            </section>
-
             <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                 <div className="border-b border-slate-200 px-4 py-3">
                     <h2 className="text-sm font-semibold text-slate-900">Vị trí hiện tại của bạn (GPS)</h2>
@@ -391,6 +361,44 @@ export default function CitizenDashboard() {
                             <MapPin className="h-3.5 w-3.5 text-blue-600" />
                             Vị trí của bạn
                         </span>
+                    </div>
+                </div>
+
+                <div className="border-t border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50/60 p-5">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                        <div>
+                            <h2 className="text-xl font-bold text-slate-900">Bảng điều khiển công dân</h2>
+                            <p className="mt-1 text-sm text-slate-600">
+                                Tạo yêu cầu cứu hộ mới hoặc kiểm tra các yêu cầu đã gửi ngay bên dưới.
+                            </p>
+                        </div>
+                        <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm ring-1 ring-slate-200">
+                            <Navigation className="h-3.5 w-3.5 text-blue-600" />
+                            {gpsReady ? 'GPS sẵn sàng để gửi yêu cầu' : 'Khuyến nghị bật GPS để định vị chính xác'}
+                        </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <Button
+                            type="button"
+                            variant="primary"
+                            size="lg"
+                            fullWidth
+                            disabled={Boolean(citizenBlock?.blocked)}
+                            onClick={() => navigate(CITIZEN_ROUTES.CREATE_RESCUE_REQUEST)}
+                        >
+                            <Plus className="h-4 w-4" />
+                            Tạo yêu cầu cứu hộ
+                        </Button>
+                        <Button
+                            to={CITIZEN_ROUTES.MY_RESCUE_REQUESTS}
+                            variant="secondary"
+                            size="lg"
+                            fullWidth
+                        >
+                            <List className="h-4 w-4" />
+                            Xem yêu cầu đã tạo
+                        </Button>
                     </div>
                 </div>
             </section>

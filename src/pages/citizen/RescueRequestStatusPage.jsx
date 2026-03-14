@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle2, Clock, MapPin, Users, AlertTriangle, Info } from 'lucide-react';
 
 import { getRescueRequest, getRescueRequestStatus } from '../../features/rescue/api.js';
-import { confirmRescueResult, getMyRescueRequests, reopenCancelledRequest } from '../../features/citizen/api.js';
+import { cancelRescueRequest, confirmRescueResult, getMyRescueRequests, reopenCancelledRequest } from '../../features/citizen/api.js';
 import { CITIZEN_ROUTES } from '../../app/routes/route.constants.js';
 
 function pickFirstTruthy(...vals) {
@@ -58,6 +58,7 @@ export default function RescueRequestStatusPage() {
     const [showNotRescuedReason, setShowNotRescuedReason] = useState(false);
     const [notRescuedReason, setNotRescuedReason] = useState('');
     const [reopening, setReopening] = useState(false);
+    const [canceling, setCanceling] = useState(false);
 
     const data = liveRequest || request || null;
 
@@ -84,6 +85,9 @@ export default function RescueRequestStatusPage() {
     );
     const isCancelled = ['CANCELLED', 'CANCELED'].includes(normalizeStatus(statusRaw));
     const isInProgress = ['IN_PROGRESS', 'WORKING', 'PROCESSING', 'ON_SITE', 'AT_SCENE', 'ARRIVED'].includes(normalizeStatus(statusRaw));
+    const canCancelRequest = !isCancelled
+        && !['DONE', 'COMPLETED', 'FINISHED', 'RESCUED'].includes(normalizeStatus(statusRaw))
+        && !waitingCitizenConfirmation;
 
     const steps = useMemo(() => ([
         {
@@ -267,6 +271,29 @@ export default function RescueRequestStatusPage() {
             window.alert(e?.message || 'Không thể gửi lại yêu cầu.');
         } finally {
             setReopening(false);
+        }
+    };
+
+    const handleCancelRequest = async () => {
+        const targetId = Number(data?.id || requestId || 0);
+        if (!targetId || canceling || !canCancelRequest) return;
+
+        const confirmed = window.confirm('Bạn chắc chắn muốn hủy yêu cầu này?');
+        if (!confirmed) return;
+
+        setCanceling(true);
+        try {
+            await cancelRescueRequest(targetId);
+            setStatusRaw('CANCELLED');
+            setLiveRequest((prev) => ({
+                ...(prev || data || {}),
+                status: 'CANCELLED',
+            }));
+            window.alert('Đã hủy yêu cầu cứu hộ.');
+        } catch (e) {
+            window.alert(e?.message || 'Không thể hủy yêu cầu cứu hộ.');
+        } finally {
+            setCanceling(false);
         }
     };
 
@@ -569,9 +596,11 @@ export default function RescueRequestStatusPage() {
                                 </button>
                                 <button
                                     type="button"
-                                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                                    onClick={handleCancelRequest}
+                                    disabled={!canCancelRequest || canceling}
+                                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
-                                    Hủy yêu cầu cứu hộ
+                                    {canceling ? 'Đang hủy...' : 'Hủy yêu cầu cứu hộ'}
                                 </button>
                             </div>
                         </div>

@@ -97,6 +97,10 @@ export default function RescueAssignPage() {
     const [overloadOpen, setOverloadOpen] = useState(false);
     const [overloadNote, setOverloadNote] = useState('');
     const [overloading, setOverloading] = useState(false);
+    const [notice, setNotice] = useState(() => {
+        const initialMessage = String(location.state?.successMessage || '').trim();
+        return initialMessage ? { type: 'success', text: initialMessage } : null;
+    });
 
     const selectedRequests = useMemo(
         () => availableRequests.filter((r) => selectedRequestIds.includes(String(r.id))),
@@ -174,6 +178,12 @@ export default function RescueAssignPage() {
         lat: Number(selectedRequest?.latitude || selectedRequest?.lat || selectedTeam?.currentLatitude) || 16.0544,
         lng: Number(selectedRequest?.longitude || selectedRequest?.lng || selectedTeam?.currentLongitude) || 108.2022,
     };
+
+    useEffect(() => {
+        if (!notice) return undefined;
+        const timeoutId = window.setTimeout(() => setNotice(null), 5000);
+        return () => window.clearTimeout(timeoutId);
+    }, [notice]);
 
     useEffect(() => {
         const loadRequests = async () => {
@@ -305,11 +315,17 @@ export default function RescueAssignPage() {
 
     const handleAssign = async () => {
         if (!selectedTeamId) {
-            window.alert('Vui lòng chọn đội cứu hộ để phân công.');
+            setNotice({
+                type: 'warning',
+                text: 'Vui lòng chọn đội cứu hộ để phân công.',
+            });
             return;
         }
         if (!selectedAssetId) {
-            window.alert('Vui lòng chọn tài sản cho đội cứu hộ trước khi phân công.');
+            setNotice({
+                type: 'warning',
+                text: 'Vui lòng chọn tài sản cho đội cứu hộ trước khi phân công.',
+            });
             return;
         }
 
@@ -318,7 +334,10 @@ export default function RescueAssignPage() {
             .filter((id) => id !== null);
 
         if (!taskGroupId && requestIdsToAssign.length === 0) {
-            window.alert('Vui lòng chọn yêu cầu đã xác minh để phân công.');
+            setNotice({
+                type: 'warning',
+                text: 'Vui lòng chọn yêu cầu đã xác minh để phân công.',
+            });
             return;
         }
 
@@ -362,15 +381,21 @@ export default function RescueAssignPage() {
                 await changeRescueRequestStatus(requestId, 'ASSIGNED', 'Đã phân công đội cứu hộ');
             }
 
-            window.alert(
-                requestIdsToAssign.length > 1
-                    ? `Phân công thành công và đã gộp ${requestIdsToAssign.length} yêu cầu cho cùng đội cứu hộ.`
-                    : 'Phân công nhiệm vụ thành công. Yêu cầu đã chuyển sang ASSIGNED.'
-            );
-            navigate(COORDINATOR_ROUTES.TASK_MONITOR, { state: { refresh: true } });
+            const successMessage = requestIdsToAssign.length > 1
+                ? `Phân công thành công và đã gộp ${requestIdsToAssign.length} yêu cầu cho cùng đội cứu hộ.`
+                : 'Phân công nhiệm vụ thành công. Yêu cầu đã chuyển sang ASSIGNED.';
+            navigate(COORDINATOR_ROUTES.TASK_MONITOR, {
+                state: {
+                    refresh: true,
+                    successMessage,
+                },
+            });
         } catch (e) {
             console.error('[RescueAssignPage] assign error', e);
-            window.alert(e?.message || 'Không thể phân công nhiệm vụ. Vui lòng thử lại.');
+            setNotice({
+                type: 'error',
+                text: e?.message || 'Không thể phân công nhiệm vụ. Vui lòng thử lại.',
+            });
         } finally {
             setAssigning(false);
         }
@@ -378,11 +403,17 @@ export default function RescueAssignPage() {
 
     const handleOverload = async () => {
         if (!selectedRequest?.id || !selectedRequest?.emergency) {
-            window.alert('Chỉ áp dụng quá tải cho yêu cầu khẩn cấp.');
+            setNotice({
+                type: 'warning',
+                text: 'Chỉ áp dụng quá tải cho yêu cầu khẩn cấp.',
+            });
             return;
         }
         if (!String(overloadNote || '').trim()) {
-            window.alert('Vui lòng nhập mô tả chi tiết trước khi báo quá tải.');
+            setNotice({
+                type: 'warning',
+                text: 'Vui lòng nhập mô tả chi tiết trước khi báo quá tải.',
+            });
             return;
         }
         try {
@@ -390,7 +421,10 @@ export default function RescueAssignPage() {
             await overloadEmergencyNotification(Number(selectedRequest.id), overloadNote.trim());
             setOverloadOpen(false);
             setOverloadNote('');
-            window.alert('Đã báo quá tải. Yêu cầu tiếp tục ở hàng đợi và được đánh dấu đang đợi.');
+            setNotice({
+                type: 'success',
+                text: 'Đã báo quá tải. Yêu cầu tiếp tục ở hàng đợi và được đánh dấu đang đợi.',
+            });
             const resp = await getCoordinatorRescueQueue({ status: 'VERIFIED', page: 0, size: 100 });
             const list = toArray(resp);
             setAvailableRequests(list);
@@ -398,16 +432,32 @@ export default function RescueAssignPage() {
                 setSelectedRequestIds([String(selectedRequest.id)]);
             }
         } catch (e) {
-            window.alert(e?.message || 'Không thể gửi trạng thái quá tải.');
+            setNotice({
+                type: 'error',
+                text: e?.message || 'Không thể gửi trạng thái quá tải.',
+            });
         } finally {
             setOverloading(false);
         }
     };
 
+    const noticeClass = notice?.type === 'success'
+        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+        : notice?.type === 'warning'
+            ? 'border-amber-200 bg-amber-50 text-amber-700'
+            : 'border-rose-200 bg-rose-50 text-rose-700';
+
     return (
-        <div className="flex h-[calc(100vh-4.5rem)] min-h-[760px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div className="flex min-h-0 flex-1 overflow-hidden">
-                <div className="flex w-[22rem] shrink-0 flex-col border-r border-slate-200">
+        <div className="space-y-3 pb-6">
+            {notice && (
+                <div className={`rounded-lg border px-3 py-2 text-sm ${noticeClass}`}>
+                    {notice.text}
+                </div>
+            )}
+
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <div className="grid min-h-0 grid-cols-1 xl:grid-cols-[22rem_minmax(0,1fr)_22rem]">
+                    <div className="flex max-h-[320px] flex-col border-b border-slate-200 xl:max-h-none xl:border-b-0 xl:border-r">
                     <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
                         <h2 className="text-sm font-bold text-slate-900">Đội cứu hộ</h2>
                         <p className="mt-0.5 text-xs text-slate-600">Chọn 1 đội để nhận nhiệm vụ</p>
@@ -452,7 +502,7 @@ export default function RescueAssignPage() {
                     </div>
                 </div>
 
-                <div className="flex min-w-0 flex-1 flex-col bg-slate-100">
+                <div className="flex min-w-0 flex-1 flex-col bg-slate-100 xl:border-x xl:border-slate-200">
                     <div className="z-10 border-b border-slate-200 bg-white px-4 py-3">
                         <div className="grid gap-3">
                             <div>
@@ -483,7 +533,7 @@ export default function RescueAssignPage() {
                         </div>
                     </div>
 
-                    <div className="min-h-[460px] flex-1">
+                    <div className="h-[260px] sm:h-[420px] xl:h-full xl:min-h-[460px]">
                         <GoogleMap
                             center={mapCenter}
                             markerPosition={
@@ -525,7 +575,7 @@ export default function RescueAssignPage() {
                     </div>
                 </div>
 
-                <div className="flex w-[22rem] shrink-0 flex-col border-l border-slate-200">
+                <div className="flex max-h-[340px] flex-col border-t border-slate-200 xl:max-h-none xl:border-l xl:border-slate-200 xl:border-t-0">
                     <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
                         <div className="flex items-center justify-between gap-3">
                             <div>
@@ -593,7 +643,7 @@ export default function RescueAssignPage() {
                 </div>
             </div>
 
-            <div className="max-h-[34vh] overflow-y-auto border-t border-slate-200 bg-white px-4 py-3">
+            <div className="max-h-[42vh] overflow-y-auto border-t border-slate-200 bg-white px-4 py-3 xl:max-h-[34vh]">
                 <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
                     <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600">
                         Chọn tài sản cho đội <span className="text-rose-600">*</span>
@@ -720,8 +770,8 @@ export default function RescueAssignPage() {
                 )}
             </div>
 
-            <div className="flex items-center justify-between border-t border-slate-200 bg-white px-6 py-3">
-                <div className="flex items-center gap-4 text-xs text-slate-600">
+            <div className="flex flex-col gap-3 border-t border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600 sm:gap-4">
                     <span className="font-semibold text-slate-700">ĐÃ CHỌN</span>
                     <span className="inline-flex items-center gap-1"><Users className="h-4 w-4" />{selectedTeamId ? '1 đội' : '0 đội'}</span>
                     <span className="inline-flex items-center gap-1"><MapPin className="h-4 w-4" />{selectedRequests.length} yêu cầu VERIFIED</span>
@@ -730,23 +780,32 @@ export default function RescueAssignPage() {
                     </span>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                    <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => navigate(-1)}>
                         <X className="h-4 w-4" />Hủy
                     </Button>
                     <Button
                         variant="outline"
                         size="sm"
+                        className="w-full sm:w-auto"
                         onClick={() => setOverloadOpen(true)}
                         disabled={overloading || !selectedRequest?.emergency || selectedRequests.length !== 1}
                     >
                         Quá tải
                     </Button>
-                    <Button variant="primary" size="sm" onClick={handleAssign} disabled={assigning || !selectedAssetId || (!taskGroupId && selectedRequests.length === 0)}>
+                    <Button
+                        variant="primary"
+                        size="sm"
+                        className="w-full sm:w-auto"
+                        onClick={handleAssign}
+                        disabled={assigning || !selectedAssetId || (!taskGroupId && selectedRequests.length === 0)}
+                    >
                         <CheckCircle2 className="h-4 w-4" />
                         {assigning ? 'Đang phân công...' : 'Phân công nhiệm vụ'}
                     </Button>
                 </div>
+            </div>
+
             </div>
 
             {overloadOpen && (

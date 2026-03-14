@@ -215,15 +215,16 @@ export default function RootLayout({ children }) {
     const navByRole = {
         CITIZEN: [
             { label: "Trang chủ", to: CITIZEN_ROUTES.DASHBOARD },
-            { label: "Trạng thái cứu hộ", to: CITIZEN_ROUTES.RESCUE_REQUEST_STATUS },
-            { label: "Đánh giá hệ thống", to: CITIZEN_ROUTES.FEEDBACK },
+            { label: "Yêu cầu của tôi", to: CITIZEN_ROUTES.MY_RESCUE_REQUESTS },
+            { label: "Hướng dẫn khẩn cấp", to: PUBLIC_ROUTES.EMERGENCY_GUIDE },
         ],
         COORDINATOR: [
             { label: "Trang chủ", to: COORDINATOR_ROUTES.DASHBOARD },
             { label: "Phân công", to: COORDINATOR_ROUTES.ASSIGN_RESCUE },
             { label: "Giám sát nhiệm vụ", to: COORDINATOR_ROUTES.TASK_MONITOR },
-            { label: "Lịch sử cứu hộ", to: COORDINATOR_ROUTES.TASK_HISTORY },
             { label: "Theo dõi đội", to: COORDINATOR_ROUTES.TEAM_WORKLOAD },
+            { label: "Lịch sử cứu hộ", to: COORDINATOR_ROUTES.TASK_HISTORY },
+
         ],
         RESCUER: [
             { label: "Trang Chủ", to: RESCUER_ROUTES.DASHBOARD },
@@ -387,18 +388,18 @@ export default function RootLayout({ children }) {
                                                                 {role === 'COORDINATOR'
                                                                     && String(n.eventCode || '').toUpperCase() === 'RESCUER_EMERGENCY'
                                                                     && String(n.actionStatus || '').toUpperCase() !== 'QUEUED' && (
-                                                                    <button
-                                                                        type="button"
-                                                                        className="rounded-md border border-blue-200 px-2 py-1 text-[10px] font-semibold text-blue-700 hover:bg-blue-50"
-                                                                        onClick={() => {
-                                                                            setQueueTarget(n);
-                                                                            setQueueWithNote(false);
-                                                                            setQueueNote('');
-                                                                        }}
-                                                                    >
-                                                                        Đưa vào hàng đợi
-                                                                    </button>
-                                                                )}
+                                                                        <button
+                                                                            type="button"
+                                                                            className="rounded-md border border-blue-200 px-2 py-1 text-[10px] font-semibold text-blue-700 hover:bg-blue-50"
+                                                                            onClick={() => {
+                                                                                setQueueTarget(n);
+                                                                                setQueueWithNote(false);
+                                                                                setQueueNote('');
+                                                                            }}
+                                                                        >
+                                                                            Đưa vào hàng đợi
+                                                                        </button>
+                                                                    )}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -452,21 +453,33 @@ export default function RootLayout({ children }) {
                                         </div>
                                         <div className="h-px bg-slate-200" />
                                         <div className="py-1">
-                                            <Link
-                                                to="/citizen/profile"
-                                                className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                                                onClick={() => setUserOpen(false)}
-                                            >
-                                                Hồ sơ cá nhân
-                                            </Link>
-                                            <Link
-                                                to="/citizen/settings"
-                                                className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                                                onClick={() => setUserOpen(false)}
-                                            >
-                                                Cài đặt
-                                            </Link>
-                                            <div className="h-px bg-slate-200 my-1" />
+                                            {role === 'CITIZEN' && (
+                                                <>
+                                                    <Link
+                                                        to="/citizen/profile"
+                                                        className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                                        onClick={() => setUserOpen(false)}
+                                                    >
+                                                        Hồ sơ cá nhân
+                                                    </Link>
+                                                    <Link
+                                                        to="/citizen/settings"
+                                                        className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                                        onClick={() => setUserOpen(false)}
+                                                    >
+                                                        Cài đặt
+                                                    </Link>
+                                                    <div className="h-px bg-slate-200 my-1" />
+                                                    <Link
+                                                        to={CITIZEN_ROUTES.FEEDBACK}
+                                                        className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                                        onClick={() => setUserOpen(false)}
+                                                    >
+                                                        Đánh giá hệ thống
+                                                    </Link>
+                                                    <div className="h-px bg-slate-200 my-1" />
+                                                </>
+                                            )}
                                             <Link
                                                 to={PUBLIC_ROUTES.HOME}
                                                 className="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-red-50"
@@ -488,6 +501,15 @@ export default function RootLayout({ children }) {
                     {mobileOpen && (
                         <div className="md:hidden pb-3">
                             <div className="mt-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
+                                {role === 'CITIZEN' && !isCitizenHardBlocked && (
+                                    <Link
+                                        to={CITIZEN_ROUTES.CREATE_RESCUE_REQUEST}
+                                        onClick={() => setMobileOpen(false)}
+                                        className="mb-2 block rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                                    >
+                                        Tạo yêu cầu cứu hộ
+                                    </Link>
+                                )}
                                 {navItems.map((it) => (
                                     <NavLink
                                         key={it.to}

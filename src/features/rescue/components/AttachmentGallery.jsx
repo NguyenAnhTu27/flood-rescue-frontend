@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Upload, X } from 'lucide-react';
 
 /**
@@ -12,32 +12,23 @@ import { Upload, X } from 'lucide-react';
  * @param {number} props.maxSizeMB - Maximum file size in MB (default: 10)
  */
 export default function AttachmentGallery({ files = [], onChange, maxFiles = 10, maxSizeMB = 10 }) {
-    const [previews, setPreviews] = useState([]);
+    const fileInputRef = useRef(null);
+    const [isDragOver, setIsDragOver] = useState(false);
 
-    // Create preview URLs when files change
-    useEffect(() => {
-        const newPreviews = files.map(file => ({
+    // Build preview URLs from current files and revoke when they change/unmount
+    const previews = useMemo(() => (
+        files.map((file) => ({
             file,
-            url: URL.createObjectURL(file)
-        }));
+            url: URL.createObjectURL(file),
+        }))
+    ), [files]);
 
-        // Cleanup old preview URLs
-        previews.forEach(preview => {
-            if (!files.includes(preview.file)) {
-                URL.revokeObjectURL(preview.url);
-            }
-        });
+    useEffect(() => () => {
+        previews.forEach((preview) => URL.revokeObjectURL(preview.url));
+    }, [previews]);
 
-        setPreviews(newPreviews);
-
-        // Cleanup on unmount
-        return () => {
-            newPreviews.forEach(preview => URL.revokeObjectURL(preview.url));
-        };
-    }, [files]);
-
-    const handleFileChange = (e) => {
-        const selectedFiles = Array.from(e.target.files || []);
+    const mergeFiles = (selectedFiles) => {
+        if (!Array.isArray(selectedFiles) || selectedFiles.length === 0) return;
 
         // Validate file count
         if (files.length + selectedFiles.length > maxFiles) {
@@ -46,7 +37,7 @@ export default function AttachmentGallery({ files = [], onChange, maxFiles = 10,
         }
 
         // Validate file size
-        const invalidFiles = selectedFiles.filter(file => file.size > maxSizeMB * 1024 * 1024);
+        const invalidFiles = selectedFiles.filter((file) => file.size > maxSizeMB * 1024 * 1024);
         if (invalidFiles.length > 0) {
             alert(`Một số ảnh vượt quá kích thước tối đa ${maxSizeMB}MB`);
             return;
@@ -54,6 +45,11 @@ export default function AttachmentGallery({ files = [], onChange, maxFiles = 10,
 
         // Add new files
         onChange([...files, ...selectedFiles]);
+    };
+
+    const handleFileChange = (e) => {
+        const selectedFiles = Array.from(e.target.files || []);
+        mergeFiles(selectedFiles);
 
         // Reset input
         e.target.value = '';
@@ -64,26 +60,25 @@ export default function AttachmentGallery({ files = [], onChange, maxFiles = 10,
         onChange(newFiles);
     };
 
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        setIsDragOver(true);
+    };
+
+    const handleDragLeave = () => {
+        setIsDragOver(false);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        const droppedFiles = Array.from(e.dataTransfer?.files || []).filter((file) => file.type.startsWith('image/'));
+        mergeFiles(droppedFiles);
+    };
+
     return (
         <div className="space-y-3">
             <span className="text-sm font-medium text-slate-700">Ảnh minh hoạ hiện trường</span>
-
-            {/* Upload area */}
-            <label className="flex h-40 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-center text-xs text-slate-600 transition hover:border-blue-400 hover:bg-blue-50/50">
-                <Upload className="h-5 w-5 text-slate-500" />
-                <span className="font-medium">Nhấn để tải ảnh hoặc kéo thả</span>
-                <span className="text-[11px] text-slate-500">
-                    Hỗ trợ JPG, PNG tối đa {maxSizeMB}MB
-                </span>
-                <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleFileChange}
-                    className="hidden"
-                    disabled={files.length >= maxFiles}
-                />
-            </label>
 
             {/* Preview gallery */}
             {previews.length > 0 && (
@@ -115,11 +110,40 @@ export default function AttachmentGallery({ files = [], onChange, maxFiles = 10,
                             </div>
                         ))}
                     </div>
-                    <p className="text-[11px] text-slate-500 text-center">
-                        Đã chọn {previews.length} ảnh{maxFiles > 0 && ` (tối đa ${maxFiles})`}
-                    </p>
                 </div>
             )}
+
+            {/* Upload area */}
+            <div
+                className={`rounded-lg border border-dashed p-2.5 transition ${isDragOver
+                    ? 'border-blue-400 bg-blue-50'
+                    : 'border-slate-300 bg-slate-50'
+                    }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+            >
+                <div className="flex flex-col items-center gap-1.5 text-center">
+                    <Upload className="h-3.5 w-3.5 text-slate-500" />
+                    <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={files.length >= maxFiles}
+                        className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700 transition hover:border-blue-300 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        Chọn hoặc kéo thả ảnh
+                    </button>
+                </div>
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleFileChange}
+                    className="hidden"
+                    disabled={files.length >= maxFiles}
+                />
+            </div>
         </div>
     );
 }
