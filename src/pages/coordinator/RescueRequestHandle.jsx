@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import {
     AlertCircle,
     RefreshCcw,
     Search,
 } from 'lucide-react';
-import { COORDINATOR_ROUTES } from '../../app/routes/route.constants.js';
 import { getTaskGroupById, getTaskGroups } from '../../features/coordinator/api.js';
 
 const STATUS_FILTERS = [
@@ -15,6 +14,8 @@ const STATUS_FILTERS = [
     { label: 'IN_PROGRESS', value: 'IN_PROGRESS' },
     { label: 'CANCELLED', value: 'CANCELLED' },
 ];
+
+const TIMELINE_STEPS = ['NEW', 'ASSIGNED', 'IN_PROGRESS', 'DONE'];
 
 function toArray(data) {
     if (Array.isArray(data)) return data;
@@ -39,6 +40,7 @@ function fmtDate(value) {
 }
 
 function badgeClass(status) {
+    const normalized = String(status || '').toUpperCase();
     const map = {
         NEW: 'bg-amber-100 text-amber-800',
         ASSIGNED: 'bg-indigo-100 text-indigo-800',
@@ -46,23 +48,86 @@ function badgeClass(status) {
         DONE: 'bg-emerald-100 text-emerald-800',
         CANCELLED: 'bg-rose-100 text-rose-800',
     };
-    return map[status] || 'bg-slate-100 text-slate-700';
+    return map[normalized] || 'bg-slate-100 text-slate-700';
 }
 
-const TIMELINE_STEPS = ['NEW', 'ASSIGNED', 'IN_PROGRESS', 'DONE'];
+function getInitials(value) {
+    const parts = String(value || '')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2);
+    if (parts.length === 0) return 'TG';
+    return parts.map((part) => part.charAt(0).toUpperCase()).join('');
+}
 
-function stepClass(step, currentStatus) {
-    const currentIndex = TIMELINE_STEPS.indexOf(String(currentStatus || '').toUpperCase());
+function timelineState(step, currentStatus) {
+    const normalizedStatus = String(currentStatus || '').toUpperCase();
+    if (normalizedStatus === 'CANCELLED') return 'cancelled';
+
+    const currentIndex = TIMELINE_STEPS.indexOf(normalizedStatus);
     const stepIndex = TIMELINE_STEPS.indexOf(step);
-    if (currentStatus === 'CANCELLED') return 'bg-slate-200 text-slate-500';
-    if (stepIndex < currentIndex) return 'bg-emerald-500 text-white';
-    if (stepIndex === currentIndex) return 'bg-blue-600 text-white';
-    return 'bg-slate-200 text-slate-600';
+
+    if (stepIndex < currentIndex) return 'done';
+    if (stepIndex === currentIndex) return 'current';
+    return 'upcoming';
+}
+
+function timelineDotClass(state) {
+    if (state === 'done') return 'border-emerald-500 bg-emerald-500';
+    if (state === 'current') return 'border-blue-600 bg-blue-600';
+    return 'border-slate-200 bg-white';
+}
+
+function timelineLabelClass(state) {
+    if (state === 'done') return 'text-emerald-700';
+    if (state === 'current') return 'text-blue-700';
+    return 'text-slate-400';
+}
+
+function SidebarTaskButton({ taskGroup, active, onSelect, showTeamName = false }) {
+    const updatedText = fmtDate(taskGroup.updatedAt || taskGroup.createdAt);
+    const supportingText = showTeamName
+        ? `Đội: ${taskGroup.assignedTeamName || 'Chưa gán'}`
+        : taskGroup.note || 'Đang theo dõi tiến độ nhiệm vụ';
+
+    return (
+        <button
+            type="button"
+            onClick={onSelect}
+            className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+                active
+                    ? 'border-blue-200 bg-blue-50/90 shadow-[0_12px_32px_rgba(37,99,235,0.10)]'
+                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+            }`}
+        >
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <div className="text-sm font-semibold text-slate-900">{taskGroup.code || `TG-${taskGroup.id}`}</div>
+                    <p className="mt-1 max-h-10 overflow-hidden text-xs leading-5 text-slate-500">{supportingText}</p>
+                </div>
+                <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${badgeClass(taskGroup.status)}`}>
+                    {taskGroup.status || '—'}
+                </span>
+            </div>
+            <div className="mt-3 text-[11px] text-slate-400">{updatedText}</div>
+        </button>
+    );
+}
+
+function DetailSection({ title, children }) {
+    return (
+        <section>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{title}</div>
+            <div className="mt-3 rounded-[22px] border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/60 sm:p-5">
+                {children}
+            </div>
+        </section>
+    );
 }
 
 export default function RescueRequestHandle() {
     const location = useLocation();
-    const navigate = useNavigate();
     const [searchParams] = useSearchParams();
 
     const [statusFilter, setStatusFilter] = useState('');
@@ -71,6 +136,10 @@ export default function RescueRequestHandle() {
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [notice, setNotice] = useState(() => {
+        const message = String(location.state?.successMessage || '').trim();
+        return message ? message : '';
+    });
 
     const [taskGroups, setTaskGroups] = useState([]);
     const [selectedId, setSelectedId] = useState(null);
@@ -98,12 +167,12 @@ export default function RescueRequestHandle() {
                     : byTeam.filter((g) => !['DONE', 'CANCELLED'].includes(String(g?.status || '').toUpperCase()));
             const filtered = submittedKeyword
                 ? visible.filter((g) =>
-                      [g.code, g.assignedTeamName, g.note].some((v) =>
-                          String(v || '')
-                              .toLowerCase()
-                              .includes(submittedKeyword.toLowerCase())
-                      )
-                  )
+                    [g.code, g.assignedTeamName, g.note].some((v) =>
+                        String(v || '')
+                            .toLowerCase()
+                            .includes(submittedKeyword.toLowerCase())
+                    )
+                )
                 : visible;
 
             setTaskGroups(filtered);
@@ -150,6 +219,12 @@ export default function RescueRequestHandle() {
         if (selectedId) loadDetail(selectedId);
     }, [selectedId]);
 
+    useEffect(() => {
+        if (!notice) return undefined;
+        const timeoutId = window.setTimeout(() => setNotice(''), 5000);
+        return () => window.clearTimeout(timeoutId);
+    }, [notice]);
+
     const activeTaskGroups = useMemo(
         () => taskGroups.filter((g) => ['NEW', 'ASSIGNED', 'IN_PROGRESS'].includes(String(g?.status || '').toUpperCase())),
         [taskGroups]
@@ -165,266 +240,293 @@ export default function RescueRequestHandle() {
     };
 
     return (
-        <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div className="flex w-[350px] shrink-0 flex-col border-r border-slate-200">
-                <div className="border-b border-slate-200 p-4">
-                    <div className="mb-2 flex items-center justify-between">
-                        <h2 className="font-semibold text-slate-900">
-                            {selectedTeamId ? `Nhiệm vụ của đội ${selectedTeamName || `#${selectedTeamId}`}` : 'Giám sát nhiệm vụ'}
-                        </h2>
-                        <button type="button" onClick={loadGroups} className="rounded-lg p-1.5 hover:bg-slate-100" title="Tải lại">
-                            <RefreshCcw className="h-4 w-4 text-slate-600" />
-                        </button>
-                    </div>
-                    <form onSubmit={handleSearch} className="space-y-2">
-                        <div className="relative">
-                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                            <input
-                                value={keyword}
-                                onChange={(e) => setKeyword(e.target.value)}
-                                placeholder="Tìm mã nhóm, đội..."
-                                className="h-10 w-full rounded-lg border border-slate-200 pl-10 pr-3 text-sm"
-                            />
+        <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-[#f6f8fc] shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
+            <div className="grid min-h-[calc(100vh-3.5rem)] grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)]">
+                <aside className="flex min-h-0 flex-col border-b border-slate-200 bg-white lg:border-b-0 lg:border-r">
+                    <div className="border-b border-slate-200 px-5 py-5">
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <div className="text-lg font-bold tracking-tight text-blue-600">TaskStore</div>
+                                <h2 className="mt-3 text-sm font-semibold text-slate-900">
+                                    {selectedTeamId ? `Nhiệm vụ của đội ${selectedTeamName || `#${selectedTeamId}`}` : 'Giám sát nhiệm vụ'}
+                                </h2>
+                                <p className="mt-1 text-xs leading-5 text-slate-500">
+                                    Theo dõi trạng thái và chi tiết xử lý của từng nhóm nhiệm vụ.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={loadGroups}
+                                className="rounded-xl border border-slate-200 bg-slate-50 p-2 transition hover:bg-slate-100"
+                                title="Tải lại"
+                            >
+                                <RefreshCcw className="h-4 w-4 text-slate-600" />
+                            </button>
                         </div>
-                        <div className="flex gap-2">
-                            {!selectedTeamId && (
-                                <select
-                                    value={statusFilter}
-                                    onChange={(e) => setStatusFilter(e.target.value)}
-                                    className="h-10 flex-1 rounded-lg border border-slate-200 px-3 text-sm"
+
+                        <form onSubmit={handleSearch} className="mt-4 space-y-3">
+                            <div className="relative">
+                                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    value={keyword}
+                                    onChange={(e) => setKeyword(e.target.value)}
+                                    placeholder="Tìm mã nhóm, đội..."
+                                    className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                                />
+                            </div>
+                            <div className="flex gap-2">
+                                {!selectedTeamId && (
+                                    <select
+                                        value={statusFilter}
+                                        onChange={(e) => setStatusFilter(e.target.value)}
+                                        className="h-11 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none transition focus:border-blue-300 focus:bg-white"
+                                    >
+                                        {STATUS_FILTERS.map((f) => (
+                                            <option key={f.value} value={f.value}>{f.label}</option>
+                                        ))}
+                                    </select>
+                                )}
+                                <button
+                                    type="submit"
+                                    className="h-11 rounded-2xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm shadow-blue-200 transition hover:bg-blue-700"
                                 >
-                                    {STATUS_FILTERS.map((f) => (
-                                        <option key={f.value} value={f.value}>{f.label}</option>
-                                    ))}
-                                </select>
-                            )}
-                            <button type="submit" className="h-10 rounded-lg bg-blue-600 px-3 text-sm font-semibold text-white">Lọc</button>
+                                    Lọc
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/70 p-3">
+                        {loading ? (
+                            <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-sm text-slate-500">
+                                Đang tải...
+                            </div>
+                        ) : taskGroups.length === 0 ? (
+                            <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-sm text-slate-500">
+                                Không có nhóm nhiệm vụ.
+                            </div>
+                        ) : selectedTeamId ? (
+                            <div className="space-y-5">
+                                <div>
+                                    <div className="mb-3 px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                        Nhiệm vụ đang làm ({activeTaskGroups.length})
+                                    </div>
+                                    <div className="space-y-3">
+                                        {activeTaskGroups.length === 0 ? (
+                                            <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-6 text-xs text-slate-500">
+                                                Không có nhiệm vụ đang làm.
+                                            </div>
+                                        ) : (
+                                            activeTaskGroups.map((g) => (
+                                                <SidebarTaskButton
+                                                    key={g.id}
+                                                    taskGroup={g}
+                                                    active={selectedId === g.id}
+                                                    onSelect={() => setSelectedId(g.id)}
+                                                />
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div className="mb-3 px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                        Nhiệm vụ đã hoàn thành ({doneTaskGroups.length})
+                                    </div>
+                                    <div className="space-y-3">
+                                        {doneTaskGroups.length === 0 ? (
+                                            <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-6 text-xs text-slate-500">
+                                                Không có nhiệm vụ đã hoàn thành.
+                                            </div>
+                                        ) : (
+                                            doneTaskGroups.map((g) => (
+                                                <SidebarTaskButton
+                                                    key={g.id}
+                                                    taskGroup={g}
+                                                    active={selectedId === g.id}
+                                                    onSelect={() => setSelectedId(g.id)}
+                                                />
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {taskGroups.map((g) => (
+                                    <SidebarTaskButton
+                                        key={g.id}
+                                        taskGroup={g}
+                                        active={selectedId === g.id}
+                                        onSelect={() => setSelectedId(g.id)}
+                                        showTeamName
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </aside>
+
+                <div className="flex min-h-0 min-w-0 flex-col">
+                    {error && (
+                        <div className="mx-4 mt-4 inline-flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                            <AlertCircle className="h-4 w-4" />
+                            {error}
                         </div>
-                    </form>
-                </div>
+                    )}
+                    {notice && (
+                        <div className="mx-4 mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                            {notice}
+                        </div>
+                    )}
 
-                <div className="flex-1 overflow-y-auto">
-                    {loading ? (
-                        <div className="p-6 text-center text-sm text-slate-500">Đang tải...</div>
-                    ) : taskGroups.length === 0 ? (
-                        <div className="p-6 text-center text-sm text-slate-500">Không có nhóm nhiệm vụ.</div>
-                    ) : selectedTeamId ? (
-                        <div className="space-y-3 p-3">
-                            <div>
-                                <div className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-cyan-700">
-                                    Nhiệm vụ đang làm ({activeTaskGroups.length})
-                                </div>
-                                <div className="overflow-hidden rounded-lg border border-cyan-100">
-                                    {activeTaskGroups.length === 0 ? (
-                                        <div className="p-3 text-xs text-slate-500">Không có nhiệm vụ đang làm.</div>
-                                    ) : (
-                                        activeTaskGroups.map((g) => {
-                                            const active = selectedId === g.id;
-                                            return (
-                                                <button
-                                                    key={g.id}
-                                                    type="button"
-                                                    onClick={() => setSelectedId(g.id)}
-                                                    className={`w-full border-b border-slate-100 px-4 py-3 text-left transition last:border-b-0 ${
-                                                        active ? 'bg-blue-50' : 'hover:bg-slate-50'
-                                                    }`}
-                                                >
-                                                    <div className="flex items-center justify-between gap-2">
-                                                        <span className="text-sm font-semibold text-slate-900">{g.code || `TG-${g.id}`}</span>
-                                                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${badgeClass(g.status)}`}>
-                                                            {g.status || '—'}
-                                                        </span>
-                                                    </div>
-                                                    <div className="mt-1 text-[11px] text-slate-500">{fmtDate(g.updatedAt || g.createdAt)}</div>
-                                                </button>
-                                            );
-                                        })
-                                    )}
-                                </div>
-                            </div>
-
-                            <div>
-                                <div className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
-                                    Nhiệm vụ đã hoàn thành ({doneTaskGroups.length})
-                                </div>
-                                <div className="overflow-hidden rounded-lg border border-emerald-100">
-                                    {doneTaskGroups.length === 0 ? (
-                                        <div className="p-3 text-xs text-slate-500">Không có nhiệm vụ đã hoàn thành.</div>
-                                    ) : (
-                                        doneTaskGroups.map((g) => {
-                                            const active = selectedId === g.id;
-                                            return (
-                                                <button
-                                                    key={g.id}
-                                                    type="button"
-                                                    onClick={() => setSelectedId(g.id)}
-                                                    className={`w-full border-b border-slate-100 px-4 py-3 text-left transition last:border-b-0 ${
-                                                        active ? 'bg-emerald-50' : 'hover:bg-slate-50'
-                                                    }`}
-                                                >
-                                                    <div className="flex items-center justify-between gap-2">
-                                                        <span className="text-sm font-semibold text-slate-900">{g.code || `TG-${g.id}`}</span>
-                                                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${badgeClass(g.status)}`}>
-                                                            {g.status || '—'}
-                                                        </span>
-                                                    </div>
-                                                    <div className="mt-1 text-[11px] text-slate-500">{fmtDate(g.updatedAt || g.createdAt)}</div>
-                                                </button>
-                                            );
-                                        })
-                                    )}
-                                </div>
-                            </div>
+                    {!selectedId ? (
+                        <div className="flex h-full items-center justify-center px-6 text-center text-slate-500">
+                            Chọn một nhóm nhiệm vụ để xem chi tiết.
+                        </div>
+                    ) : detailLoading ? (
+                        <div className="flex h-full items-center justify-center px-6 text-center text-slate-500">
+                            Đang tải chi tiết...
+                        </div>
+                    ) : !detail ? (
+                        <div className="flex h-full items-center justify-center px-6 text-center text-slate-500">
+                            Không có dữ liệu chi tiết.
                         </div>
                     ) : (
-                        taskGroups.map((g) => {
-                            const active = selectedId === g.id;
-                            return (
-                                <button
-                                    key={g.id}
-                                    type="button"
-                                    onClick={() => setSelectedId(g.id)}
-                                    className={`w-full border-b border-slate-100 px-4 py-3 text-left transition ${
-                                        active ? 'bg-blue-50' : 'hover:bg-slate-50'
-                                    }`}
-                                >
-                                    <div className="flex items-center justify-between gap-2">
-                                        <span className="text-sm font-semibold text-slate-900">{g.code || `TG-${g.id}`}</span>
-                                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${badgeClass(g.status)}`}>
-                                            {g.status || '—'}
+                        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+                            <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
+                                <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/70 sm:p-6">
+                                    <div className="flex flex-wrap items-start justify-between gap-4">
+                                        <div>
+                                            <h3 className="text-2xl font-bold tracking-tight text-slate-900">
+                                                {detail.code || `Task Group #${detail.id}`}
+                                            </h3>
+                                            <p className="mt-2 text-sm text-slate-500">
+                                                Tạo lúc: {fmtDate(detail.createdAt)}
+                                            </p>
+                                        </div>
+                                        <span className={`rounded-xl px-3 py-1.5 text-xs font-semibold ${badgeClass(detail.status)}`}>
+                                            {detail.status || '—'}
                                         </span>
                                     </div>
-                                    <div className="mt-1 text-xs text-slate-600">Đội: {g.assignedTeamName || 'Chưa gán'}</div>
-                                    <div className="mt-1 text-[11px] text-slate-500">{fmtDate(g.updatedAt || g.createdAt)}</div>
-                                </button>
-                            );
-                        })
-                    )}
-                </div>
-            </div>
-
-            <div className="flex min-w-0 flex-1 flex-col">
-                {error && (
-                    <div className="border-b border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700 inline-flex items-center gap-2">
-                        <AlertCircle className="h-4 w-4" />
-                        {error}
-                    </div>
-                )}
-
-                {!selectedId ? (
-                    <div className="flex h-full items-center justify-center text-slate-500">Chọn một nhóm nhiệm vụ để xem chi tiết.</div>
-                ) : detailLoading ? (
-                    <div className="flex h-full items-center justify-center text-slate-500">Đang tải chi tiết...</div>
-                ) : !detail ? (
-                    <div className="flex h-full items-center justify-center text-slate-500">Không có dữ liệu chi tiết.</div>
-                ) : (
-                    <div className="grid h-full min-h-0 grid-cols-1">
-                        <div className="flex min-h-0 flex-col">
-                            <div className="border-b border-slate-200 p-4">
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <div>
-                                        <h3 className="text-lg font-bold text-slate-900">{detail.code || `Task Group #${detail.id}`}</h3>
-                                        <p className="text-xs text-slate-500">Tạo lúc: {fmtDate(detail.createdAt)}</p>
-                                    </div>
-                                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${badgeClass(detail.status)}`}>{detail.status}</span>
                                 </div>
-                                <div className="mt-3" />
-                            </div>
 
-                            <div className="min-h-0 flex-1 overflow-y-auto p-4">
-                                <section>
-                                    <h4 className="text-xs font-semibold uppercase text-slate-500">Yêu cầu trong nhóm</h4>
-                                    <div className="mt-2 space-y-2">
+                                <DetailSection title="Yêu cầu trong nhóm">
+                                    <div className="space-y-3">
                                         {Array.isArray(detail.requests) && detail.requests.length > 0 ? (
                                             detail.requests.map((r) => (
-                                                <div key={r.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                                                    <div className="flex items-center justify-between gap-2">
-                                                        <span className="text-sm font-semibold text-slate-900">{r.code || `RR-${r.id}`}</span>
-                                                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${badgeClass(r.status)}`}>{r.status || '—'}</span>
+                                                <article key={r.id} className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                                                    <div className="flex flex-wrap items-start justify-between gap-3">
+                                                        <div>
+                                                            <div className="text-sm font-semibold text-slate-900">{r.code || `RR-${r.id}`}</div>
+                                                            <p className="mt-1 text-xs leading-5 text-slate-600">{r.addressText || 'Chưa có địa chỉ'}</p>
+                                                        </div>
+                                                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${badgeClass(r.status)}`}>
+                                                            {r.status || '—'}
+                                                        </span>
                                                     </div>
-                                                    <p className="mt-1 text-xs text-slate-600">{r.addressText || 'Chưa có địa chỉ'}</p>
-                                                    <p className="mt-1 text-xs text-slate-600">Công dân: {r.citizenName || '—'} • {r.citizenPhone || '—'}</p>
-                                                    <p className="mt-1 text-xs text-slate-500">Ưu tiên: {r.priority || '—'} • Người: {r.affectedPeopleCount ?? '—'} • Xác minh vị trí: {r.locationVerified ? 'Đã xác minh' : 'Chưa xác minh'}</p>
-                                                    <p className="mt-1 whitespace-pre-wrap text-xs text-slate-600">{r.description || 'Không có mô tả thêm.'}</p>
+                                                    <p className="mt-3 text-xs text-slate-600">
+                                                        Công dân: {r.citizenName || '—'} • {r.citizenPhone || '—'}
+                                                    </p>
+                                                    <p className="mt-1 text-xs text-slate-500">
+                                                        Ưu tiên: {r.priority || '—'} • Người: {r.affectedPeopleCount ?? '—'} • Xác minh vị trí: {r.locationVerified ? 'Đã xác minh' : 'Chưa xác minh'}
+                                                    </p>
+                                                    <p className="mt-3 whitespace-pre-wrap text-xs leading-5 text-slate-600">
+                                                        {r.description || 'Không có mô tả thêm.'}
+                                                    </p>
                                                     {r.emergency && (
-                                                        <p className="mt-1 text-[11px] font-semibold text-rose-700">
+                                                        <p className="mt-3 text-[11px] font-semibold text-rose-700">
                                                             Yêu cầu khẩn cấp #{r.emergencyNo || '—'} • Đội báo khẩn cấp: {r.sourceTeamId || '—'}
                                                         </p>
                                                     )}
-                                                </div>
+                                                </article>
                                             ))
                                         ) : (
                                             <p className="text-sm text-slate-500">Không có yêu cầu liên kết.</p>
                                         )}
                                     </div>
-                                </section>
+                                </DetailSection>
 
-                                <section className="mt-5">
-                                    <h4 className="text-xs font-semibold uppercase text-slate-500">Phân công hiện tại</h4>
-                                    <div className="mt-2 space-y-2">
+                                <DetailSection title="Phân công hiện tại">
+                                    <div className="space-y-3">
                                         {Array.isArray(detail.assignments) && detail.assignments.length > 0 ? (
                                             detail.assignments.map((a) => (
-                                                <div key={a.id} className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
-                                                    <div className="font-semibold text-slate-900">{a.teamName || 'Không rõ đội'}</div>
-                                                    <div className="mt-1 text-xs text-slate-600">Asset: {a.assetName || a.assetCode || '—'}</div>
-                                                    <div className="mt-1 text-xs text-slate-500">Assigned by: {a.assignedByName || '—'} • {fmtDate(a.assignedAt)}</div>
+                                                <div key={a.id} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+                                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
+                                                        {getInitials(a.teamName || detail.assignedTeamName)}
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="text-sm font-semibold text-slate-900">{a.teamName || 'Không rõ đội'}</div>
+                                                        <div className="mt-1 text-xs text-slate-600">Asset: {a.assetName || a.assetCode || '—'}</div>
+                                                        <div className="mt-1 text-xs text-slate-500">
+                                                            Assigned by: {a.assignedByName || '—'} • {fmtDate(a.assignedAt)}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             ))
                                         ) : detail.assignedTeamName ? (
-                                            <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
-                                                <div className="font-semibold text-slate-900">{detail.assignedTeamName}</div>
-                                                <div className="mt-1 text-xs text-slate-500">Đội đang được phân công hiện tại.</div>
+                                            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+                                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
+                                                    {getInitials(detail.assignedTeamName)}
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-semibold text-slate-900">{detail.assignedTeamName}</div>
+                                                    <div className="mt-1 text-xs text-slate-500">Đội đang được phân công hiện tại.</div>
+                                                </div>
                                             </div>
                                         ) : (
                                             <p className="text-sm text-slate-500">Chưa có phân công.</p>
                                         )}
                                     </div>
-                                </section>
+                                </DetailSection>
 
-                                <section className="mt-5">
-                                    <h4 className="text-xs font-semibold uppercase text-slate-500">Timeline</h4>
-                                    <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
-                                        {String(detail.status || '').toUpperCase() === 'CANCELLED' ? (
-                                            <div className="text-sm font-semibold text-rose-700">Nhiệm vụ đã bị hủy.</div>
-                                        ) : (
-                                            <div className="flex items-center gap-2">
-                                                {TIMELINE_STEPS.map((step, index) => (
-                                                    <React.Fragment key={step}>
-                                                        <div className={`flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-[10px] font-bold ${stepClass(step, String(detail.status || '').toUpperCase())}`}>
-                                                            {index + 1}
+                                <DetailSection title="Timeline">
+                                    {String(detail.status || '').toUpperCase() === 'CANCELLED' ? (
+                                        <div className="text-sm font-semibold text-rose-700">Nhiệm vụ đã bị hủy.</div>
+                                    ) : (
+                                        <div className="relative pt-1">
+                                            <div className="absolute left-3 right-3 top-4 hidden h-px bg-slate-200 sm:block" />
+                                            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                                                {TIMELINE_STEPS.map((step) => {
+                                                    const state = timelineState(step, detail.status);
+                                                    return (
+                                                        <div key={step} className="relative flex flex-col items-center text-center">
+                                                            <div className={`relative z-10 h-6 w-6 rounded-full border-4 ${timelineDotClass(state)}`} />
+                                                            <div className={`mt-3 text-[11px] font-semibold uppercase tracking-wide ${timelineLabelClass(state)}`}>
+                                                                {step}
+                                                            </div>
                                                         </div>
-                                                        <div className="min-w-0">
-                                                            <div className="text-[11px] font-semibold text-slate-700">{step}</div>
-                                                        </div>
-                                                        {index < TIMELINE_STEPS.length - 1 && (
-                                                            <div className="h-[2px] w-8 bg-slate-200" />
-                                                        )}
-                                                    </React.Fragment>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
-                                        )}
-                                        <div className="mt-2 text-xs text-slate-600">
-                                            Trạng thái hiện tại: <span className="font-semibold">{detail.status || '—'}</span>
                                         </div>
+                                    )}
+                                    <div className="mt-4 text-xs text-slate-600">
+                                        Trạng thái hiện tại: <span className="font-semibold">{detail.status || '—'}</span>
                                     </div>
-                                    <div className="mt-3 space-y-2">
+                                </DetailSection>
+
+                                <DetailSection title="Nhật ký timeline">
+                                    <div className="space-y-3">
                                         {Array.isArray(detail.timeline) && detail.timeline.length > 0 ? (
                                             detail.timeline.map((t) => (
-                                                <div key={t.id} className="rounded-lg border border-slate-200 bg-white p-2.5 text-xs text-slate-700">
-                                                    <div className="font-semibold">{t.eventType || 'EVENT'}</div>
-                                                    <div className="mt-0.5">{t.note || '—'}</div>
-                                                    <div className="mt-0.5 text-slate-500">{t.actorName || 'Hệ thống'} • {fmtDate(t.createdAt)}</div>
+                                                <div key={t.id} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-700">
+                                                    <div className="font-semibold text-slate-900">{t.eventType || 'EVENT'}</div>
+                                                    <div className="mt-1 leading-5">{t.note || '—'}</div>
+                                                    <div className="mt-2 text-slate-500">
+                                                        {t.actorName || 'Hệ thống'} • {fmtDate(t.createdAt)}
+                                                    </div>
                                                 </div>
                                             ))
                                         ) : (
                                             <p className="text-sm text-slate-500">Chưa có timeline.</p>
                                         )}
                                     </div>
-                                </section>
+                                </DetailSection>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </div>
     );

@@ -256,22 +256,22 @@ export default function RescueRequestUpdatePage() {
                 </section>
 
                 {/* Ảnh bổ sung Section */}
-                <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <div className="flex items-center gap-2 mb-4">
-                        <Camera className="h-5 w-5 text-blue-600" />
+                <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="mb-3 flex items-center gap-2">
+                        <Camera className="h-4.5 w-4.5 text-blue-600" />
                         <h2 className="text-lg font-semibold text-slate-900">
                             Ảnh bổ sung
                         </h2>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         {/* Existing images */}
                         {form.existingImages.length > 0 && (
-                            <div className="grid grid-cols-3 gap-3">
+                            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                                 {form.existingImages.map((img, index) => (
                                     <div
                                         key={index}
-                                        className="group relative aspect-square overflow-hidden rounded-lg border-2 border-slate-200 bg-slate-100 shadow-sm"
+                                        className="group relative aspect-square overflow-hidden rounded-md border border-slate-200 bg-slate-100 shadow-sm"
                                     >
                                         <img
                                             src={resolveAttachmentUrl(img.fileUrl || img.url || '')}
@@ -281,10 +281,10 @@ export default function RescueRequestUpdatePage() {
                                         <button
                                             type="button"
                                             onClick={() => handleRemoveExistingImage(index)}
-                                            className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white shadow-lg transition-all hover:bg-red-600 hover:scale-110"
+                                            className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow transition-all hover:bg-red-600 hover:scale-110"
                                             title="Xóa ảnh"
                                         >
-                                            <X className="h-3.5 w-3.5" />
+                                            <X className="h-3 w-3" />
                                         </button>
                                     </div>
                                 ))}
@@ -293,11 +293,11 @@ export default function RescueRequestUpdatePage() {
 
                         {/* New images */}
                         {newImagePreviews.length > 0 && (
-                            <div className="grid grid-cols-3 gap-3">
+                            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                                 {newImagePreviews.map((preview, index) => (
                                     <div
                                         key={index}
-                                        className="group relative aspect-square overflow-hidden rounded-lg border-2 border-slate-200 bg-slate-100 shadow-sm"
+                                        className="group relative aspect-square overflow-hidden rounded-md border border-slate-200 bg-slate-100 shadow-sm"
                                     >
                                         <img
                                             src={preview.url}
@@ -307,10 +307,10 @@ export default function RescueRequestUpdatePage() {
                                         <button
                                             type="button"
                                             onClick={() => handleRemoveNewImage(index)}
-                                            className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white shadow-lg transition-all hover:bg-red-600 hover:scale-110"
+                                            className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow transition-all hover:bg-red-600 hover:scale-110"
                                             title="Xóa ảnh"
                                         >
-                                            <X className="h-3.5 w-3.5" />
+                                            <X className="h-3 w-3" />
                                         </button>
                                     </div>
                                 ))}
@@ -319,9 +319,9 @@ export default function RescueRequestUpdatePage() {
 
                         {/* Upload new image button */}
                         {canAddMore && (
-                            <label className="flex h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 text-center transition hover:border-blue-400 hover:bg-blue-50/50">
-                                <Camera className="h-6 w-6 text-slate-500" />
-                                <span className="text-sm font-medium text-slate-700">Tải ảnh mới</span>
+                            <label className="flex h-24 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 bg-slate-50 text-center transition hover:border-blue-400 hover:bg-blue-50/50">
+                                <Camera className="h-4 w-4 text-slate-500" />
+                                <span className="text-xs font-medium text-slate-700">Tải ảnh mới</span>
                                 <input
                                     type="file"
                                     accept="image/*"

@@ -6,13 +6,13 @@ import {
     ChevronRight,
     ChevronLeft,
     Phone,
-    CheckCircle2,
 } from 'lucide-react';
 import { CITIZEN_ROUTES } from '../../app/routes/route.constants.js';
 import GoogleMap from '../../features/map/components/GoogleMap.jsx';
 import { createRescueRequest, uploadRescueAttachments } from '../../features/rescue/api.js';
 import PrioritySelector from '../../features/rescue/components/PrioritySelector.jsx';
 import AttachmentGallery from '../../features/rescue/components/AttachmentGallery.jsx';
+import CitizenRequestHeader from '../../features/citizen/components/CitizenRequestHeader.jsx';
 import Button from '../../shared/ui/Button.jsx';
 import Input from '../../shared/ui/Input.jsx';
 import Textarea from '../../shared/ui/Textarea.jsx';
@@ -282,58 +282,19 @@ export default function RescueRequestCreatePage() {
         }
     };
 
+    const hasGps = Number.isFinite(Number(form.latitude)) && Number.isFinite(Number(form.longitude));
+
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-col gap-2">
-                <h1 className="text-2xl font-bold text-slate-900">
-                    Tạo yêu cầu cứu hộ khẩn cấp
-                </h1>
-                <p className="max-w-2xl text-sm text-slate-600">
-                    Vui lòng cung cấp chính xác vị trí, tình huống và thông tin liên lạc để lực lượng
-                    cứu hộ có thể hỗ trợ nhanh nhất.
-                </p>
-            </div>
-
-            {/* Step indicator */}
-            <div className="rounded-xl border border-slate-200 bg-white px-6 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-6">
-                    {STEPS.map((step, index) => {
-                        const isActive = currentStep === step.id;
-                        const isDone = currentStep > step.id;
-                        return (
-                            <div key={step.id} className="flex items-center gap-3">
-                                <div
-                                    className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${isActive
-                                        ? 'bg-blue-600 text-white'
-                                        : isDone
-                                            ? 'bg-emerald-500 text-white'
-                                            : 'bg-slate-100 text-slate-500'
-                                        }`}
-                                >
-                                    {isDone ? (
-                                        <CheckCircle2 className="h-5 w-5" />
-                                    ) : (
-                                        step.id
-                                    )}
-                                </div>
-                                <div className="flex flex-col">
-                                    <span
-                                        className={`text-sm font-medium ${isActive ? 'text-slate-900' : 'text-slate-500'
-                                            }`}
-                                    >
-                                        Bước {step.id}
-                                    </span>
-                                    <span className="text-xs text-slate-500">{step.label}</span>
-                                </div>
-                                {index < STEPS.length - 1 && (
-                                    <div className="hidden md:block h-px w-12 bg-slate-200" />
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
+            <CitizenRequestHeader
+                requestType="RESCUE"
+                currentStep={currentStep}
+                steps={STEPS}
+                hasGps={hasGps}
+                priority={form.level}
+                title="Tạo yêu cầu cứu hộ khẩn cấp"
+                subtitle="Vui lòng cung cấp chính xác vị trí, tình huống và thông tin liên lạc để lực lượng cứu hộ có thể hỗ trợ nhanh nhất."
+            />
 
             {/* Main content */}
             <form
@@ -492,7 +453,7 @@ export default function RescueRequestCreatePage() {
                             <h2 className="text-lg font-semibold text-slate-900">
                                 Bước 3: Hoàn tất yêu cầu
                             </h2>
-                            <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="grid gap-4 sm:grid-cols-2 sm:items-end">
                                 {/* Upload images */}
                                 <AttachmentGallery
                                     files={form.images}
@@ -530,12 +491,18 @@ export default function RescueRequestCreatePage() {
                                         </p>
                                     </div>
 
-                                    <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-[11px] text-rose-800 flex gap-2">
-                                        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-                                        <span>
-                                            Vui lòng kiểm tra lại toàn bộ thông tin trước khi gửi yêu cầu. Hành động
-                                            nguy hiểm hoặc thông tin không chính xác có thể làm chậm trễ việc cứu hộ.
-                                        </span>
+                                    <div className="rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-3.5">
+                                        <div className="flex items-start gap-2.5">
+                                            <div className="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-100">
+                                                <AlertTriangle className="h-3.5 w-3.5 text-amber-700" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-semibold text-amber-900">Kiểm tra thông tin trước khi gửi</p>
+                                                <p className="mt-1 text-[11px] leading-relaxed text-amber-800">
+                                                    Thông tin chính xác giúp đội cứu hộ tiếp cận nhanh và xử lý đúng mức độ khẩn cấp.
+                                                </p>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

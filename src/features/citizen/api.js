@@ -95,8 +95,15 @@ export async function uploadRescueAttachments(files) {
  * @returns {Promise}
  */
 export async function cancelRescueRequest(id) {
-    const response = await httpClient.delete(`/rescue/citizen/requests/${id}`);
-    return response;
+    try {
+        return await httpClient.delete(`/rescue/citizen/requests/${id}`);
+    } catch (e) {
+        // Fallback for backends exposing generic cancel endpoint
+        if ([403, 404, 405].includes(Number(e?.status))) {
+            return httpClient.post(`/rescue/requests/${id}/cancel`);
+        }
+        throw e;
+    }
 }
 
 /**

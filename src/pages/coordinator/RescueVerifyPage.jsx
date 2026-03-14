@@ -64,8 +64,15 @@ export default function RescueVerifyPage() {
     const [blockReason, setBlockReason] = useState('');
     const [verifiedRequests, setVerifiedRequests] = useState([]);
     const [loadingVerifiedList, setLoadingVerifiedList] = useState(false);
+    const [notice, setNotice] = useState(null);
 
     const requestId = useMemo(() => parseId(stateRequest?.id) || parseId(queryId), [stateRequest?.id, queryId]);
+
+    useEffect(() => {
+        if (!notice) return undefined;
+        const timeoutId = window.setTimeout(() => setNotice(null), 5000);
+        return () => window.clearTimeout(timeoutId);
+    }, [notice]);
 
     const loadDetail = async (idOrCode, byCode = false) => {
         setLoading(true);
@@ -79,6 +86,7 @@ export default function RescueVerifyPage() {
             setCancelAction('DELETE');
             setCancelReason('');
             setBlockReason('');
+            setNotice(null);
         } catch (e) {
             setRequest(null);
             setError(e?.message || 'Không thể tải dữ liệu yêu cầu từ hệ thống.');
@@ -103,7 +111,6 @@ export default function RescueVerifyPage() {
         setRequest(null);
         setError('');
         setLoading(false);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [queryId, requestId, stateRequest?.id]);
 
     useEffect(() => {
@@ -140,16 +147,19 @@ export default function RescueVerifyPage() {
             });
             const refreshed = await getCoordinatorRescueRequestById(request.id);
             setRequest(refreshed);
-            window.alert('Đã xác minh yêu cầu thành công. Chuyển sang trang phân công.');
             navigate(COORDINATOR_ROUTES.ASSIGN_RESCUE, {
                 state: {
                     request: refreshed,
                     autoSelectRequestId: refreshed.id,
                     fromVerify: true,
+                    successMessage: 'Đã xác minh yêu cầu thành công.',
                 },
             });
         } catch (e) {
-            window.alert(e?.message || 'Xác minh thất bại.');
+            setNotice({
+                type: 'error',
+                text: e?.message || 'Xác minh thất bại.',
+            });
         } finally {
             setSaving(false);
         }
@@ -158,7 +168,10 @@ export default function RescueVerifyPage() {
     const handleCancelRequest = async () => {
         if (!request?.id) return;
         if (!cancelReason.trim()) {
-            window.alert('Vui lòng nhập lý do hủy/chờ đội.');
+            setNotice({
+                type: 'warning',
+                text: 'Vui lòng nhập lý do hủy/chờ đội.',
+            });
             return;
         }
         try {
@@ -172,9 +185,15 @@ export default function RescueVerifyPage() {
             });
             const refreshed = await getCoordinatorRescueRequestById(request.id);
             setRequest(refreshed);
-            window.alert('Đã xử lý hủy yêu cầu thành công.');
+            setNotice({
+                type: 'success',
+                text: 'Đã xử lý hủy yêu cầu thành công.',
+            });
         } catch (e) {
-            window.alert(e?.message || 'Không thể hủy yêu cầu.');
+            setNotice({
+                type: 'error',
+                text: e?.message || 'Không thể hủy yêu cầu.',
+            });
         } finally {
             setCancelSaving(false);
         }
@@ -183,7 +202,10 @@ export default function RescueVerifyPage() {
     const handleBlockCitizen = async () => {
         if (!request?.id) return;
         if (!blockReason.trim()) {
-            window.alert('Vui lòng nhập lý do khóa citizen.');
+            setNotice({
+                type: 'warning',
+                text: 'Vui lòng nhập lý do khóa citizen.',
+            });
             return;
         }
         try {
@@ -192,11 +214,16 @@ export default function RescueVerifyPage() {
                 blocked: true,
                 reason: blockReason.trim(),
             });
-            window.alert('Đã khóa citizen thành công.');
             setBlockReason('');
-            navigate(COORDINATOR_ROUTES.DASHBOARD);
+            setNotice({
+                type: 'success',
+                text: 'Đã khóa citizen thành công.',
+            });
         } catch (e) {
-            window.alert(e?.message || 'Không thể khóa citizen.');
+            setNotice({
+                type: 'error',
+                text: e?.message || 'Không thể khóa citizen.',
+            });
         } finally {
             setBlockSaving(false);
         }
@@ -277,10 +304,21 @@ export default function RescueVerifyPage() {
     }
 
     const chip = statusChip(request?.status);
+    const noticeClass = notice?.type === 'success'
+        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+        : notice?.type === 'warning'
+            ? 'border-amber-200 bg-amber-50 text-amber-700'
+            : 'border-rose-200 bg-rose-50 text-rose-700';
 
     return (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
             <div className="space-y-4">
+                {notice && (
+                    <div className={`rounded-lg border px-3 py-2 text-sm ${noticeClass}`}>
+                        {notice.text}
+                    </div>
+                )}
+
                 <Card className="p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
@@ -338,7 +376,7 @@ export default function RescueVerifyPage() {
                         />
                     </div>
                     <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">
-                        <div className="text-xs font-semibold text-rose-800">Hủy yêu cầu của citizen</div>
+                        <div className="text-xs font-semibold text-rose-800">Vùng thao tác nhạy cảm: Hủy yêu cầu</div>
                         <div className="mt-2 grid gap-2 sm:grid-cols-2">
                             <select
                                 value={cancelAction}
@@ -357,7 +395,7 @@ export default function RescueVerifyPage() {
                         </div>
                         <div className="mt-2">
                             <Button variant="outline" size="sm" onClick={handleCancelRequest} disabled={cancelSaving}>
-                                {cancelSaving ? 'Đang xử lý...' : 'OK - Hủy yêu cầu'}
+                                {cancelSaving ? 'Đang xử lý...' : 'Xác nhận hủy yêu cầu'}
                             </Button>
                         </div>
                     </div>
@@ -374,12 +412,12 @@ export default function RescueVerifyPage() {
                         />
                         <div className="mt-2">
                             <Button variant="outline" size="sm" onClick={handleBlockCitizen} disabled={blockSaving}>
-                                {blockSaving ? 'Đang xử lý...' : 'OK - Khóa citizen'}
+                                {blockSaving ? 'Đang xử lý...' : 'Khóa citizen'}
                             </Button>
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                         <Button variant="primary" size="sm" onClick={handleVerify} disabled={saving}>
                             {saving ? 'Đang lưu...' : 'Xác minh yêu cầu'}
                         </Button>
@@ -425,7 +463,7 @@ export default function RescueVerifyPage() {
                     <div className="border-b border-slate-200 px-4 py-3">
                         <h2 className="text-sm font-semibold text-slate-900">Vị trí yêu cầu</h2>
                     </div>
-                    <div className="h-[360px]">
+                    <div className="h-[280px] sm:h-[360px]">
                         <GoogleMap center={mapCenter} zoom={14} />
                     </div>
                 </Card>
