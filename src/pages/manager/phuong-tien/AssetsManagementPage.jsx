@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sailboat, Truck, Zap, MapPin, FileText, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
-import { MANAGER_ROUTES } from '../../app/routes/route.constants.js';
-import { getAssets } from '../../features/assets/api.js';
+import { Sailboat, Truck, Zap, MapPin, FileText, Plus, ChevronLeft, ChevronRight, Users } from 'lucide-react';
+import { MANAGER_ROUTES } from '../../../app/routes/route.constants.js';
+import { getAssets } from '../../../features/assets/api.js';
 
 const STATUS_FILTERS = [
     { id: 'all', label: 'Tất cả', value: null },
@@ -40,6 +40,22 @@ const mockAssets = [
 
 const ITEMS_PER_PAGE = 6;
 
+function normalizeStatus(rawStatus) {
+    const value = String(rawStatus || '').trim().toLowerCase();
+    if (value === 'available') return 'available';
+    if (value === 'in_use' || value === 'in-use' || value === 'in rescue' || value === 'in_rescue' || value === 'busy') return 'in-use';
+    if (value === 'maintenance') return 'maintenance';
+    return 'available';
+}
+
+function normalizeType(rawType) {
+    const value = String(rawType || '').trim().toLowerCase();
+    if (value === 'canoe' || value === 'boat') return 'canoe';
+    if (value === 'generator') return 'generator';
+    if (value === 'water-vehicle' || value === 'truck' || value === 'vehicle') return 'water-vehicle';
+    return 'canoe';
+}
+
 export default function AssetsManagementPage() {
     const navigate = useNavigate();
     const [statusFilter, setStatusFilter] = useState(null);
@@ -67,8 +83,29 @@ export default function AssetsManagementPage() {
                 } else if (Array.isArray(data?.items)) {
                     assetsList = data.items;
                 }
-                // Nếu API trả về rỗng, dùng mock data
-                setAssets(assetsList.length > 0 ? assetsList : mockAssets);
+                const normalizedAssets = (assetsList.length > 0 ? assetsList : mockAssets).map((asset) => {
+                    const normalizedType = normalizeType(asset?.type || asset?.assetType);
+                    const code = asset?.code || asset?.assetCode || asset?.licensePlate || `PT-${asset?.id || ''}`;
+                    const teamHolder = asset?.assignedTeamName
+                        || asset?.currentTeamName
+                        || asset?.teamName
+                        || asset?.holderTeamName
+                        || (asset?.assignedTeamId ? `Đội #${asset.assignedTeamId}` : null)
+                        || (asset?.teamId ? `Đội #${asset.teamId}` : null)
+                        || 'Chưa có đội giữ';
+                    return {
+                        ...asset,
+                        code,
+                        type: normalizedType,
+                        status: normalizeStatus(asset?.status),
+                        name: asset?.name || asset?.assetName || code,
+                        desc: asset?.desc || asset?.assetType || normalizedType.toUpperCase(),
+                        location: asset?.location || asset?.currentLocation || 'Chưa cập nhật vị trí',
+                        task: asset?.task || asset?.taskName || asset?.currentTaskName || 'Chưa có nhiệm vụ',
+                        teamHolder,
+                    };
+                });
+                setAssets(normalizedAssets);
             } catch (e) {
                 console.warn('[AssetsManagementPage] Could not load assets, using mock data:', e);
                 // Nếu API fail, dùng mock data
@@ -78,7 +115,6 @@ export default function AssetsManagementPage() {
             }
         };
         loadAssets();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const filteredAssets = useMemo(() => {
@@ -103,13 +139,8 @@ export default function AssetsManagementPage() {
         navigate(MANAGER_ROUTES.CREATE_ASSET);
     };
 
-    const handleViewDetail = (asset) => {
+    const handleViewDetail = () => {
         // TODO: Navigate to asset detail
-    };
-
-    const handleDispatch = (asset) => {
-        if (asset.status !== 'available') return;
-        // TODO: Open dispatch modal
     };
 
     return (
@@ -120,7 +151,7 @@ export default function AssetsManagementPage() {
                     Danh sách Phương tiện & Thiết bị
                 </h1>
                 <p className="mt-1 text-sm text-slate-500">
-                    Quản lý và điều phối tài sản cứu trợ trực tuyến theo thời gian thực
+                    Quản lý tài sản cứu trợ trực tuyến theo thời gian thực
                 </p>
             </div>
 
@@ -188,7 +219,6 @@ export default function AssetsManagementPage() {
                         const config = TYPE_CONFIG[asset.type] || TYPE_CONFIG.canoe;
                         const statusInfo = STATUS_LABELS[asset.status] || STATUS_LABELS.available;
                         const Icon = config?.Icon || Sailboat;
-                        const canDispatch = asset.status === 'available';
                         return (
                             <div
                                 key={asset.id}
@@ -206,6 +236,14 @@ export default function AssetsManagementPage() {
                                 <p className="text-xs uppercase tracking-wide text-slate-500">{asset.desc}</p>
                                 <div className="mt-3 space-y-2">
                                     <div className="flex items-center gap-2 text-sm text-slate-600">
+                                        <FileText className="h-4 w-4 shrink-0 text-slate-400" />
+                                        <span className="line-clamp-1">Mã: {asset.code || `PT-${asset.id}`}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                                        <Users className="h-4 w-4 shrink-0 text-slate-400" />
+                                        <span className="line-clamp-1">Đội đang giữ: {asset.teamHolder || 'Chưa có đội giữ'}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm text-slate-600">
                                         <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
                                         <span className="line-clamp-1">{asset.location}</span>
                                     </div>
@@ -217,19 +255,9 @@ export default function AssetsManagementPage() {
                                 <div className="mt-4 flex gap-2">
                                     <button
                                         onClick={() => handleViewDetail(asset)}
-                                        className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                                     >
                                         Xem chi tiết
-                                    </button>
-                                    <button
-                                        onClick={() => handleDispatch(asset)}
-                                        disabled={!canDispatch}
-                                        className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${canDispatch
-                                            ? 'bg-green-600 text-white hover:bg-green-700'
-                                            : 'cursor-not-allowed bg-slate-100 text-slate-400'
-                                            }`}
-                                    >
-                                        Điều phối
                                     </button>
                                 </div>
                             </div>

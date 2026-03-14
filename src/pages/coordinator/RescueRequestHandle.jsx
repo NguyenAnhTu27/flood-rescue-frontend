@@ -1,340 +1,431 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
+    AlertCircle,
+    RefreshCcw,
     Search,
-    MapPin,
-    X,
-    User,
-    Truck,
-    Ambulance,
-    Users,
-    ArrowUpDown,
-    LayoutGrid,
-    ChevronUp,
-    Car,
 } from 'lucide-react';
-import GoogleMap from '../../features/map/components/GoogleMap.jsx';
 import { COORDINATOR_ROUTES } from '../../app/routes/route.constants.js';
+import { getTaskGroupById, getTaskGroups } from '../../features/coordinator/api.js';
 
 const STATUS_FILTERS = [
-    { id: 'all', label: 'Tất cả', value: null },
-    { id: 'moving', label: 'Đang di chuyển', value: 'moving' },
-    { id: 'onscene', label: 'Tại hiện trường', value: 'onscene' },
+    { label: 'Tất cả', value: '' },
+    { label: 'NEW', value: 'NEW' },
+    { label: 'ASSIGNED', value: 'ASSIGNED' },
+    { label: 'IN_PROGRESS', value: 'IN_PROGRESS' },
+    { label: 'CANCELLED', value: 'CANCELLED' },
 ];
 
-const STATUS_TAG = {
-    moving: { label: 'ĐANG DI CHUYỂN', class: 'bg-blue-600 text-white' },
-    onscene: { label: 'TẠI HIỆN TRƯỜNG', class: 'bg-amber-500 text-white' },
-    completed: { label: 'HOÀN TẤT', class: 'bg-green-600 text-white' },
-};
+function toArray(data) {
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.content)) return data.content;
+    if (Array.isArray(data?.data)) return data.data;
+    if (Array.isArray(data?.items)) return data.items;
+    return [];
+}
 
-const MOCK_TASKS = [
-    { id: 'NV-2024-001', status: 'moving', team: 'Đội Cứu hộ số 4 (Alpha)', location: 'Tràng Tiền, Hoàn Kiếm, Hà Nội', lat: 21.0245, lng: 105.8532 },
-    { id: 'NV-2024-002', status: 'onscene', team: 'Đội PCCC & CNCH - Ba Đình', location: 'Ngọc Khánh, Ba Đình', lat: 21.0312, lng: 105.8123 },
-    { id: 'NV-2024-005', status: 'completed', team: 'Đội Phản ứng Nhanh - Cầu Giấy', location: 'Xuân Thủy, Cầu Giấy', lat: 21.0334, lng: 105.7845 },
-    { id: 'NV-2024-009', status: 'moving', team: 'Đội Cứu hộ Thủy nạn - Tây Hồ', location: 'Bến Nhật Bản, Tây Hồ', lat: 21.0621, lng: 105.8234 },
-];
+function toNumberOrNull(value) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+}
 
-const MOCK_DETAIL = {
-    id: 'NV-2024-001',
-    priority: 'ƯU TIÊN',
-    description: 'Yêu cầu hỗ trợ cứu hộ khẩn cấp tại cửa hàng bách hóa',
-    address: '45 Tràng Tiền, Hoàn Kiếm, TP. Hà Nội',
-    reporter: 'Nguyễn Văn A - 0912 xxxxx',
-    reporterQuote: '"Có khói đen bốc lên từ kho hàng phía sau.."',
-    resources: [
-        { type: 'truck', name: 'Xe chữa cháy 01-HNI', status: 'ONLINE' },
-        { type: 'ambulance', name: 'Xe cứu thương 02-EMS', status: 'ONLINE' },
-    ],
-    personnelCount: 12,
-    log: [
-        { time: '14:15', text: 'Tiếp nhận yêu cầu qua tổng đài 114' },
-        { time: '14:30', text: 'Điều động Đội Cứu hộ Số 4' },
-        { time: 'Đang chờ', text: 'Tiếp cận hiện trường...', pending: true },
-    ],
-};
+function fmtDate(value) {
+    if (!value) return '—';
+    try {
+        return new Date(value).toLocaleString('vi-VN');
+    } catch {
+        return String(value);
+    }
+}
 
-const HANOI_CENTER = { lat: 21.0285, lng: 105.8542 };
+function badgeClass(status) {
+    const map = {
+        NEW: 'bg-amber-100 text-amber-800',
+        ASSIGNED: 'bg-indigo-100 text-indigo-800',
+        IN_PROGRESS: 'bg-cyan-100 text-cyan-800',
+        DONE: 'bg-emerald-100 text-emerald-800',
+        CANCELLED: 'bg-rose-100 text-rose-800',
+    };
+    return map[status] || 'bg-slate-100 text-slate-700';
+}
+
+const TIMELINE_STEPS = ['NEW', 'ASSIGNED', 'IN_PROGRESS', 'DONE'];
+
+function stepClass(step, currentStatus) {
+    const currentIndex = TIMELINE_STEPS.indexOf(String(currentStatus || '').toUpperCase());
+    const stepIndex = TIMELINE_STEPS.indexOf(step);
+    if (currentStatus === 'CANCELLED') return 'bg-slate-200 text-slate-500';
+    if (stepIndex < currentIndex) return 'bg-emerald-500 text-white';
+    if (stepIndex === currentIndex) return 'bg-blue-600 text-white';
+    return 'bg-slate-200 text-slate-600';
+}
 
 export default function RescueRequestHandle() {
+    const location = useLocation();
     const navigate = useNavigate();
-    const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState(null);
-    const [selectedTask, setSelectedTask] = useState(MOCK_TASKS[0]);
-    const [mapZoom, setMapZoom] = useState(13);
-    const [showDetail, setShowDetail] = useState(true);
+    const [searchParams] = useSearchParams();
 
-    const filteredTasks = useMemo(() => {
-        let list = [...MOCK_TASKS];
-        if (statusFilter) {
-            list = list.filter((t) => t.status === statusFilter);
+    const [statusFilter, setStatusFilter] = useState('');
+    const [keyword, setKeyword] = useState('');
+    const [submittedKeyword, setSubmittedKeyword] = useState('');
+
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const [taskGroups, setTaskGroups] = useState([]);
+    const [selectedId, setSelectedId] = useState(null);
+    const [detail, setDetail] = useState(null);
+    const [detailLoading, setDetailLoading] = useState(false);
+    const teamIdFromQuery = toNumberOrNull(searchParams.get('teamId'));
+    const teamIdFromState = toNumberOrNull(location.state?.teamId);
+    const preferredTaskGroupId = toNumberOrNull(location.state?.selectedTaskGroupId);
+    const selectedTeamId = teamIdFromQuery ?? teamIdFromState;
+    const selectedTeamName = location.state?.teamName || null;
+
+    const loadGroups = async () => {
+        try {
+            setLoading(true);
+            setError('');
+            const resp = await getTaskGroups({ status: statusFilter || undefined, page: 0, size: 100 });
+            const content = toArray(resp);
+            const byTeam = selectedTeamId
+                ? content.filter((g) => Number(g?.assignedTeamId) === Number(selectedTeamId))
+                : content;
+            const visible = selectedTeamId
+                ? byTeam.filter((g) => ['NEW', 'ASSIGNED', 'IN_PROGRESS', 'DONE'].includes(String(g?.status || '').toUpperCase()))
+                : statusFilter
+                    ? byTeam
+                    : byTeam.filter((g) => !['DONE', 'CANCELLED'].includes(String(g?.status || '').toUpperCase()));
+            const filtered = submittedKeyword
+                ? visible.filter((g) =>
+                      [g.code, g.assignedTeamName, g.note].some((v) =>
+                          String(v || '')
+                              .toLowerCase()
+                              .includes(submittedKeyword.toLowerCase())
+                      )
+                  )
+                : visible;
+
+            setTaskGroups(filtered);
+            if (filtered.length > 0) {
+                const preferredId = preferredTaskGroupId && filtered.some((g) => Number(g.id) === Number(preferredTaskGroupId))
+                    ? preferredTaskGroupId
+                    : null;
+                const nextId = preferredId || (selectedId && filtered.some((g) => g.id === selectedId) ? selectedId : filtered[0].id);
+                setSelectedId(nextId);
+            } else {
+                setSelectedId(null);
+                setDetail(null);
+            }
+        } catch (e) {
+            setTaskGroups([]);
+            setSelectedId(null);
+            setDetail(null);
+            setError(e?.message || 'Không thể tải danh sách nhiệm vụ.');
+        } finally {
+            setLoading(false);
         }
-        if (searchQuery.trim()) {
-            const q = searchQuery.toLowerCase();
-            list = list.filter(
-                (t) =>
-                    t.id.toLowerCase().includes(q) ||
-                    t.team.toLowerCase().includes(q) ||
-                    t.location.toLowerCase().includes(q)
-            );
-        }
-        return list;
-    }, [statusFilter, searchQuery]);
-
-    const mapCenter = selectedTask
-        ? { lat: selectedTask.lat, lng: selectedTask.lng }
-        : HANOI_CENTER;
-
-    const handleTaskSelect = (task) => {
-        setSelectedTask(task);
-        setShowDetail(true);
     };
 
-    const handleCloseDetail = () => {
-        setShowDetail(false);
+    const loadDetail = async (id) => {
+        if (!id) return;
+        try {
+            setDetailLoading(true);
+            const resp = await getTaskGroupById(id);
+            setDetail(resp);
+        } catch (e) {
+            setDetail(null);
+            setError(e?.message || 'Không thể tải chi tiết nhiệm vụ.');
+        } finally {
+            setDetailLoading(false);
+        }
     };
 
-    const handleEscalation = () => {
-        navigate(COORDINATOR_ROUTES.ESCALATION);
+    useEffect(() => {
+        loadGroups();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [statusFilter, submittedKeyword, selectedTeamId, preferredTaskGroupId]);
+
+    useEffect(() => {
+        if (selectedId) loadDetail(selectedId);
+    }, [selectedId]);
+
+    const activeTaskGroups = useMemo(
+        () => taskGroups.filter((g) => ['NEW', 'ASSIGNED', 'IN_PROGRESS'].includes(String(g?.status || '').toUpperCase())),
+        [taskGroups]
+    );
+    const doneTaskGroups = useMemo(
+        () => taskGroups.filter((g) => String(g?.status || '').toUpperCase() === 'DONE'),
+        [taskGroups]
+    );
+
+    const handleSearch = (e) => {
+        e.preventDefault();
+        setSubmittedKeyword(keyword.trim());
     };
 
     return (
-        <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden bg-slate-100">
-            {/* ===== LEFT: Danh sách nhiệm vụ ===== */}
-            <div className="flex w-[320px] shrink-0 flex-col border-r border-slate-200 bg-white">
+        <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="flex w-[350px] shrink-0 flex-col border-r border-slate-200">
                 <div className="border-b border-slate-200 p-4">
-                    <h2 className="font-semibold text-slate-900">Danh sách Nhiệm vụ</h2>
-                    <div className="relative mt-3">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="Mã NV, đội, địa điểm.."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                        />
+                    <div className="mb-2 flex items-center justify-between">
+                        <h2 className="font-semibold text-slate-900">
+                            {selectedTeamId ? `Nhiệm vụ của đội ${selectedTeamName || `#${selectedTeamId}`}` : 'Giám sát nhiệm vụ'}
+                        </h2>
+                        <button type="button" onClick={loadGroups} className="rounded-lg p-1.5 hover:bg-slate-100" title="Tải lại">
+                            <RefreshCcw className="h-4 w-4 text-slate-600" />
+                        </button>
                     </div>
-                    <div className="mt-3 flex gap-1">
-                        {STATUS_FILTERS.map((f) => (
-                            <button
-                                key={f.id}
-                                onClick={() => setStatusFilter(f.value)}
-                                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                                    statusFilter === f.value
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                }`}
-                            >
-                                {f.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                    {filteredTasks.map((task) => {
-                        const tag = STATUS_TAG[task.status] || STATUS_TAG.moving;
-                        const isSelected = selectedTask?.id === task.id;
-                        return (
-                            <button
-                                key={task.id}
-                                type="button"
-                                onClick={() => handleTaskSelect(task)}
-                                className={`w-full border-b border-slate-100 p-4 text-left transition ${
-                                    isSelected ? 'bg-blue-50 ring-inset ring-2 ring-blue-200' : 'hover:bg-slate-50'
-                                }`}
-                            >
-                                <div className="flex items-center justify-between gap-2">
-                                    <span className="font-medium text-slate-900">#{task.id}</span>
-                                    <span className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase ${tag.class}`}>
-                                        {tag.label}
-                                    </span>
-                                </div>
-                                <p className="mt-1 text-xs font-medium text-slate-700">{task.team}</p>
-                                <div className="mt-1 flex items-start gap-1.5 text-xs text-slate-500">
-                                    <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                                    <span>{task.location}</span>
-                                </div>
-                            </button>
-                        );
-                    })}
-                    {filteredTasks.length === 0 && (
-                        <div className="p-6 text-center text-sm text-slate-500">
-                            Không có nhiệm vụ nào phù hợp
+                    <form onSubmit={handleSearch} className="space-y-2">
+                        <div className="relative">
+                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                            <input
+                                value={keyword}
+                                onChange={(e) => setKeyword(e.target.value)}
+                                placeholder="Tìm mã nhóm, đội..."
+                                className="h-10 w-full rounded-lg border border-slate-200 pl-10 pr-3 text-sm"
+                            />
                         </div>
+                        <div className="flex gap-2">
+                            {!selectedTeamId && (
+                                <select
+                                    value={statusFilter}
+                                    onChange={(e) => setStatusFilter(e.target.value)}
+                                    className="h-10 flex-1 rounded-lg border border-slate-200 px-3 text-sm"
+                                >
+                                    {STATUS_FILTERS.map((f) => (
+                                        <option key={f.value} value={f.value}>{f.label}</option>
+                                    ))}
+                                </select>
+                            )}
+                            <button type="submit" className="h-10 rounded-lg bg-blue-600 px-3 text-sm font-semibold text-white">Lọc</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div className="flex-1 overflow-y-auto">
+                    {loading ? (
+                        <div className="p-6 text-center text-sm text-slate-500">Đang tải...</div>
+                    ) : taskGroups.length === 0 ? (
+                        <div className="p-6 text-center text-sm text-slate-500">Không có nhóm nhiệm vụ.</div>
+                    ) : selectedTeamId ? (
+                        <div className="space-y-3 p-3">
+                            <div>
+                                <div className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-cyan-700">
+                                    Nhiệm vụ đang làm ({activeTaskGroups.length})
+                                </div>
+                                <div className="overflow-hidden rounded-lg border border-cyan-100">
+                                    {activeTaskGroups.length === 0 ? (
+                                        <div className="p-3 text-xs text-slate-500">Không có nhiệm vụ đang làm.</div>
+                                    ) : (
+                                        activeTaskGroups.map((g) => {
+                                            const active = selectedId === g.id;
+                                            return (
+                                                <button
+                                                    key={g.id}
+                                                    type="button"
+                                                    onClick={() => setSelectedId(g.id)}
+                                                    className={`w-full border-b border-slate-100 px-4 py-3 text-left transition last:border-b-0 ${
+                                                        active ? 'bg-blue-50' : 'hover:bg-slate-50'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <span className="text-sm font-semibold text-slate-900">{g.code || `TG-${g.id}`}</span>
+                                                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${badgeClass(g.status)}`}>
+                                                            {g.status || '—'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="mt-1 text-[11px] text-slate-500">{fmtDate(g.updatedAt || g.createdAt)}</div>
+                                                </button>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </div>
+
+                            <div>
+                                <div className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+                                    Nhiệm vụ đã hoàn thành ({doneTaskGroups.length})
+                                </div>
+                                <div className="overflow-hidden rounded-lg border border-emerald-100">
+                                    {doneTaskGroups.length === 0 ? (
+                                        <div className="p-3 text-xs text-slate-500">Không có nhiệm vụ đã hoàn thành.</div>
+                                    ) : (
+                                        doneTaskGroups.map((g) => {
+                                            const active = selectedId === g.id;
+                                            return (
+                                                <button
+                                                    key={g.id}
+                                                    type="button"
+                                                    onClick={() => setSelectedId(g.id)}
+                                                    className={`w-full border-b border-slate-100 px-4 py-3 text-left transition last:border-b-0 ${
+                                                        active ? 'bg-emerald-50' : 'hover:bg-slate-50'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <span className="text-sm font-semibold text-slate-900">{g.code || `TG-${g.id}`}</span>
+                                                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${badgeClass(g.status)}`}>
+                                                            {g.status || '—'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="mt-1 text-[11px] text-slate-500">{fmtDate(g.updatedAt || g.createdAt)}</div>
+                                                </button>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        taskGroups.map((g) => {
+                            const active = selectedId === g.id;
+                            return (
+                                <button
+                                    key={g.id}
+                                    type="button"
+                                    onClick={() => setSelectedId(g.id)}
+                                    className={`w-full border-b border-slate-100 px-4 py-3 text-left transition ${
+                                        active ? 'bg-blue-50' : 'hover:bg-slate-50'
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="text-sm font-semibold text-slate-900">{g.code || `TG-${g.id}`}</span>
+                                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${badgeClass(g.status)}`}>
+                                            {g.status || '—'}
+                                        </span>
+                                    </div>
+                                    <div className="mt-1 text-xs text-slate-600">Đội: {g.assignedTeamName || 'Chưa gán'}</div>
+                                    <div className="mt-1 text-[11px] text-slate-500">{fmtDate(g.updatedAt || g.createdAt)}</div>
+                                </button>
+                            );
+                        })
                     )}
                 </div>
             </div>
 
-            {/* ===== CENTER: Bản đồ ===== */}
-            <div className="relative flex-1 flex flex-col min-w-0">
-                <div className="absolute left-3 top-3 z-10 flex flex-col gap-2">
-                    <button
-                        type="button"
-                        onClick={() => setMapZoom((z) => Math.min(18, z + 1))}
-                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white shadow-sm hover:bg-slate-50"
-                    >
-                        <span className="text-lg font-bold text-slate-600">+</span>
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setMapZoom((z) => Math.max(10, z - 1))}
-                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white shadow-sm hover:bg-slate-50"
-                    >
-                        <span className="text-lg font-bold text-slate-600">−</span>
-                    </button>
-                    <button
-                        type="button"
-                        className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-                    >
-                        Gần trung tâm
-                    </button>
-                </div>
-                <div className="absolute bottom-3 left-3 z-10 rounded-lg border border-slate-200 bg-white/95 px-3 py-2 shadow-sm">
-                    <p className="mb-2 text-xs font-semibold uppercase text-slate-600">
-                        Chỉ giải bản đồ
-                    </p>
-                    <ul className="space-y-1.5 text-xs text-slate-700">
-                        <li className="flex items-center gap-2">
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-                                <Car className="h-3 w-3" />
-                            </span>
-                            Đội cứu hộ (Đang di chuyển)
-                        </li>
-                        <li className="flex items-center gap-2">
-                            <span className="h-3 w-3 rounded-full bg-red-500" />
-                            Điểm sự cố (Chưa xử lý)
-                        </li>
-                        <li className="flex items-center gap-2">
-                            <span className="h-3 w-3 rounded-full bg-amber-500" />
-                            Vị trí hiện trường
-                        </li>
-                    </ul>
-                </div>
-                <div className="h-full w-full">
-                    <GoogleMap
-                        center={mapCenter}
-                        zoom={mapZoom}
-                        markerPosition={selectedTask ? { lat: selectedTask.lat, lng: selectedTask.lng } : null}
-                    />
-                </div>
-            </div>
-
-            {/* ===== RIGHT: Chi tiết nhiệm vụ ===== */}
-            {showDetail && selectedTask && (
-                <div className="flex w-[380px] shrink-0 flex-col border-l border-slate-200 bg-white shadow-lg">
-                    <div className="flex items-center justify-between border-b border-slate-200 p-4">
-                        <h2 className="font-semibold text-slate-900">Chi tiết Nhiệm vụ</h2>
-                        <button
-                            type="button"
-                            onClick={handleCloseDetail}
-                            className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                        >
-                            <X className="h-5 w-5" />
-                        </button>
+            <div className="flex min-w-0 flex-1 flex-col">
+                {error && (
+                    <div className="border-b border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700 inline-flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4" />
+                        {error}
                     </div>
-                    <div className="flex-1 overflow-y-auto p-4">
-                        <div className="flex items-center gap-2">
-                            <span className="font-mono font-semibold text-slate-900">#{MOCK_DETAIL.id}</span>
-                            <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-semibold uppercase text-red-700">
-                                {MOCK_DETAIL.priority}
-                            </span>
-                        </div>
-                        <p className="mt-2 text-sm text-slate-600">{MOCK_DETAIL.description}</p>
+                )}
 
-                        <div className="mt-4">
-                            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                Thông tin hiện trường
-                            </h3>
-                            <div className="mt-2 space-y-2">
-                                <div className="flex gap-2 text-sm text-slate-700">
-                                    <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
-                                    <span>{MOCK_DETAIL.address}</span>
-                                </div>
-                                <div className="flex gap-2 text-sm">
-                                    <User className="h-4 w-4 shrink-0 text-slate-400" />
+                {!selectedId ? (
+                    <div className="flex h-full items-center justify-center text-slate-500">Chọn một nhóm nhiệm vụ để xem chi tiết.</div>
+                ) : detailLoading ? (
+                    <div className="flex h-full items-center justify-center text-slate-500">Đang tải chi tiết...</div>
+                ) : !detail ? (
+                    <div className="flex h-full items-center justify-center text-slate-500">Không có dữ liệu chi tiết.</div>
+                ) : (
+                    <div className="grid h-full min-h-0 grid-cols-1">
+                        <div className="flex min-h-0 flex-col">
+                            <div className="border-b border-slate-200 p-4">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
                                     <div>
-                                        <p className="font-medium text-slate-700">{MOCK_DETAIL.reporter}</p>
-                                        <p className="mt-0.5 text-xs italic text-slate-500">{MOCK_DETAIL.reporterQuote}</p>
+                                        <h3 className="text-lg font-bold text-slate-900">{detail.code || `Task Group #${detail.id}`}</h3>
+                                        <p className="text-xs text-slate-500">Tạo lúc: {fmtDate(detail.createdAt)}</p>
                                     </div>
+                                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${badgeClass(detail.status)}`}>{detail.status}</span>
                                 </div>
+                                <div className="mt-3" />
+                            </div>
+
+                            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                                <section>
+                                    <h4 className="text-xs font-semibold uppercase text-slate-500">Yêu cầu trong nhóm</h4>
+                                    <div className="mt-2 space-y-2">
+                                        {Array.isArray(detail.requests) && detail.requests.length > 0 ? (
+                                            detail.requests.map((r) => (
+                                                <div key={r.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <span className="text-sm font-semibold text-slate-900">{r.code || `RR-${r.id}`}</span>
+                                                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${badgeClass(r.status)}`}>{r.status || '—'}</span>
+                                                    </div>
+                                                    <p className="mt-1 text-xs text-slate-600">{r.addressText || 'Chưa có địa chỉ'}</p>
+                                                    <p className="mt-1 text-xs text-slate-600">Công dân: {r.citizenName || '—'} • {r.citizenPhone || '—'}</p>
+                                                    <p className="mt-1 text-xs text-slate-500">Ưu tiên: {r.priority || '—'} • Người: {r.affectedPeopleCount ?? '—'} • Xác minh vị trí: {r.locationVerified ? 'Đã xác minh' : 'Chưa xác minh'}</p>
+                                                    <p className="mt-1 whitespace-pre-wrap text-xs text-slate-600">{r.description || 'Không có mô tả thêm.'}</p>
+                                                    {r.emergency && (
+                                                        <p className="mt-1 text-[11px] font-semibold text-rose-700">
+                                                            Yêu cầu khẩn cấp #{r.emergencyNo || '—'} • Đội báo khẩn cấp: {r.sourceTeamId || '—'}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-sm text-slate-500">Không có yêu cầu liên kết.</p>
+                                        )}
+                                    </div>
+                                </section>
+
+                                <section className="mt-5">
+                                    <h4 className="text-xs font-semibold uppercase text-slate-500">Phân công hiện tại</h4>
+                                    <div className="mt-2 space-y-2">
+                                        {Array.isArray(detail.assignments) && detail.assignments.length > 0 ? (
+                                            detail.assignments.map((a) => (
+                                                <div key={a.id} className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
+                                                    <div className="font-semibold text-slate-900">{a.teamName || 'Không rõ đội'}</div>
+                                                    <div className="mt-1 text-xs text-slate-600">Asset: {a.assetName || a.assetCode || '—'}</div>
+                                                    <div className="mt-1 text-xs text-slate-500">Assigned by: {a.assignedByName || '—'} • {fmtDate(a.assignedAt)}</div>
+                                                </div>
+                                            ))
+                                        ) : detail.assignedTeamName ? (
+                                            <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
+                                                <div className="font-semibold text-slate-900">{detail.assignedTeamName}</div>
+                                                <div className="mt-1 text-xs text-slate-500">Đội đang được phân công hiện tại.</div>
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-slate-500">Chưa có phân công.</p>
+                                        )}
+                                    </div>
+                                </section>
+
+                                <section className="mt-5">
+                                    <h4 className="text-xs font-semibold uppercase text-slate-500">Timeline</h4>
+                                    <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
+                                        {String(detail.status || '').toUpperCase() === 'CANCELLED' ? (
+                                            <div className="text-sm font-semibold text-rose-700">Nhiệm vụ đã bị hủy.</div>
+                                        ) : (
+                                            <div className="flex items-center gap-2">
+                                                {TIMELINE_STEPS.map((step, index) => (
+                                                    <React.Fragment key={step}>
+                                                        <div className={`flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-[10px] font-bold ${stepClass(step, String(detail.status || '').toUpperCase())}`}>
+                                                            {index + 1}
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <div className="text-[11px] font-semibold text-slate-700">{step}</div>
+                                                        </div>
+                                                        {index < TIMELINE_STEPS.length - 1 && (
+                                                            <div className="h-[2px] w-8 bg-slate-200" />
+                                                        )}
+                                                    </React.Fragment>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <div className="mt-2 text-xs text-slate-600">
+                                            Trạng thái hiện tại: <span className="font-semibold">{detail.status || '—'}</span>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3 space-y-2">
+                                        {Array.isArray(detail.timeline) && detail.timeline.length > 0 ? (
+                                            detail.timeline.map((t) => (
+                                                <div key={t.id} className="rounded-lg border border-slate-200 bg-white p-2.5 text-xs text-slate-700">
+                                                    <div className="font-semibold">{t.eventType || 'EVENT'}</div>
+                                                    <div className="mt-0.5">{t.note || '—'}</div>
+                                                    <div className="mt-0.5 text-slate-500">{t.actorName || 'Hệ thống'} • {fmtDate(t.createdAt)}</div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-sm text-slate-500">Chưa có timeline.</p>
+                                        )}
+                                    </div>
+                                </section>
                             </div>
                         </div>
-
-                        <div className="mt-4">
-                            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                Tài nguyên phân bổ
-                            </h3>
-                            <ul className="mt-2 space-y-2">
-                                {MOCK_DETAIL.resources.map((r, i) => (
-                                    <li key={i} className="flex items-center justify-between text-sm">
-                                        <span className="flex items-center gap-2">
-                                            {r.type === 'truck' ? (
-                                                <Truck className="h-4 w-4 text-slate-500" />
-                                            ) : (
-                                                <Ambulance className="h-4 w-4 text-slate-500" />
-                                            )}
-                                            {r.name}
-                                        </span>
-                                        <span className="font-medium text-green-600">{r.status}</span>
-                                    </li>
-                                ))}
-                                <li className="flex items-center justify-between text-sm">
-                                    <span className="flex items-center gap-2">
-                                        <Users className="h-4 w-4 text-slate-500" />
-                                        Nhân sự {MOCK_DETAIL.personnelCount} thành viên
-                                    </span>
-                                    <button type="button" className="text-blue-600 hover:underline text-xs font-medium">
-                                        Xem chi tiết
-                                    </button>
-                                </li>
-                            </ul>
-                        </div>
-
-                        <div className="mt-4">
-                            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                Nhật ký nhiệm vụ
-                            </h3>
-                            <ul className="mt-2 space-y-3">
-                                {MOCK_DETAIL.log.map((entry, i) => (
-                                    <li key={i} className="flex gap-3">
-                                        <span className={`shrink-0 text-xs font-medium ${entry.pending ? 'text-amber-600' : 'text-slate-500'}`}>
-                                            {entry.time}
-                                        </span>
-                                        <span className={entry.pending ? 'text-sm text-amber-700' : 'text-sm text-slate-700'}>
-                                            {entry.text}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-
-                        <div className="mt-6 flex flex-wrap gap-2">
-                            <button
-                                type="button"
-                                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                            >
-                                <ArrowUpDown className="h-4 w-4" />
-                                Điều chỉnh
-                            </button>
-                            <button
-                                type="button"
-                                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                            >
-                                <LayoutGrid className="h-4 w-4" />
-                                Tách/Gộp
-                            </button>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={handleEscalation}
-                            className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-red-700"
-                        >
-                            <ChevronUp className="h-4 w-4" />
-                            LEO THANG (ESCALATION)
-                        </button>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 }

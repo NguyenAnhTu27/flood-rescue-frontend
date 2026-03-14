@@ -125,3 +125,25 @@ export async function deleteTeam(id) {
   }
   throw lastErr || new Error('Không tìm thấy endpoint xóa đội cứu hộ');
 }
+
+// Lấy danh sách RESCUER có thể gán vào đội (kèm thông tin đang thuộc đội nào)
+export async function getTeamMemberCandidates() {
+  const candidates = [
+    '/admin/teams/member-candidates',
+    '/teams/member-candidates',
+  ];
+
+  let lastErr;
+  for (const path of candidates) {
+    try {
+      return await httpClient.get(path);
+    } catch (e) {
+      lastErr = e;
+      if (e?.status !== 404 && e?.status !== 401 && e?.status !== 403) {
+        throw e;
+      }
+    }
+  }
+
+  throw lastErr || new Error('Không tìm thấy endpoint danh sách thành viên đội');
+}

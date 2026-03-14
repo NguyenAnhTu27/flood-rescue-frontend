@@ -24,18 +24,53 @@ export async function getCoordinatorRescueRequestById(id) {
 }
 
 /**
- * Xác minh yêu cầu cứu hộ
- * BE DTO: VerifyRequest { locationVerified: boolean, note?: string }
+ * Lấy chi tiết theo mã yêu cầu (code)
  */
-export async function verifyRescueRequest(id, { locationVerified, note }) {
+export async function getCoordinatorRescueRequestByCode(code) {
+  const response = await httpClient.get(`/rescue/coordinator/requests/code/${code}`);
+  return response;
+}
+
+/**
+ * Xác minh yêu cầu cứu hộ
+ * BE DTO:
+ * VerifyRequest {
+ *   locationVerified: boolean,
+ *   note?: string,
+ *   cancelRequest?: boolean,
+ *   cancelAction?: 'DELETE' | 'WAITING_TEAM',
+ *   cancelReason?: string
+ * }
+ */
+export async function verifyRescueRequest(id, { locationVerified, note, cancelRequest, cancelAction, cancelReason }) {
   const response = await httpClient.post(
     `/rescue/coordinator/requests/${id}/verify`,
     {
       locationVerified,
       note: note || null,
+      cancelRequest: cancelRequest === true,
+      cancelAction: cancelAction || null,
+      cancelReason: cancelReason || null,
     },
   );
   return response;
+}
+
+export async function setCitizenBlockByRequest(id, { blocked, reason }) {
+  return httpClient.post(`/rescue/coordinator/requests/${id}/citizen-block`, {
+    blocked: blocked === true,
+    reason: reason || null,
+  });
+}
+
+export async function getBlockedCitizens() {
+  return httpClient.get('/rescue/coordinator/citizens/blocked');
+}
+
+export async function unblockCitizen(citizenId, reason) {
+  return httpClient.post(`/rescue/coordinator/citizens/${citizenId}/unblock`, {
+    reason: reason || null,
+  });
 }
 
 /**
@@ -140,9 +175,14 @@ export async function changeTaskGroupStatus(id, status, note) {
  * BE DTO: AssignTaskGroupRequest { taskGroupId, teamId, assetId?, note? }
  */
 export async function assignTaskGroup(data) {
+  const normalized = {
+    ...data,
+    // Backward compatibility for BE variants using assignedTeamId.
+    assignedTeamId: data?.assignedTeamId ?? data?.teamId ?? null,
+  };
   const response = await httpClient.post(
     '/rescue/coordinator/task-groups/assign',
-    data,
+    normalized,
   );
   return response;
 }

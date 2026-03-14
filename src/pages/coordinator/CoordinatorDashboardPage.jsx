@@ -1,89 +1,128 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     List,
-    Search,
-    RefreshCw,
     Users,
-    Ship,
+    MapPin,
+    Clock,
     Layers,
     ZoomIn,
     ZoomOut,
     Navigation,
 } from 'lucide-react';
-
 import GoogleMap from '../../features/map/components/GoogleMap.jsx';
 import PriorityBadge from '../../features/rescue/components/PriorityBadge.jsx';
 import Button from '../../shared/ui/Button.jsx';
 import Card from '../../shared/ui/Card.jsx';
 import Badge from '../../shared/ui/Badge.jsx';
-import { getCoordinatorDashboard, getCoordinatorRescueQueue } from '../../features/coordinator/api.js';
+import { getCoordinatorDashboard, getCoordinatorRescueRequestById } from '../../features/coordinator/api.js';
 import { COORDINATOR_ROUTES } from '../../app/routes/route.constants.js';
+import { FILE_BASE_URL } from '../../app/config/env.js';
+import httpClient from '../../shared/lib/http.js';
 
-export default function CoordinatorDashboardPage() {
+export default function CoordinatorDashboard() {
     const navigate = useNavigate();
-    const location = useLocation();
     const [syncTime, setSyncTime] = useState(new Date());
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery] = useState('');
     const [mapCenter, setMapCenter] = useState({ lat: 16.0544, lng: 108.2022 }); // Da Nang
     const [mapZoom, setMapZoom] = useState(12);
+    const [mapMarkerPosition, setMapMarkerPosition] = useState(null);
 
     // Data from BE (map/toạ độ làm sau)
     const [requests, setRequests] = useState([]);
     const [teams, setTeams] = useState([]);
-    const [vehicles, setVehicles] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [mapRefreshSeconds, setMapRefreshSeconds] = useState(20);
+    const [selectedRequestId, setSelectedRequestId] = useState(null);
+    const [selectedRequestDetail, setSelectedRequestDetail] = useState(null);
+    const [detailLoading, setDetailLoading] = useState(false);
+    const [detailError, setDetailError] = useState('');
+
+    const parseCoordinatesFromText = (text) => {
+        const raw = String(text || '');
+        const match = raw.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+        if (!match) return null;
+        const lat = Number(match[1]);
+        const lng = Number(match[2]);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+        return { lat, lng };
+    };
+
+    const extractCoordinates = (obj) => {
+        if (!obj || typeof obj !== 'object') return null;
+        const directPairs = [
+            [obj.lat, obj.lng],
+            [obj.latitude, obj.longitude],
+            [obj.currentLat, obj.currentLng],
+            [obj.lastLat, obj.lastLng],
+        ];
+        for (const [rawLat, rawLng] of directPairs) {
+            const lat = Number(rawLat);
+            const lng = Number(rawLng);
+            if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                return { lat, lng };
+            }
+        }
+        if (obj.location && typeof obj.location === 'object') {
+            const lat = Number(obj.location.lat ?? obj.location.latitude);
+            const lng = Number(obj.location.lng ?? obj.location.longitude);
+            if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                return { lat, lng };
+            }
+        }
+        return (
+            parseCoordinatesFromText(obj.gps)
+            || parseCoordinatesFromText(obj.locationText)
+            || parseCoordinatesFromText(obj.locationDescription)
+            || parseCoordinatesFromText(obj.addressText)
+            || null
+        );
+    };
 
     const loadDashboard = async () => {
         try {
             setLoading(true);
             setError(null);
             const data = await getCoordinatorDashboard();
-
-            // Lấy requests từ dashboard (có thể chỉ có PENDING)
-            const dashboardRequests = data?.requests || [];
-
-            // Lấy thêm IN_PROGRESS requests để đảm bảo hiển thị đầy đủ
-            let inProgressRequests = [];
-            try {
-                const inProgressData = await getCoordinatorRescueQueue({
-                    status: 'IN_PROGRESS',
-                    page: 0,
-                    size: 100,
-                });
-                // Parse response format
-                if (Array.isArray(inProgressData)) {
-                    inProgressRequests = inProgressData;
-                } else if (inProgressData?.content && Array.isArray(inProgressData.content)) {
-                    inProgressRequests = inProgressData.content;
-                } else if (inProgressData?.data) {
-                    inProgressRequests = Array.isArray(inProgressData.data)
-                        ? inProgressData.data
-                        : inProgressData.data?.content || [];
-                }
-            } catch (err) {
-                console.warn('[CoordinatorDashboard] Could not load IN_PROGRESS requests:', err);
-            }
-
-            // Merge và loại bỏ duplicate dựa trên ID
-            const allRequestsMap = new Map();
-            [...dashboardRequests, ...inProgressRequests].forEach(req => {
-                if (req && req.id) {
-                    allRequestsMap.set(req.id, req);
-                }
-            });
-            const allRequests = Array.from(allRequestsMap.values());
-
-            setRequests(allRequests);
+            const nextRequests = data?.requests || [];
+            setRequests(nextRequests);
             setTeams(data?.teams || []);
-            setVehicles(data?.vehicles || []);
             setSyncTime(new Date());
+            if (selectedRequestId && !nextRequests.some((r) => Number(r?.id) === Number(selectedRequestId))) {
+                setSelectedRequestId(null);
+                setSelectedRequestDetail(null);
+                setVerifyNote('');
+            }
         } catch (err) {
             console.error('[CoordinatorDashboard] loadDashboard error:', err);
             setError(err?.message || 'Không thể tải dữ liệu dashboard');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const focusMapForRequest = (requestLike) => {
+        const coords = extractCoordinates(requestLike);
+        if (!coords) return;
+        setMapCenter(coords);
+        setMapMarkerPosition(coords);
+        setMapZoom(15);
+    };
+
+    const loadRequestDetail = async (requestId) => {
+        if (!requestId) return;
+        try {
+            setDetailLoading(true);
+            setDetailError('');
+            const detail = await getCoordinatorRescueRequestById(requestId);
+            setSelectedRequestDetail(detail);
+            focusMapForRequest(detail);
+        } catch (e) {
+            setSelectedRequestDetail(null);
+            setDetailError(e?.message || 'Không thể tải chi tiết yêu cầu.');
+        } finally {
+            setDetailLoading(false);
         }
     };
 
@@ -96,19 +135,33 @@ export default function CoordinatorDashboardPage() {
     }, []);
 
     useEffect(() => {
-        loadDashboard();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        const loadRuntimeSettings = async () => {
+            try {
+                const config = await httpClient.get('/public/runtime-settings');
+                if (config?.mapRefreshSeconds) {
+                    setMapRefreshSeconds(Number(config.mapRefreshSeconds));
+                }
+            } catch (err) {
+                console.error('[CoordinatorDashboard] load runtime settings error:', err);
+            }
+        };
+        loadRuntimeSettings();
     }, []);
 
-    // Reload dashboard khi quay lại từ trang phân công
     useEffect(() => {
-        if (location.state?.refresh) {
+        loadDashboard();
+        const interval = setInterval(() => {
             loadDashboard();
-            // Clear refresh flag để không reload lại lần sau
-            navigate(location.pathname, { replace: true, state: {} });
-        }
+        }, Math.max(5, Number(mapRefreshSeconds) || 20) * 1000);
+        return () => clearInterval(interval);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [location.state?.refresh]);
+    }, [mapRefreshSeconds]);
+
+    useEffect(() => {
+        if (!selectedRequestId) return;
+        loadRequestDetail(selectedRequestId);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedRequestId]);
 
     const formatSyncTime = (date) => {
         return date.toLocaleTimeString('vi-VN', {
@@ -118,42 +171,42 @@ export default function CoordinatorDashboardPage() {
         });
     };
 
-    const getStatusBadge = (status) => {
+    const getStatusBadge = (status, waitingForTeam = false) => {
+        if (waitingForTeam) {
+            return { label: 'CHỜ CÓ ĐỘI', color: 'bg-blue-100 text-blue-700 border-blue-200' };
+        }
         const statusMap = {
             AVAILABLE: { label: 'RẢNH', color: 'bg-green-100 text-green-700 border-green-200' },
             BUSY: { label: 'BẬN', color: 'bg-orange-100 text-orange-700 border-orange-200' },
-            ON_MISSION: { label: 'ĐANG NHIỆM VỤ', color: 'bg-amber-100 text-amber-800 border-amber-200' },
             MAINTENANCE: { label: 'BẢO TRÌ', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
             PENDING: { label: 'Chờ xử lý', color: 'bg-slate-100 text-slate-700 border-slate-200' },
-            IN_PROGRESS: { label: 'Đang xử lí', color: 'bg-blue-100 text-blue-700 border-blue-200' },
-            INPROGRESS: { label: 'Đang xử lí', color: 'bg-blue-100 text-blue-700 border-blue-200' },
         };
         return statusMap[status] || statusMap.PENDING;
-    };
-
-    const getVehicleIcon = (type) => {
-        switch ((type || '').toLowerCase()) {
-            case 'cano':
-            case 'boat':
-            case 'ship':
-                return <Ship className="h-4 w-4" />;
-            case 'helicopter':
-                return <Navigation className="h-4 w-4" />;
-            default:
-                return <Ship className="h-4 w-4" />;
-        }
     };
 
     const filteredRequests = searchQuery
         ? requests.filter((r) => (r.code || '').toLowerCase().includes(searchQuery.toLowerCase()))
         : requests;
 
-    const newRequestsCount = filteredRequests.filter((r) => r.status === 'PENDING').length;
-    const onlineTeamsCount = teams.filter((t) => t.online).length;
-    const activeVehiclesCount = vehicles.filter((v) => v.online).length;
+    const newRequestsCount = filteredRequests.filter((r) => r.status === 'PENDING' && !r.waitingForTeam).length;
+    const waitingTeamCount = filteredRequests.filter((r) => Boolean(r.waitingForTeam)).length;
+
+    const handleSelectRequest = (request) => {
+        setSelectedRequestId(Number(request?.id) || null);
+        setSelectedRequestDetail(null);
+        setDetailError('');
+        focusMapForRequest(request);
+    };
+
+    const handleGoToVerifyPage = () => {
+        const req = selectedRequestDetail || requests.find((r) => Number(r?.id) === Number(selectedRequestId));
+        if (!req?.id) return;
+        navigate(`${COORDINATOR_ROUTES.VERIFY_REQUEST}?id=${req.id}`, { state: { request: req } });
+    };
 
     return (
-        <div className="h-[calc(100vh-8rem)] flex gap-4 pb-6">
+        <div className="space-y-4 pb-6">
+            <div className="h-[calc(100vh-8rem)] flex gap-4">
             {/* Left Column: Request Queue */}
             <Card className="w-80 flex-shrink-0 flex flex-col">
                 {/* Header */}
@@ -172,6 +225,9 @@ export default function CoordinatorDashboardPage() {
                     <div className="flex items-center gap-2 text-xs text-slate-500">
                         <span className="font-medium">ĐỒNG BỘ:</span>
                         <span className="font-mono">{formatSyncTime(syncTime)}</span>
+                        <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 font-semibold text-blue-700">
+                            Chờ có đội: {waitingTeamCount}
+                        </span>
                     </div>
                 </div>
 
@@ -188,25 +244,13 @@ export default function CoordinatorDashboardPage() {
                         {/* Request Items */}
                         <div className="space-y-2">
                             {filteredRequests.map((request) => {
-                                const statusInfo = getStatusBadge(request.status);
+                                const statusInfo = getStatusBadge(request.status, Boolean(request.waitingForTeam));
+                                const isActive = Number(selectedRequestId) === Number(request.id);
                                 return (
                                     <div
                                         key={request.id}
-                                        className="group p-3 rounded-lg border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer bg-white"
-                                        onClick={(e) => {
-                                            // Nếu click vào request, mở trang xác minh
-                                            // Nếu muốn phân công trực tiếp, có thể thêm option khác
-                                            navigate(COORDINATOR_ROUTES.VERIFY_REQUEST, {
-                                                state: { request },
-                                            });
-                                        }}
-                                        onDoubleClick={(e) => {
-                                            // Double click để phân công trực tiếp
-                                            e.stopPropagation();
-                                            navigate(COORDINATOR_ROUTES.ASSIGN_RESCUE, {
-                                                state: { request },
-                                            });
-                                        }}
+                                        className={`group p-3 rounded-lg border transition-all cursor-pointer ${isActive ? 'border-blue-400 bg-blue-50/60 shadow-sm' : 'border-slate-200 hover:border-blue-300 hover:shadow-md bg-white'}`}
+                                        onClick={() => handleSelectRequest(request)}
                                     >
                                         <div className="grid grid-cols-12 gap-2 items-start">
                                             <div className="col-span-5">
@@ -221,8 +265,14 @@ export default function CoordinatorDashboardPage() {
                                                 </div>
                                             </div>
                                             <div className="col-span-5 text-right">
-                                                <div className="text-xs text-slate-500 mb-1">{request.timeAgo}</div>
-                                                <Badge outline size="sm" className={statusInfo.color}>
+                                                <div className="text-xs text-slate-500 mb-1">
+                                                    {request.timeAgo}
+                                                </div>
+                                                <Badge
+                                                    outline
+                                                    size="sm"
+                                                    className={statusInfo.color}
+                                                >
                                                     {statusInfo.label}
                                                 </Badge>
                                             </div>
@@ -234,52 +284,24 @@ export default function CoordinatorDashboardPage() {
                     </div>
                 </div>
 
-                {/* Assign button */}
                 <div className="p-4 border-t border-slate-200 bg-slate-50/60">
                     <Button
                         type="button"
-                        variant="gradient"
+                        variant="secondary"
                         fullWidth
                         size="md"
-                        disabled={loading}
-                        onClick={() => {
-                            // Truyền tất cả requests PENDING hiện tại để phân công
-                            const pendingRequests = filteredRequests.filter(r =>
-                                !r.status || r.status === 'PENDING' || r.status === 'pending'
-                            );
-                            navigate(COORDINATOR_ROUTES.ASSIGN_RESCUE, {
-                                state: {
-                                    requests: pendingRequests.length > 0 ? pendingRequests : filteredRequests,
-                                },
-                            });
-                        }}
+                        onClick={() => navigate(COORDINATOR_ROUTES.BLOCKED_CITIZENS)}
                     >
-                        <Users className="h-4 w-4" />
-                        Phân công đội &amp; Phương tiện
+                        Đã khóa
                     </Button>
                 </div>
+
             </Card>
 
             {/* Center Column: Map */}
             <Card className="flex-1 flex flex-col overflow-hidden">
                 {/* Map Header */}
                 <div className="p-4 border-b border-slate-200 bg-slate-50/60">
-                    <div className="flex items-center gap-3">
-                        <div className="flex-1 relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Tìm kiếm vị trí cụ thể..."
-                                className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500"
-                            />
-                        </div>
-                        <Button type="button" variant="primary" size="md" onClick={loadDashboard}>
-                            <RefreshCw className="h-4 w-4" />
-                            Cập nhật bản đồ
-                        </Button>
-                    </div>
                     {error && (
                         <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
                             {error}
@@ -289,7 +311,11 @@ export default function CoordinatorDashboardPage() {
 
                 {/* Map Area */}
                 <div className="flex-1 relative">
-                    <GoogleMap center={mapCenter} zoom={mapZoom} />
+                    <GoogleMap
+                        center={mapCenter}
+                        markerPosition={mapMarkerPosition}
+                        zoom={mapZoom}
+                    />
 
                     {/* Map Controls */}
                     <div className="absolute bottom-4 right-4 flex flex-col gap-2 bg-white/95 backdrop-blur rounded-xl shadow-lg border border-slate-200 p-1.5">
@@ -302,7 +328,7 @@ export default function CoordinatorDashboardPage() {
                         </button>
                         <button
                             type="button"
-                            onClick={() => setMapZoom((prev) => Math.min(prev + 1, 20))}
+                            onClick={() => setMapZoom(prev => Math.min(prev + 1, 20))}
                             className="p-2 hover:bg-slate-50 rounded-lg transition"
                             title="Zoom in"
                         >
@@ -310,7 +336,7 @@ export default function CoordinatorDashboardPage() {
                         </button>
                         <button
                             type="button"
-                            onClick={() => setMapZoom((prev) => Math.max(prev - 1, 1))}
+                            onClick={() => setMapZoom(prev => Math.max(prev - 1, 1))}
                             className="p-2 hover:bg-slate-50 rounded-lg transition"
                             title="Zoom out"
                         >
@@ -324,109 +350,169 @@ export default function CoordinatorDashboardPage() {
                             <Navigation className="h-4 w-4 text-slate-600" />
                         </button>
                     </div>
+
                 </div>
             </Card>
 
-            {/* Right Column: Teams & Vehicles */}
-            <div className="w-80 flex-shrink-0 flex flex-col gap-4">
-                {/* Teams Section */}
-                <Card className="flex-1 flex flex-col overflow-hidden">
+            {/* Right Column: Request Detail */}
+            <div className="w-80 flex-shrink-0 flex flex-col">
+                <Card className="shrink-0 overflow-hidden">
                     <div className="p-4 border-b border-slate-200 bg-slate-50/60">
-                        <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                                <Users className="h-5 w-5 text-blue-600" />
-                                <h2 className="text-lg font-bold text-slate-900">Đội cứu hộ</h2>
-                            </div>
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-slate-500">
-                            <span>LẦN CUỐI: {formatSyncTime(syncTime)}</span>
-                            <span className="font-semibold text-blue-600">
-                                {onlineTeamsCount}/{teams.length} Trực tuyến
-                            </span>
-                        </div>
+                        <h2 className="text-base font-bold text-slate-900">Chi tiết yêu cầu</h2>
                     </div>
-
-                    <div className="flex-1 overflow-y-auto p-3 space-y-3">
-                        {teams.map((team) => {
-                            const statusInfo = getStatusBadge(team.status);
-                            return (
-                                <Card
-                                    key={team.id}
-                                    variant="outlined"
-                                    className="p-3 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer"
-                                    onClick={() => {
-                                        if (team.lat && team.lng) {
-                                            setMapCenter({ lat: team.lat, lng: team.lng });
-                                            setMapZoom(15);
-                                        }
-                                    }}
-                                >
-                                    <div className="flex items-start justify-between mb-2">
-                                        <div className="flex items-center gap-2">
-                                            <Users className="h-4 w-4 text-blue-600" />
-                                            <span className="font-semibold text-sm text-slate-900">{team.name}</span>
+                    <div className="p-4 space-y-3">
+                        {!selectedRequestId ? (
+                            <p className="text-sm text-slate-500">Chọn một yêu cầu trong hàng đợi để xem chi tiết và xác minh.</p>
+                        ) : detailLoading ? (
+                            <p className="text-sm text-slate-500">Đang tải chi tiết yêu cầu...</p>
+                        ) : detailError ? (
+                            <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{detailError}</div>
+                        ) : selectedRequestDetail ? (
+                            <>
+                                <div>
+                                    <div className="text-xs text-slate-500">Mã yêu cầu</div>
+                                    <div className="text-sm font-semibold text-slate-900">{selectedRequestDetail.code || `#${selectedRequestDetail.id}`}</div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <div className="text-xs text-slate-500">Số người</div>
+                                        <div className="text-sm font-semibold text-slate-900">{selectedRequestDetail.affectedPeopleCount ?? selectedRequestDetail.peopleCount ?? '—'}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-xs text-slate-500">Ưu tiên</div>
+                                        <PriorityBadge level={selectedRequestDetail.priority || 'MEDIUM'} size="xs" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-slate-500">Công dân</div>
+                                    <div className="text-sm text-slate-800">{selectedRequestDetail.citizenName || '—'}</div>
+                                    <div className="text-xs text-slate-500">{selectedRequestDetail.citizenPhone || '—'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-slate-500">Địa chỉ</div>
+                                    <div className="text-sm text-slate-800">{selectedRequestDetail.addressText || selectedRequestDetail.locationDescription || '—'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-slate-500">Mô tả vị trí</div>
+                                    <div className="text-sm text-slate-800">{selectedRequestDetail.locationDescription || selectedRequestDetail.citizenLocationDescription || '—'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-slate-500">Mô tả</div>
+                                    <div className="text-sm text-slate-800 line-clamp-4 whitespace-pre-wrap">{selectedRequestDetail.description || '—'}</div>
+                                </div>
+                                <div>
+                                    <div className="mb-1 text-xs text-slate-500">Ảnh đính kèm</div>
+                                    {!Array.isArray(selectedRequestDetail.attachments) || selectedRequestDetail.attachments.length === 0 ? (
+                                        <div className="text-sm text-slate-500">Không có ảnh đính kèm.</div>
+                                    ) : (
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {selectedRequestDetail.attachments.map((att) => {
+                                                const raw = String(att?.fileUrl || att?.url || '').trim();
+                                                const src = raw.startsWith('http') ? raw : `${FILE_BASE_URL}${raw}`;
+                                                return (
+                                                    <a
+                                                        key={att?.id || raw}
+                                                        href={src}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="overflow-hidden rounded-lg border border-slate-200"
+                                                    >
+                                                        <img src={src} alt="attachment" className="h-20 w-full object-cover" />
+                                                    </a>
+                                                );
+                                            })}
                                         </div>
-                                        <div
-                                            className={`h-2 w-2 rounded-full ${team.online ? 'bg-green-500' : 'bg-slate-400'}`}
-                                        />
-                                    </div>
-                                    <div className="flex items-center justify-between mb-2">
-                                        <Badge outline size="sm" className={statusInfo.color}>
-                                            {statusInfo.label}
-                                        </Badge>
-                                    </div>
-                                    {team.lastUpdate && <div className="text-xs text-slate-400">{team.lastUpdate}</div>}
-                                </Card>
-                            );
-                        })}
-                    </div>
-                </Card>
-
-                {/* Vehicles Section */}
-                <Card className="flex-1 flex flex-col overflow-hidden">
-                    <div className="p-4 border-b border-slate-200 bg-slate-50/60">
-                        <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                                <Ship className="h-5 w-5 text-blue-600" />
-                                <h2 className="text-lg font-bold text-slate-900">Phương tiện</h2>
-                            </div>
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-slate-500">
-                            <span>LẦN CUỐI: {formatSyncTime(syncTime)}</span>
-                            <span className="font-semibold text-blue-600">{activeVehiclesCount} Hoạt động</span>
-                        </div>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto p-3 space-y-3">
-                        {vehicles.map((vehicle) => {
-                            const statusInfo = getStatusBadge(vehicle.status);
-                            return (
-                                <Card
-                                    key={vehicle.id}
-                                    variant="outlined"
-                                    className="p-3 hover:border-blue-300 hover:shadow-md transition-all"
+                                    )}
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="primary"
+                                    size="sm"
+                                    fullWidth
+                                    onClick={handleGoToVerifyPage}
                                 >
-                                    <div className="flex items-start justify-between mb-2">
-                                        <div className="flex items-center gap-2">
-                                            <div className="text-blue-600">{getVehicleIcon(vehicle.type)}</div>
-                                            <span className="font-semibold text-sm text-slate-900">{vehicle.name}</span>
-                                        </div>
-                                        <div
-                                            className={`h-2 w-2 rounded-full ${vehicle.online ? 'bg-green-500' : 'bg-slate-400'}`}
-                                        />
-                                    </div>
-                                    <div className="flex items-center justify-between mb-2">
-                                        <Badge outline size="sm" className={statusInfo.color}>
-                                            {statusInfo.label}
-                                        </Badge>
-                                    </div>
-                                </Card>
-                            );
-                        })}
+                                    Xác minh
+                                </Button>
+                            </>
+                        ) : (
+                            <p className="text-sm text-slate-500">Không có dữ liệu chi tiết.</p>
+                        )}
                     </div>
                 </Card>
             </div>
+            </div>
+
+            <Card className="overflow-hidden">
+                <div className="p-4 border-b border-slate-200 bg-slate-50/60">
+                    <div className="flex items-center gap-2">
+                        <Users className="h-5 w-5 text-blue-600" />
+                        <h2 className="text-lg font-bold text-slate-900">Bảng đội cứu hộ</h2>
+                    </div>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-[760px]">
+                        <thead className="bg-slate-50">
+                            <tr>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Đội</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Khu vực</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Trạng thái</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {teams.length === 0 ? (
+                                <tr>
+                                    <td colSpan={4} className="px-4 py-8 text-center text-sm text-slate-500">Không có dữ liệu đội cứu hộ.</td>
+                                </tr>
+                            ) : (
+                                teams.map((team) => {
+                                    const statusInfo = getStatusBadge(team.status);
+                                    return (
+                                        <tr key={team.id} className="border-t border-slate-100">
+                                            <td className="px-4 py-3 text-sm font-semibold text-slate-900">{team.name || `Đội #${team.id}`}</td>
+                                            <td className="px-4 py-3 text-sm text-slate-700">{team.area || '—'}</td>
+                                            <td className="px-4 py-3">
+                                                <Badge outline size="sm" className={statusInfo.color}>
+                                                    {statusInfo.label}
+                                                </Badge>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            const coords = extractCoordinates(team);
+                                                            if (!coords) {
+                                                                setError(`Không tìm thấy tọa độ hợp lệ cho đội ${team.name || ''}`.trim());
+                                                                return;
+                                                            }
+                                                            setMapCenter(coords);
+                                                            setMapMarkerPosition(coords);
+                                                            setMapZoom(15);
+                                                        }}
+                                                    >
+                                                        Xem trên bản đồ
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => navigate(COORDINATOR_ROUTES.TEAM_WORKLOAD, { state: { teamId: team.id } })}
+                                                    >
+                                                        Xem chi tiết
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </Card>
         </div>
     );
 }
-
