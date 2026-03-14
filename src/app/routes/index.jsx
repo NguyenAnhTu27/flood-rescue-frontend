@@ -17,8 +17,7 @@ import RequireRole from '../../shared/guards/RequireRole.jsx';
 
 // Public
 import HomePage from '../../pages/public/HomePage.jsx';
-import ContactPage from '../../pages/public/Contact.jsx';
-import EmergencyGuidePage from '../../pages/public/EmergencyGuidePage.jsx'; 
+import EmergencyGuidePage from '../../pages/public/EmergencyGuidePage.jsx';
 import NotFoundPage from '../../pages/public/NotFoundPage.jsx';
 import StaticContentPage from '../../pages/public/StaticContentPage.jsx';
 
