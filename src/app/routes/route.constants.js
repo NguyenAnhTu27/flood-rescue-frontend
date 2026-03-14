@@ -7,6 +7,7 @@
 export const PUBLIC_ROUTES = {
     HOME: '/',
     EMERGENCY_GUIDE: '/huong-dan-khan-cap',
+    CONTACT: '/lien-he',
     TERMS_OF_USE: '/dieu-khoan-su-dung',
     PRIVACY_POLICY: '/chinh-sach-bao-mat',
     SUPPORT_CONTACT: '/lien-he-ho-tro',

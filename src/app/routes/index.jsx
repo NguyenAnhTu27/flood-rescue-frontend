@@ -18,6 +18,7 @@ import RequireRole from '../../shared/guards/RequireRole.jsx';
 // Public
 import HomePage from '../../pages/public/HomePage.jsx';
 import EmergencyGuidePage from '../../pages/public/EmergencyGuidePage.jsx';
+import ContactPage from '../../pages/public/Contact.jsx';
 import NotFoundPage from '../../pages/public/NotFoundPage.jsx';
 import StaticContentPage from '../../pages/public/StaticContentPage.jsx';
 
@@ -105,11 +106,15 @@ export default function AppRoutes() {
             />
             <Route
                 path={PUBLIC_ROUTES.EMERGENCY_GUIDE}
-                element={
-                    <RootLayout>
-                        <EmergencyGuidePage />
-                    </RootLayout>
-                }
+                element={<EmergencyGuidePage />}
+            />
+            <Route
+                path={PUBLIC_ROUTES.CONTACT}
+                element={<ContactPage />}
+            />
+            <Route
+                path={PUBLIC_ROUTES.SUPPORT_CONTACT}
+                element={<ContactPage />}
             />
             <Route
                 path={PUBLIC_ROUTES.TERMS_OF_USE}
@@ -127,15 +132,6 @@ export default function AppRoutes() {
                     </RootLayout>
                 }
             />
-            <Route
-                path={PUBLIC_ROUTES.SUPPORT_CONTACT}
-                element={
-                    <RootLayout>
-                        <StaticContentPage />
-                    </RootLayout>
-                }
-            />
-
             {/* -------- AUTH -------- */}
             <Route
                 path={AUTH_ROUTES.LOGIN}
