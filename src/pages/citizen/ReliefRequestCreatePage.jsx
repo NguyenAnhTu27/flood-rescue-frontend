@@ -9,7 +9,7 @@ import {
     Phone,
 } from 'lucide-react';
 import { CITIZEN_ROUTES } from '../../app/routes/route.constants.js';
-import GoogleMap from '../../features/map/components/GoogleMap.jsx';
+import GoogleMap from '../../features/map/components/MapBox.jsx';
 import { uploadRescueAttachments } from '../../features/rescue/api.js';
 import { createReliefRequest, updateMyCitizenReliefRequest } from '../../features/relief/api.js';
 import PrioritySelector from '../../features/rescue/components/PrioritySelector.jsx';

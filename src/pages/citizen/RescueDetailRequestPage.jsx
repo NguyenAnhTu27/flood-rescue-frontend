@@ -4,10 +4,24 @@ import { CheckCircle2, Clock, MapPin, Users, AlertTriangle, Info } from 'lucide-
 import { CITIZEN_ROUTES } from '../../app/routes/route.constants.js';
 import Button from '../../shared/ui/Button.jsx';
 import Badge from '../../shared/ui/Badge.jsx';
-import { cancelRescueRequest } from '../../features/citizen/api.js';
+import { cancelRescueRequest, confirmRescueResult } from '../../features/citizen/api.js';
 
 function normalizeStatus(s) {
     return String(s || '').toUpperCase();
+}
+
+function statusBadgeMeta(statusRaw) {
+    const normalized = normalizeStatus(statusRaw);
+    if (['COMPLETED', 'DONE', 'RESCUED', 'FINISHED'].includes(normalized)) {
+        return { label: 'HOÀN THÀNH', variant: 'success' };
+    }
+    if (['CANCELLED', 'CANCELED'].includes(normalized)) {
+        return { label: 'ĐÃ HỦY', variant: 'error' };
+    }
+    if (['VERIFIED', 'CONFIRMED', 'APPROVED'].includes(normalized)) {
+        return { label: 'ĐÃ XÁC MINH', variant: 'info' };
+    }
+    return { label: 'ĐANG XỬ LÝ', variant: 'info' };
 }
 
 export default function RescueDetailRequestPage() {
@@ -17,8 +31,12 @@ export default function RescueDetailRequestPage() {
     // Request data được truyền từ trang tạo yêu cầu
     const request = location.state?.request || null;
     const formDraft = location.state?.formDraft || null;
+    const [requestState, setRequestState] = React.useState(request || null);
+    const [confirmingRescue, setConfirmingRescue] = React.useState(false);
+    const [actionNotice, setActionNotice] = React.useState('');
+    const [actionError, setActionError] = React.useState('');
 
-    const data = request || null;
+    const data = requestState || request || null;
 
     // Prefer values from BE response; fallback to draft data from the create form
     const merged = {
@@ -46,6 +64,17 @@ export default function RescueDetailRequestPage() {
     const priorityMeta = formatPriority(merged.priority);
 
     const statusRaw = normalizeStatus(merged?.status);
+    const badgeMeta = statusBadgeMeta(statusRaw);
+    const isCompleted = ['COMPLETED', 'DONE', 'RESCUED', 'FINISHED'].includes(statusRaw);
+    const isCancelled = ['CANCELLED', 'CANCELED'].includes(statusRaw);
+    const waitingCitizenConfirmation = Boolean(
+        merged?.waitingCitizenRescueConfirmation
+        || (statusRaw === 'COMPLETED'
+            && ['PENDING', '', 'NULL'].includes(String(merged?.rescueResultConfirmationStatus || 'PENDING').toUpperCase()))
+    );
+    const canUpdateRequest = !isCompleted && !isCancelled;
+    const canCancelRequest = Boolean(merged?.id) && !isCompleted && !isCancelled;
+    const canConfirmRescued = Boolean(merged?.id) && !isCancelled && (!isCompleted || waitingCitizenConfirmation);
     const activeStep = (() => {
         if (['COMPLETED', 'DONE', 'RESCUED'].includes(statusRaw)) return 4;
         if (['IN_PROGRESS', 'WORKING', 'PROCESSING', 'ARRIVED', 'ON_SITE', 'AT_SCENE'].includes(statusRaw)) return 3;
@@ -105,7 +134,7 @@ export default function RescueDetailRequestPage() {
     }
 
     const handleCancelRequest = async () => {
-        if (!merged?.id) return;
+        if (!canCancelRequest) return;
         const confirmed = window.confirm('Bạn chắc chắn muốn hủy yêu cầu này?');
         if (!confirmed) return;
         try {
@@ -113,6 +142,32 @@ export default function RescueDetailRequestPage() {
             navigate(CITIZEN_ROUTES.MY_RESCUE_REQUESTS);
         } catch (err) {
             alert(err?.message || 'Không thể hủy yêu cầu');
+        }
+    };
+
+    const handleConfirmRescued = async () => {
+        if (!canConfirmRescued || confirmingRescue) return;
+        const confirmed = window.confirm('Xác nhận bạn và mọi người đã được cứu hộ an toàn?');
+        if (!confirmed) return;
+
+        try {
+            setConfirmingRescue(true);
+            setActionError('');
+            setActionNotice('');
+            const response = await confirmRescueResult(merged.id, { rescued: true });
+            setRequestState((prev) => ({
+                ...(prev || merged),
+                status: 'COMPLETED',
+                requestStatus: 'COMPLETED',
+                waitingCitizenRescueConfirmation: false,
+                rescueResultConfirmationStatus: 'CONFIRMED',
+                updatedAt: new Date().toISOString(),
+            }));
+            setActionNotice(response?.message || 'Đã gửi xác nhận hoàn thành tới điều phối và cập nhật yêu cầu sang trạng thái hoàn thành.');
+        } catch (err) {
+            setActionError(err?.message || 'Không thể xác nhận đã được cứu hộ.');
+        } finally {
+            setConfirmingRescue(false);
         }
     };
 
@@ -128,8 +183,8 @@ export default function RescueDetailRequestPage() {
                                 #{merged.code || `RR${String(merged.id || 0).padStart(4, '0')}`}
                             </span>
                         </h1>
-                        <Badge variant="info" size="lg">
-                            ĐANG XỬ LÝ
+                        <Badge variant={badgeMeta.variant} size="lg">
+                            {badgeMeta.label}
                         </Badge>
                     </div>
                     <p className="mt-1 text-xs text-slate-500">
@@ -227,6 +282,16 @@ export default function RescueDetailRequestPage() {
 
                 {/* Thông tin đã gửi */}
                 <div className="space-y-4">
+                    {actionNotice && (
+                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                            {actionNotice}
+                        </div>
+                    )}
+                    {actionError && (
+                        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                            {actionError}
+                        </div>
+                    )}
                     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                         <div className="mb-4 flex items-center justify-between gap-3">
                             <div className="flex items-center gap-2">
@@ -311,18 +376,20 @@ export default function RescueDetailRequestPage() {
                                     type="button"
                                     variant="primary"
                                     size="sm"
+                                    disabled={!canUpdateRequest}
                                     onClick={() => navigate(CITIZEN_ROUTES.UPDATE_RESCUE_REQUEST, {
                                         state: { request: merged }
                                     })}
                                     className="flex-1"
                                 >
-                                    Cập nhật thêm thông tin
+                                    {canUpdateRequest ? 'Cập nhật thêm thông tin' : 'Yêu cầu đã hoàn thành'}
                                 </Button>
                                 <Button
                                     type="button"
                                     variant="danger"
                                     size="sm"
                                     onClick={handleCancelRequest}
+                                    disabled={!canCancelRequest}
                                     className="flex-1"
                                 >
                                     Hủy yêu cầu cứu hộ
@@ -344,10 +411,17 @@ export default function RescueDetailRequestPage() {
                             type="button"
                             variant="success"
                             size="sm"
+                            onClick={handleConfirmRescued}
                             className="mt-2 sm:mt-0"
-                            disabled
+                            disabled={!canConfirmRescued || confirmingRescue}
                         >
-                            Xác nhận đã được cứu (sắp có)
+                            {confirmingRescue
+                                ? 'Đang xác nhận...'
+                                : isCancelled
+                                    ? 'Yêu cầu đã hủy'
+                                    : isCompleted && !waitingCitizenConfirmation
+                                        ? 'Đã xác nhận hoàn thành'
+                                        : 'Xác nhận đã được cứu'}
                         </Button>
                     </div>
                 </div>

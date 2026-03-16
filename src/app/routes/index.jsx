@@ -28,6 +28,7 @@ import RegisterPage from '../../pages/auth/RegisterPage.jsx';
 
 // Citizen
 import CitizenDashboard from '../../pages/citizen/CItizenDashboard.jsx';
+import ReliefRequestCreatePageCitizen from '../../pages/citizen/ReliefRequestCreatePage.jsx';
 import RescueRequestCreatePage from '../../pages/citizen/RescueRequestCreatePage.jsx';
 import RescueRequestStatusPage from '../../pages/citizen/RescueRequestStatusPage.jsx';
 import MyRescueRequestsPage from '../../pages/citizen/MyRescueRequestsPage.jsx';
@@ -39,15 +40,17 @@ import ReliefRequestStatusPage from '../../pages/citizen/ReliefRequestStatusPage
 
 // Coordinator
 import CoordinatorDashboard from '../../pages/coordinator/CoordinatorDashboardPage.jsx';
+import RescueQueuePage from '../../pages/coordinator/RescueQueuePage.jsx';
 import RescueVerifyPage from '../../pages/coordinator/RescueVerifyPage.jsx';
 import RescueAssignPage from '../../pages/coordinator/RescueAssignPage.jsx';
 import RescueRequestHandle from '../../pages/coordinator/RescueRequestHandle.jsx';
 import RescueHistoryPage from '../../pages/coordinator/RescueHistoryPage.jsx';
 import TeamWorkloadPage from '../../pages/coordinator/TeamWorkloadPage.jsx';
-import GroupRequestsByAreaPage from '../../pages/coordinator/GroupRequestsByAreaPage.jsx';
+import RescueRequestMerge from '../../pages/coordinator/RescueRequestMerge.jsx';
 import RescuePrioritizePage from '../../pages/coordinator/RescuePrioritizePage.jsx';
 import DuplicateManagementPage from '../../pages/coordinator/DuplicateManagementPage.jsx';
 import BlockedCitizensPage from '../../pages/coordinator/BlockedCitizensPage.jsx';
+import EscalationPage from '../../pages/coordinator/EscalationPage.jsx';
 
 // Rescuer
 import RescuerDashboard from '../../pages/rescuer/RescuerDashboard.jsx';
@@ -57,12 +60,14 @@ import MissionMapTrackingPage from '../../pages/rescuer/MissionMapTrackingPage.j
 import FieldUpdatePage from '../../pages/rescuer/FieldUpdatePage.jsx';
 import RescueUpdateStatusPage from '../../pages/rescuer/RescueUpdateStatusPage.jsx';
 import ReliefPrioritizeDetailPage from '../../pages/rescuer/ReliefPrioritizeDetailPage.jsx';
+import SafetyGuidePage from '../../pages/rescuer/SafetyGuidePage.jsx';
 
 // Manager
 import ManagerDashboard from '../../pages/manager/ManagerDashboard.jsx';
 import ManagerLayout from '../../layouts/ManagerLayout.jsx';
 import InventoryOverviewPage from '../../pages/manager/kho/InventoryOverviewPage.jsx';
 import DistributionPlanPage from '../../pages/manager/hang-cuu-tro/DistributionPlanPage.jsx';
+import DistributionTrackingPage from '../../pages/manager/hang-cuu-tro/DistributionTrackingPage.jsx';
 import DistributionVoucherPage from '../../pages/manager/hang-cuu-tro/DistributionVoucherPage.jsx';
 import AssetsManagementPage from '../../pages/manager/phuong-tien/AssetsManagementPage.jsx';
 import AssetCreatePage from '../../pages/manager/phuong-tien/AssetCreatePage.jsx';
@@ -87,6 +92,9 @@ import AdminDashboard from '../../pages/admin/AdminDashboard.jsx';
 import UserManagementPage from '../../pages/admin/UserManagementPage.jsx';
 import SystemSettingsPage from '../../pages/admin/SystemSettingsPage.jsx';
 import AuditLogsPage from '../../pages/admin/AuditLogsPage.jsx';
+import RolesPermissionsPage from '../../pages/admin/RolesPermissionsPage.jsx';
+import SystemCatalogPage from '../../pages/admin/SystemCatalogPage.jsx';
+import NotificationTemplatesPage from '../../pages/admin/NotificationTemplatesPage.jsx';
 import TeamsManagementPage from '../../pages/admin/TeamsManagementPage.jsx';
 import TeamCreatePage from '../../pages/admin/TeamCreatePage.jsx';
 import SystemFeedbacksPage from '../../pages/admin/SystemFeedbacksPage.jsx';
@@ -192,7 +200,9 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['CITIZEN']}>
-                            <Navigate to={CITIZEN_ROUTES.DASHBOARD} replace />
+                            <RootLayout>
+                                <ReliefRequestCreatePageCitizen />
+                            </RootLayout>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -284,6 +294,18 @@ export default function AppRoutes() {
                 }
             />
             <Route
+                path={COORDINATOR_ROUTES.RESCUE_QUEUE}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['COORDINATOR']}>
+                            <RootLayout>
+                                <RescueQueuePage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
                 path={COORDINATOR_ROUTES.VERIFY_REQUEST}
                 element={
                     <RequireAuth>
@@ -344,6 +366,18 @@ export default function AppRoutes() {
                 }
             />
             <Route
+                path={COORDINATOR_ROUTES.MERGE_REQUESTS}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['COORDINATOR']}>
+                            <RootLayout>
+                                <RescueRequestMerge />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
                 path={COORDINATOR_ROUTES.PRIORITIZE_REQUEST}
                 element={
                     <RequireAuth>
@@ -362,6 +396,18 @@ export default function AppRoutes() {
                         <RequireRole allow={['COORDINATOR']}>
                             <RootLayout>
                                 <DuplicateManagementPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={COORDINATOR_ROUTES.ESCALATION}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['COORDINATOR']}>
+                            <RootLayout>
+                                <EscalationPage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -459,19 +505,7 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['RESCUER']}>
                             <RootLayout>
-                                <MyAssignmentsPage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
-                path="/doi-cuu-ho/huong-dan-an-toan"
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['RESCUER']}>
-                            <RootLayout>
-                                <MyAssignmentsPage />
+                                <SafetyGuidePage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -588,6 +622,18 @@ export default function AppRoutes() {
                 }
             />
             <Route
+                path={MANAGER_ROUTES.RECEIPT_APPROVAL}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['MANAGER']}>
+                            <ManagerLayout>
+                                <ReceiptApprovalPage />
+                            </ManagerLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
                 path={MANAGER_ROUTES.CREATE_ISSUE}
                 element={
                     <RequireAuth>
@@ -678,6 +724,18 @@ export default function AppRoutes() {
                         <RequireRole allow={['MANAGER']}>
                             <ManagerLayout>
                                 <DistributionVoucherPage />
+                            </ManagerLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={MANAGER_ROUTES.DISTRIBUTION_TRACKING}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['MANAGER']}>
+                            <ManagerLayout>
+                                <DistributionTrackingPage />
                             </ManagerLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -788,6 +846,42 @@ export default function AppRoutes() {
                         <RequireRole allow={['ADMIN']}>
                             <RootLayout>
                                 <SystemSettingsPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={ADMIN_ROUTES.ROLES_PERMISSIONS}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['ADMIN']}>
+                            <RootLayout>
+                                <RolesPermissionsPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={ADMIN_ROUTES.SYSTEM_CATALOG}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['ADMIN']}>
+                            <RootLayout>
+                                <SystemCatalogPage />
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={ADMIN_ROUTES.NOTIFICATION_TEMPLATES}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['ADMIN']}>
+                            <RootLayout>
+                                <NotificationTemplatesPage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>

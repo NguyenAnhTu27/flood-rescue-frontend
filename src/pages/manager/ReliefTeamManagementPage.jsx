@@ -4,7 +4,7 @@ import { Users, MapPin, Clock, RefreshCw, X } from 'lucide-react';
 import Card from '../../shared/ui/Card.jsx';
 import Badge from '../../shared/ui/Badge.jsx';
 import Button from '../../shared/ui/Button.jsx';
-import GoogleMap from '../../features/map/components/GoogleMap.jsx';
+import GoogleMap from '../../features/map/components/MapBox.jsx';
 import { getTeams } from '../../features/teams/api.js';
 import { listReliefRequests, getInventoryIssue, rejectReliefRequestByManager } from '../../features/relief/api.js';
 import { getAssets } from '../../features/assets/api.js';

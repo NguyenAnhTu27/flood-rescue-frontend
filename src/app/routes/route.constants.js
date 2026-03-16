@@ -66,7 +66,7 @@ export const CITIZEN_ROUTES = {
   };
   
   // -------- MANAGER ROUTES (RELIEF + INVENTORY) --------
-  export const MANAGER_ROUTES = {
+export const MANAGER_ROUTES = {
     DASHBOARD: '/quan-ly',
     RELIEF_REQUESTS: '/quan-ly/yeu-cau-cuu-tro',
     INVENTORY_OVERVIEW: '/quan-ly/kho-hang',
@@ -74,6 +74,7 @@ export const CITIZEN_ROUTES = {
     ITEM_CLASSIFICATIONS: '/quan-ly/phan-loai-hang',
     ITEM_UNITS: '/quan-ly/don-vi',
     CREATE_RECEIPT: '/quan-ly/phieu-nhap',
+    RECEIPT_APPROVAL: '/quan-ly/duyet-phieu-nhap',
     CREATE_ISSUE: '/quan-ly/phieu-xuat',
     RELIEF_TEAM_MANAGEMENT: '/quan-ly/doi-cuu-ho-cuu-tro',
     RELIEF_APPROVED_ISSUES: '/quan-ly/yeu-cau-cuu-tro-da-duyet-phieu-xuat',

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle2, MapPin, Users, X } from 'lucide-react';
-import GoogleMap from '../../features/map/components/GoogleMap.jsx';
+import GoogleMap from '../../features/map/components/MapBox.jsx';
 import Button from '../../shared/ui/Button.jsx';
 import Badge from '../../shared/ui/Badge.jsx';
 import { getTeams } from '../../features/teams/api.js';
@@ -458,353 +458,353 @@ export default function RescueAssignPage() {
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
                 <div className="grid min-h-0 grid-cols-1 xl:grid-cols-[22rem_minmax(0,1fr)_22rem]">
                     <div className="flex max-h-[320px] flex-col border-b border-slate-200 xl:max-h-none xl:border-b-0 xl:border-r">
-                    <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
-                        <h2 className="text-sm font-bold text-slate-900">Đội cứu hộ</h2>
-                        <p className="mt-0.5 text-xs text-slate-600">Chọn 1 đội để nhận nhiệm vụ</p>
-                    </div>
-                    <div className="flex-1 overflow-y-auto">
-                        {loadingResources ? (
-                            <div className="p-4 text-xs text-slate-500">Đang tải đội cứu hộ...</div>
-                        ) : teams.length === 0 ? (
-                            <div className="p-4 text-xs text-slate-500">Chưa có đội cứu hộ nào.</div>
-                        ) : (
-                            teams.map((team) => {
-                                const checked = String(team.id) === String(selectedTeamId);
-                                const badge = statusBadge(team.workloadStatus || team.status || team.teamStatus || 'ACTIVE');
-                                return (
-                                    <label key={team.id} className={`flex cursor-pointer items-start gap-3 border-b border-slate-100 px-4 py-3 ${checked ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
-                                        <input
-                                            type="radio"
-                                            name="selectedTeam"
-                                            checked={checked}
-                                            onChange={() => setSelectedTeamId(String(team.id))}
-                                            className="mt-1 h-4 w-4"
-                                        />
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex items-center justify-between gap-2">
-                                                <p className="truncate text-xs font-semibold text-slate-900">{team.name || `Team #${team.id}`}</p>
-                                                <Badge variant={badge.variant} size="sm">{badge.label}</Badge>
-                                            </div>
-                                            <p className="mt-0.5 text-[11px] text-slate-500">{team.memberCount || team.members?.length || 0} thành viên</p>
-                                            <p className="mt-0.5 text-[11px] font-semibold text-indigo-700">
-                                                Task đang có: {Number(team.activeTaskCount || 0)}
-                                            </p>
-                                            {Number.isFinite(Number(team.currentLatitude)) && Number.isFinite(Number(team.currentLongitude)) && (
-                                                <p className="mt-0.5 text-[11px] text-blue-700">
-                                                    GPS: {Number(team.currentLatitude).toFixed(6)}, {Number(team.currentLongitude).toFixed(6)}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </label>
-                                );
-                            })
-                        )}
-                    </div>
-                </div>
-
-                <div className="flex min-w-0 flex-1 flex-col bg-slate-100 xl:border-x xl:border-slate-200">
-                    <div className="z-10 border-b border-slate-200 bg-white px-4 py-3">
-                        <div className="grid gap-3">
-                            <div>
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Điều phối / Phân công</p>
-                                <h3 className="text-sm font-bold text-slate-900">Phân công yêu cầu đã xác minh cho đội cứu hộ</h3>
-                                <p className="mt-0.5 text-xs text-slate-600">
-                                    Chỉ hiển thị yêu cầu trạng thái VERIFIED để phân công.
-                                </p>
-                                {selectedRequest?.emergency && (
-                                    <p className="mt-1 text-xs font-semibold text-amber-700">
-                                        Trạng thái hàng đợi: {emergencyActionLabel(selectedRequest?.emergencyActionStatus) || 'CHỜ XỬ LÝ'}
-                                    </p>
-                                )}
-                                {Number.isFinite(Number(selectedTeam?.currentLatitude)) && Number.isFinite(Number(selectedTeam?.currentLongitude)) && (
-                                    <p className="mt-1 text-xs font-semibold text-blue-700">
-                                        Vị trí đội được chọn: {Number(selectedTeam.currentLatitude).toFixed(6)}, {Number(selectedTeam.currentLongitude).toFixed(6)}
-                                    </p>
-                                )}
-                                <p className="mt-1 text-xs text-slate-600">
-                                    Tài sản khả dụng cho đội (phương tiện + thiết bị): {availableAssetsForTeam.length}
-                                </p>
-                                {blockedTeamId && (
-                                    <p className="mt-1 text-xs font-semibold text-rose-700">
-                                        Yêu cầu khẩn cấp: không thể phân công lại cho đội #{blockedTeamId} (đội đã gửi khẩn cấp).
-                                    </p>
-                                )}
-                            </div>
+                        <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                            <h2 className="text-sm font-bold text-slate-900">Đội cứu hộ</h2>
+                            <p className="mt-0.5 text-xs text-slate-600">Chọn 1 đội để nhận nhiệm vụ</p>
                         </div>
-                    </div>
-
-                    <div className="h-[260px] sm:h-[420px] xl:h-full xl:min-h-[460px]">
-                        <GoogleMap
-                            center={mapCenter}
-                            markerPosition={
-                                Number.isFinite(Number(selectedRequest?.latitude || selectedRequest?.lat))
-                                    && Number.isFinite(Number(selectedRequest?.longitude || selectedRequest?.lng))
-                                    ? {
-                                        lat: Number(selectedRequest?.latitude || selectedRequest?.lat),
-                                        lng: Number(selectedRequest?.longitude || selectedRequest?.lng),
-                                    }
-                                    : undefined
-                            }
-                            additionalMarkers={
-                                [
-                                    ...(Number.isFinite(Number(selectedTeam?.currentLatitude))
-                                        && Number.isFinite(Number(selectedTeam?.currentLongitude))
-                                        ? [{
-                                            lat: Number(selectedTeam.currentLatitude),
-                                            lng: Number(selectedTeam.currentLongitude),
-                                            title: `Vị trí đội ${selectedTeam?.name || selectedTeam?.code || selectedTeam?.id}`,
-                                        }]
-                                        : []),
-                                    ...selectedRequests
-                                        .slice(1)
-                                        .map((req) => {
-                                            const lat = Number(req?.latitude || req?.lat);
-                                            const lng = Number(req?.longitude || req?.lng);
-                                            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-                                            return {
-                                                lat,
-                                                lng,
-                                                title: `Yêu cầu ${req?.code || `#${req?.id}`}`,
-                                            };
-                                        })
-                                        .filter(Boolean),
-                                ]
-                            }
-                            zoom={13}
-                        />
-                    </div>
-                </div>
-
-                <div className="flex max-h-[340px] flex-col border-t border-slate-200 xl:max-h-none xl:border-l xl:border-slate-200 xl:border-t-0">
-                    <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
-                        <div className="flex items-center justify-between gap-3">
-                            <div>
-                                <h2 className="text-sm font-bold text-slate-900">Yêu cầu VERIFIED</h2>
-                                <p className="mt-0.5 text-xs text-slate-600">Chọn yêu cầu để xem map và phân công</p>
-                            </div>
-                            <label className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700">
-                                <input
-                                    type="checkbox"
-                                    checked={mergeMode}
-                                    onChange={(e) => setMergeMode(e.target.checked)}
-                                    className="h-4 w-4 rounded border-slate-300"
-                                />
-                                Gộp
-                            </label>
-                        </div>
-                    </div>
-                    <div className="flex-1 overflow-y-auto">
-                        {loadingRequests ? (
-                            <div className="p-4 text-xs text-slate-500">Đang tải yêu cầu VERIFIED...</div>
-                        ) : availableRequests.length === 0 ? (
-                            <div className="p-4 text-xs text-slate-500">Không có yêu cầu VERIFIED.</div>
-                        ) : (
-                            availableRequests.map((request) => {
-                                const checked = selectedRequestIds.includes(String(request.id));
-                                const emergencyBadge = request.emergency
-                                    ? (emergencyActionLabel(request.emergencyActionStatus) || 'KHẨN CẤP')
-                                    : null;
-                                return (
-                                    <div key={request.id} className={`border-b border-slate-100 px-4 py-3 ${checked ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
-                                        <label className="flex cursor-pointer items-start gap-3">
+                        <div className="flex-1 overflow-y-auto">
+                            {loadingResources ? (
+                                <div className="p-4 text-xs text-slate-500">Đang tải đội cứu hộ...</div>
+                            ) : teams.length === 0 ? (
+                                <div className="p-4 text-xs text-slate-500">Chưa có đội cứu hộ nào.</div>
+                            ) : (
+                                teams.map((team) => {
+                                    const checked = String(team.id) === String(selectedTeamId);
+                                    const badge = statusBadge(team.workloadStatus || team.status || team.teamStatus || 'ACTIVE');
+                                    return (
+                                        <label key={team.id} className={`flex cursor-pointer items-start gap-3 border-b border-slate-100 px-4 py-3 ${checked ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
                                             <input
-                                                type={mergeMode ? 'checkbox' : 'radio'}
-                                                name="selectedRequest"
+                                                type="radio"
+                                                name="selectedTeam"
                                                 checked={checked}
-                                                onChange={() => toggleRequestSelection(request.id)}
+                                                onChange={() => setSelectedTeamId(String(team.id))}
                                                 className="mt-1 h-4 w-4"
                                             />
                                             <div className="min-w-0 flex-1">
                                                 <div className="flex items-center justify-between gap-2">
-                                                    <p className="truncate text-xs font-semibold text-slate-900">{request.code || `Yêu cầu #${request.id}`}</p>
-                                                    <Badge variant="success" size="sm">VERIFIED</Badge>
+                                                    <p className="truncate text-xs font-semibold text-slate-900">{team.name || `Team #${team.id}`}</p>
+                                                    <Badge variant={badge.variant} size="sm">{badge.label}</Badge>
                                                 </div>
-                                                <p className="mt-0.5 text-[11px] text-slate-600">Địa chỉ: {request.addressText || 'Không có địa chỉ'}</p>
-                                                <p className="mt-0.5 text-[11px] text-slate-500">Số người: {request.affectedPeopleCount ?? '-'}</p>
-                                                {emergencyBadge && (
-                                                    <p className="mt-0.5 text-[11px] font-semibold text-amber-700">{emergencyBadge}</p>
+                                                <p className="mt-0.5 text-[11px] text-slate-500">{team.memberCount || team.members?.length || 0} thành viên</p>
+                                                <p className="mt-0.5 text-[11px] font-semibold text-indigo-700">
+                                                    Task đang có: {Number(team.activeTaskCount || 0)}
+                                                </p>
+                                                {Number.isFinite(Number(team.currentLatitude)) && Number.isFinite(Number(team.currentLongitude)) && (
+                                                    <p className="mt-0.5 text-[11px] text-blue-700">
+                                                        GPS: {Number(team.currentLatitude).toFixed(6)}, {Number(team.currentLongitude).toFixed(6)}
+                                                    </p>
                                                 )}
                                             </div>
                                         </label>
-                                        <div className="mt-2 flex justify-end">
-                                            <button
-                                                type="button"
-                                                className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-white"
-                                                onClick={() => setDetailRequestId(String(request.id))}
-                                            >
-                                                Xem chi tiết
-                                            </button>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="flex min-w-0 flex-1 flex-col bg-slate-100 xl:border-x xl:border-slate-200">
+                        <div className="z-10 border-b border-slate-200 bg-white px-4 py-3">
+                            <div className="grid gap-3">
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Điều phối / Phân công</p>
+                                    <h3 className="text-sm font-bold text-slate-900">Phân công yêu cầu đã xác minh cho đội cứu hộ</h3>
+                                    <p className="mt-0.5 text-xs text-slate-600">
+                                        Chỉ hiển thị yêu cầu trạng thái VERIFIED để phân công.
+                                    </p>
+                                    {selectedRequest?.emergency && (
+                                        <p className="mt-1 text-xs font-semibold text-amber-700">
+                                            Trạng thái hàng đợi: {emergencyActionLabel(selectedRequest?.emergencyActionStatus) || 'CHỜ XỬ LÝ'}
+                                        </p>
+                                    )}
+                                    {Number.isFinite(Number(selectedTeam?.currentLatitude)) && Number.isFinite(Number(selectedTeam?.currentLongitude)) && (
+                                        <p className="mt-1 text-xs font-semibold text-blue-700">
+                                            Vị trí đội được chọn: {Number(selectedTeam.currentLatitude).toFixed(6)}, {Number(selectedTeam.currentLongitude).toFixed(6)}
+                                        </p>
+                                    )}
+                                    <p className="mt-1 text-xs text-slate-600">
+                                        Tài sản khả dụng cho đội (phương tiện + thiết bị): {availableAssetsForTeam.length}
+                                    </p>
+                                    {blockedTeamId && (
+                                        <p className="mt-1 text-xs font-semibold text-rose-700">
+                                            Yêu cầu khẩn cấp: không thể phân công lại cho đội #{blockedTeamId} (đội đã gửi khẩn cấp).
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="h-[260px] sm:h-[420px] xl:h-full xl:min-h-[460px]">
+                            <GoogleMap
+                                center={mapCenter}
+                                markerPosition={
+                                    Number.isFinite(Number(selectedRequest?.latitude || selectedRequest?.lat))
+                                        && Number.isFinite(Number(selectedRequest?.longitude || selectedRequest?.lng))
+                                        ? {
+                                            lat: Number(selectedRequest?.latitude || selectedRequest?.lat),
+                                            lng: Number(selectedRequest?.longitude || selectedRequest?.lng),
+                                        }
+                                        : undefined
+                                }
+                                additionalMarkers={
+                                    [
+                                        ...(Number.isFinite(Number(selectedTeam?.currentLatitude))
+                                            && Number.isFinite(Number(selectedTeam?.currentLongitude))
+                                            ? [{
+                                                lat: Number(selectedTeam.currentLatitude),
+                                                lng: Number(selectedTeam.currentLongitude),
+                                                title: `Vị trí đội ${selectedTeam?.name || selectedTeam?.code || selectedTeam?.id}`,
+                                            }]
+                                            : []),
+                                        ...selectedRequests
+                                            .slice(1)
+                                            .map((req) => {
+                                                const lat = Number(req?.latitude || req?.lat);
+                                                const lng = Number(req?.longitude || req?.lng);
+                                                if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+                                                return {
+                                                    lat,
+                                                    lng,
+                                                    title: `Yêu cầu ${req?.code || `#${req?.id}`}`,
+                                                };
+                                            })
+                                            .filter(Boolean),
+                                    ]
+                                }
+                                zoom={13}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex max-h-[340px] flex-col border-t border-slate-200 xl:max-h-none xl:border-l xl:border-slate-200 xl:border-t-0">
+                        <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                            <div className="flex items-center justify-between gap-3">
+                                <div>
+                                    <h2 className="text-sm font-bold text-slate-900">Yêu cầu VERIFIED</h2>
+                                    <p className="mt-0.5 text-xs text-slate-600">Chọn yêu cầu để xem map và phân công</p>
+                                </div>
+                                <label className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700">
+                                    <input
+                                        type="checkbox"
+                                        checked={mergeMode}
+                                        onChange={(e) => setMergeMode(e.target.checked)}
+                                        className="h-4 w-4 rounded border-slate-300"
+                                    />
+                                    Gộp
+                                </label>
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto">
+                            {loadingRequests ? (
+                                <div className="p-4 text-xs text-slate-500">Đang tải yêu cầu VERIFIED...</div>
+                            ) : availableRequests.length === 0 ? (
+                                <div className="p-4 text-xs text-slate-500">Không có yêu cầu VERIFIED.</div>
+                            ) : (
+                                availableRequests.map((request) => {
+                                    const checked = selectedRequestIds.includes(String(request.id));
+                                    const emergencyBadge = request.emergency
+                                        ? (emergencyActionLabel(request.emergencyActionStatus) || 'KHẨN CẤP')
+                                        : null;
+                                    return (
+                                        <div key={request.id} className={`border-b border-slate-100 px-4 py-3 ${checked ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
+                                            <label className="flex cursor-pointer items-start gap-3">
+                                                <input
+                                                    type={mergeMode ? 'checkbox' : 'radio'}
+                                                    name="selectedRequest"
+                                                    checked={checked}
+                                                    onChange={() => toggleRequestSelection(request.id)}
+                                                    className="mt-1 h-4 w-4"
+                                                />
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <p className="truncate text-xs font-semibold text-slate-900">{request.code || `Yêu cầu #${request.id}`}</p>
+                                                        <Badge variant="success" size="sm">VERIFIED</Badge>
+                                                    </div>
+                                                    <p className="mt-0.5 text-[11px] text-slate-600">Địa chỉ: {request.addressText || 'Không có địa chỉ'}</p>
+                                                    <p className="mt-0.5 text-[11px] text-slate-500">Số người: {request.affectedPeopleCount ?? '-'}</p>
+                                                    {emergencyBadge && (
+                                                        <p className="mt-0.5 text-[11px] font-semibold text-amber-700">{emergencyBadge}</p>
+                                                    )}
+                                                </div>
+                                            </label>
+                                            <div className="mt-2 flex justify-end">
+                                                <button
+                                                    type="button"
+                                                    className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-white"
+                                                    onClick={() => setDetailRequestId(String(request.id))}
+                                                >
+                                                    Xem chi tiết
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="max-h-[42vh] overflow-y-auto border-t border-slate-200 bg-white px-4 py-3 xl:max-h-[34vh]">
+                    <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                            Chọn tài sản cho đội <span className="text-rose-600">*</span>
+                        </label>
+                        <p className="mt-1 text-xs text-slate-500">
+                            Bao gồm mọi tài sản đã tạo ở trang Manager (cano, xe, thiết bị...). Bắt buộc chọn 1 tài sản khi phân công.
+                        </p>
+                        <select
+                            className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+                            value={selectedAssetId}
+                            onChange={(e) => setSelectedAssetId(e.target.value)}
+                            disabled={!selectedTeamId || loadingResources}
+                        >
+                            <option value="">-- Chọn tài sản --</option>
+                            {availableAssetsForTeam.map((asset) => {
+                                const code = asset?.code || asset?.assetCode || `#${asset.id}`;
+                                const name = asset?.name || asset?.assetName || 'Tài sản';
+                                const status = String(asset?.status || '').toUpperCase();
+                                const type = asset?.assetType || asset?.type || asset?.category || null;
+                                const assignedTeamId = toNumberOrNull(
+                                    pickFirst(asset?.assignedTeamId, asset?.assigned_team_id, asset?.teamId)
                                 );
-                            })
-                        )}
+                                const heldTag = assignedTeamId === toNumberOrNull(selectedTeamId) ? 'đang giữ' : 'rảnh';
+                                return (
+                                    <option key={asset.id} value={String(asset.id)}>
+                                        {code} - {name}{type ? ` - ${type}` : ''} ({status || 'N/A'}, {heldTag})
+                                    </option>
+                                );
+                            })}
+                        </select>
+                    </div>
+
+                    <div className="mb-2 flex items-center justify-between">
+                        <h4 className="text-sm font-bold text-slate-900">
+                            {showMergedDetail ? 'Chi tiết yêu cầu gộp' : 'Chi tiết yêu cầu'}
+                        </h4>
+                        <span className="text-xs text-slate-500">
+                            {showMergedDetail
+                                ? `${selectedRequests.length} yêu cầu`
+                                : (detailRequest ? (detailRequest.code || `#${detailRequest.id}`) : 'Chưa chọn')}
+                        </span>
+                    </div>
+                    {showMergedDetail && mergedDetail ? (
+                        <div className="overflow-x-auto rounded-lg border border-slate-200">
+                            <table className="min-w-full text-left text-xs">
+                                <tbody>
+                                    <tr className="border-b border-slate-100">
+                                        <th className="w-48 bg-slate-50 px-3 py-2 font-semibold text-slate-600">Mã yêu cầu</th>
+                                        <td className="px-3 py-2 text-slate-800">{mergedDetail.code}</td>
+                                        <th className="w-44 bg-slate-50 px-3 py-2 font-semibold text-slate-600">Tổng số người ảnh hưởng</th>
+                                        <td className="px-3 py-2 text-slate-800">{mergedDetail.people}</td>
+                                    </tr>
+                                    <tr className="border-b border-slate-100">
+                                        <th className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Địa chỉ</th>
+                                        <td className="whitespace-pre-line px-3 py-2 text-slate-800" colSpan={3}>{mergedDetail.address}</td>
+                                    </tr>
+                                    <tr className="border-b border-slate-100">
+                                        <th className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Mô tả vị trí</th>
+                                        <td className="whitespace-pre-line px-3 py-2 text-slate-800" colSpan={3}>{mergedDetail.locationDescription}</td>
+                                    </tr>
+                                    <tr className="border-b border-slate-100">
+                                        <th className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Mô tả yêu cầu</th>
+                                        <td className="whitespace-pre-line px-3 py-2 text-slate-800" colSpan={3}>{mergedDetail.description}</td>
+                                    </tr>
+                                    <tr className="border-b border-slate-100">
+                                        <th className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Tọa độ</th>
+                                        <td className="whitespace-pre-line px-3 py-2 text-slate-800" colSpan={3}>{mergedDetail.coordinates}</td>
+                                    </tr>
+                                    <tr>
+                                        <th className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Ảnh đính kèm</th>
+                                        <td className="px-3 py-2 text-slate-800" colSpan={3}>
+                                            {mergedDetail.attachmentsCount > 0 ? `${mergedDetail.attachmentsCount} ảnh đính kèm` : 'Không có ảnh'}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : !detailRequest ? (
+                        <p className="text-xs text-slate-500">Chưa có yêu cầu để hiển thị chi tiết.</p>
+                    ) : (
+                        <div className="overflow-x-auto rounded-lg border border-slate-200">
+                            <table className="min-w-full text-left text-xs">
+                                <tbody>
+                                    <tr className="border-b border-slate-100">
+                                        <th className="w-48 bg-slate-50 px-3 py-2 font-semibold text-slate-600">Mã yêu cầu</th>
+                                        <td className="px-3 py-2 text-slate-800">{detailRequest.code || `#${detailRequest.id}`}</td>
+                                        <th className="w-44 bg-slate-50 px-3 py-2 font-semibold text-slate-600">Số người ảnh hưởng</th>
+                                        <td className="px-3 py-2 text-slate-800">{detailRequest.affectedPeopleCount ?? detailRequest.peopleCount ?? '—'}</td>
+                                    </tr>
+                                    <tr className="border-b border-slate-100">
+                                        <th className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Địa chỉ</th>
+                                        <td className="px-3 py-2 text-slate-800" colSpan={3}>{detailRequest.addressText || '—'}</td>
+                                    </tr>
+                                    <tr className="border-b border-slate-100">
+                                        <th className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Mô tả vị trí</th>
+                                        <td className="px-3 py-2 text-slate-800" colSpan={3}>
+                                            {detailRequest.locationDescription || detailRequest.citizenLocationDescription || '—'}
+                                        </td>
+                                    </tr>
+                                    <tr className="border-b border-slate-100">
+                                        <th className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Mô tả yêu cầu</th>
+                                        <td className="px-3 py-2 text-slate-800" colSpan={3}>{detailRequest.description || '—'}</td>
+                                    </tr>
+                                    <tr className="border-b border-slate-100">
+                                        <th className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Tọa độ</th>
+                                        <td className="px-3 py-2 text-slate-800" colSpan={3}>
+                                            {Number.isFinite(Number(detailRequest.latitude || detailRequest.lat))
+                                                && Number.isFinite(Number(detailRequest.longitude || detailRequest.lng))
+                                                ? `${Number(detailRequest.latitude || detailRequest.lat).toFixed(6)}, ${Number(detailRequest.longitude || detailRequest.lng).toFixed(6)}`
+                                                : '—'}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Ảnh đính kèm</th>
+                                        <td className="px-3 py-2 text-slate-800" colSpan={3}>
+                                            {!Array.isArray(detailRequest.attachments) || detailRequest.attachments.length === 0
+                                                ? 'Không có ảnh'
+                                                : `${detailRequest.attachments.length} ảnh đính kèm`}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex flex-col gap-3 border-t border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600 sm:gap-4">
+                        <span className="font-semibold text-slate-700">ĐÃ CHỌN</span>
+                        <span className="inline-flex items-center gap-1"><Users className="h-4 w-4" />{selectedTeamId ? '1 đội' : '0 đội'}</span>
+                        <span className="inline-flex items-center gap-1"><MapPin className="h-4 w-4" />{selectedRequests.length} yêu cầu VERIFIED</span>
+                        <span className="inline-flex items-center gap-1">
+                            {selectedAssetId ? '1 tài sản' : '0 tài sản'}
+                        </span>
+                    </div>
+
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                        <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => navigate(-1)}>
+                            <X className="h-4 w-4" />Hủy
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full sm:w-auto"
+                            onClick={() => setOverloadOpen(true)}
+                            disabled={overloading || !selectedRequest?.emergency || selectedRequests.length !== 1}
+                        >
+                            Quá tải
+                        </Button>
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            className="w-full sm:w-auto"
+                            onClick={handleAssign}
+                            disabled={assigning || !selectedAssetId || (!taskGroupId && selectedRequests.length === 0)}
+                        >
+                            <CheckCircle2 className="h-4 w-4" />
+                            {assigning ? 'Đang phân công...' : 'Phân công nhiệm vụ'}
+                        </Button>
                     </div>
                 </div>
-            </div>
-
-            <div className="max-h-[42vh] overflow-y-auto border-t border-slate-200 bg-white px-4 py-3 xl:max-h-[34vh]">
-                <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
-                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600">
-                        Chọn tài sản cho đội <span className="text-rose-600">*</span>
-                    </label>
-                    <p className="mt-1 text-xs text-slate-500">
-                        Bao gồm mọi tài sản đã tạo ở trang Manager (cano, xe, thiết bị...). Bắt buộc chọn 1 tài sản khi phân công.
-                    </p>
-                    <select
-                        className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
-                        value={selectedAssetId}
-                        onChange={(e) => setSelectedAssetId(e.target.value)}
-                        disabled={!selectedTeamId || loadingResources}
-                    >
-                        <option value="">-- Chọn tài sản --</option>
-                        {availableAssetsForTeam.map((asset) => {
-                            const code = asset?.code || asset?.assetCode || `#${asset.id}`;
-                            const name = asset?.name || asset?.assetName || 'Tài sản';
-                            const status = String(asset?.status || '').toUpperCase();
-                            const type = asset?.assetType || asset?.type || asset?.category || null;
-                            const assignedTeamId = toNumberOrNull(
-                                pickFirst(asset?.assignedTeamId, asset?.assigned_team_id, asset?.teamId)
-                            );
-                            const heldTag = assignedTeamId === toNumberOrNull(selectedTeamId) ? 'đang giữ' : 'rảnh';
-                            return (
-                                <option key={asset.id} value={String(asset.id)}>
-                                    {code} - {name}{type ? ` - ${type}` : ''} ({status || 'N/A'}, {heldTag})
-                                </option>
-                            );
-                        })}
-                    </select>
-                </div>
-
-                <div className="mb-2 flex items-center justify-between">
-                    <h4 className="text-sm font-bold text-slate-900">
-                        {showMergedDetail ? 'Chi tiết yêu cầu gộp' : 'Chi tiết yêu cầu'}
-                    </h4>
-                    <span className="text-xs text-slate-500">
-                        {showMergedDetail
-                            ? `${selectedRequests.length} yêu cầu`
-                            : (detailRequest ? (detailRequest.code || `#${detailRequest.id}`) : 'Chưa chọn')}
-                    </span>
-                </div>
-                {showMergedDetail && mergedDetail ? (
-                    <div className="overflow-x-auto rounded-lg border border-slate-200">
-                        <table className="min-w-full text-left text-xs">
-                            <tbody>
-                                <tr className="border-b border-slate-100">
-                                    <th className="w-48 bg-slate-50 px-3 py-2 font-semibold text-slate-600">Mã yêu cầu</th>
-                                    <td className="px-3 py-2 text-slate-800">{mergedDetail.code}</td>
-                                    <th className="w-44 bg-slate-50 px-3 py-2 font-semibold text-slate-600">Tổng số người ảnh hưởng</th>
-                                    <td className="px-3 py-2 text-slate-800">{mergedDetail.people}</td>
-                                </tr>
-                                <tr className="border-b border-slate-100">
-                                    <th className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Địa chỉ</th>
-                                    <td className="whitespace-pre-line px-3 py-2 text-slate-800" colSpan={3}>{mergedDetail.address}</td>
-                                </tr>
-                                <tr className="border-b border-slate-100">
-                                    <th className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Mô tả vị trí</th>
-                                    <td className="whitespace-pre-line px-3 py-2 text-slate-800" colSpan={3}>{mergedDetail.locationDescription}</td>
-                                </tr>
-                                <tr className="border-b border-slate-100">
-                                    <th className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Mô tả yêu cầu</th>
-                                    <td className="whitespace-pre-line px-3 py-2 text-slate-800" colSpan={3}>{mergedDetail.description}</td>
-                                </tr>
-                                <tr className="border-b border-slate-100">
-                                    <th className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Tọa độ</th>
-                                    <td className="whitespace-pre-line px-3 py-2 text-slate-800" colSpan={3}>{mergedDetail.coordinates}</td>
-                                </tr>
-                                <tr>
-                                    <th className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Ảnh đính kèm</th>
-                                    <td className="px-3 py-2 text-slate-800" colSpan={3}>
-                                        {mergedDetail.attachmentsCount > 0 ? `${mergedDetail.attachmentsCount} ảnh đính kèm` : 'Không có ảnh'}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                ) : !detailRequest ? (
-                    <p className="text-xs text-slate-500">Chưa có yêu cầu để hiển thị chi tiết.</p>
-                ) : (
-                    <div className="overflow-x-auto rounded-lg border border-slate-200">
-                        <table className="min-w-full text-left text-xs">
-                            <tbody>
-                                <tr className="border-b border-slate-100">
-                                    <th className="w-48 bg-slate-50 px-3 py-2 font-semibold text-slate-600">Mã yêu cầu</th>
-                                    <td className="px-3 py-2 text-slate-800">{detailRequest.code || `#${detailRequest.id}`}</td>
-                                    <th className="w-44 bg-slate-50 px-3 py-2 font-semibold text-slate-600">Số người ảnh hưởng</th>
-                                    <td className="px-3 py-2 text-slate-800">{detailRequest.affectedPeopleCount ?? detailRequest.peopleCount ?? '—'}</td>
-                                </tr>
-                                <tr className="border-b border-slate-100">
-                                    <th className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Địa chỉ</th>
-                                    <td className="px-3 py-2 text-slate-800" colSpan={3}>{detailRequest.addressText || '—'}</td>
-                                </tr>
-                                <tr className="border-b border-slate-100">
-                                    <th className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Mô tả vị trí</th>
-                                    <td className="px-3 py-2 text-slate-800" colSpan={3}>
-                                        {detailRequest.locationDescription || detailRequest.citizenLocationDescription || '—'}
-                                    </td>
-                                </tr>
-                                <tr className="border-b border-slate-100">
-                                    <th className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Mô tả yêu cầu</th>
-                                    <td className="px-3 py-2 text-slate-800" colSpan={3}>{detailRequest.description || '—'}</td>
-                                </tr>
-                                <tr className="border-b border-slate-100">
-                                    <th className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Tọa độ</th>
-                                    <td className="px-3 py-2 text-slate-800" colSpan={3}>
-                                        {Number.isFinite(Number(detailRequest.latitude || detailRequest.lat))
-                                            && Number.isFinite(Number(detailRequest.longitude || detailRequest.lng))
-                                            ? `${Number(detailRequest.latitude || detailRequest.lat).toFixed(6)}, ${Number(detailRequest.longitude || detailRequest.lng).toFixed(6)}`
-                                            : '—'}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Ảnh đính kèm</th>
-                                    <td className="px-3 py-2 text-slate-800" colSpan={3}>
-                                        {!Array.isArray(detailRequest.attachments) || detailRequest.attachments.length === 0
-                                            ? 'Không có ảnh'
-                                            : `${detailRequest.attachments.length} ảnh đính kèm`}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </div>
-
-            <div className="flex flex-col gap-3 border-t border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600 sm:gap-4">
-                    <span className="font-semibold text-slate-700">ĐÃ CHỌN</span>
-                    <span className="inline-flex items-center gap-1"><Users className="h-4 w-4" />{selectedTeamId ? '1 đội' : '0 đội'}</span>
-                    <span className="inline-flex items-center gap-1"><MapPin className="h-4 w-4" />{selectedRequests.length} yêu cầu VERIFIED</span>
-                    <span className="inline-flex items-center gap-1">
-                        {selectedAssetId ? '1 tài sản' : '0 tài sản'}
-                    </span>
-                </div>
-
-                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                    <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => navigate(-1)}>
-                        <X className="h-4 w-4" />Hủy
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full sm:w-auto"
-                        onClick={() => setOverloadOpen(true)}
-                        disabled={overloading || !selectedRequest?.emergency || selectedRequests.length !== 1}
-                    >
-                        Quá tải
-                    </Button>
-                    <Button
-                        variant="primary"
-                        size="sm"
-                        className="w-full sm:w-auto"
-                        onClick={handleAssign}
-                        disabled={assigning || !selectedAssetId || (!taskGroupId && selectedRequests.length === 0)}
-                    >
-                        <CheckCircle2 className="h-4 w-4" />
-                        {assigning ? 'Đang phân công...' : 'Phân công nhiệm vụ'}
-                    </Button>
-                </div>
-            </div>
 
             </div>
 

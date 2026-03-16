@@ -229,7 +229,7 @@ export default function RootLayout({ children }) {
         RESCUER: [
             { label: "Trang Chủ", to: RESCUER_ROUTES.DASHBOARD },
             { label: "Sắp xếp cứu trợ", to: RESCUER_ROUTES.RELIEF_PRIORITIZE },
-            { label: "Lịch sử", to: RESCUER_ROUTES.SAFETY_GUIDE },
+            { label: "Hướng dẫn an toàn", to: RESCUER_ROUTES.SAFETY_GUIDE },
         ],
         MANAGER: [
             { label: "Trang chủ", to: MANAGER_ROUTES.DASHBOARD },

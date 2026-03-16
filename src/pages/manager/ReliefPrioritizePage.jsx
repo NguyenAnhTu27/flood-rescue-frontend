@@ -6,7 +6,7 @@ import Button from '../../shared/ui/Button.jsx';
 import Badge from '../../shared/ui/Badge.jsx';
 import { getInventoryIssue, getRescuerReliefRequests, updateRescuerReliefStatus } from '../../features/relief/api.js';
 import { updateAssetStatus } from '../../features/assets/api.js';
-import GoogleMap from '../../features/map/components/GoogleMap.jsx';
+import GoogleMap from '../../features/map/components/MapBox.jsx';
 import { RESCUER_ROUTES } from '../../app/routes/route.constants.js';
 
 function normalizeList(data) {

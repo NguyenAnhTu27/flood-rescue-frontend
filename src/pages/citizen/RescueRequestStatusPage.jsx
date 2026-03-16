@@ -59,6 +59,7 @@ export default function RescueRequestStatusPage() {
     const [notRescuedReason, setNotRescuedReason] = useState('');
     const [reopening, setReopening] = useState(false);
     const [canceling, setCanceling] = useState(false);
+    const [actionNotice, setActionNotice] = useState('');
 
     const data = liveRequest || request || null;
 
@@ -84,10 +85,15 @@ export default function RescueRequestStatusPage() {
             && ['PENDING', '', 'NULL'].includes(String(data?.rescueResultConfirmationStatus || 'PENDING').toUpperCase()))
     );
     const isCancelled = ['CANCELLED', 'CANCELED'].includes(normalizeStatus(statusRaw));
+    const isCompleted = ['DONE', 'COMPLETED', 'FINISHED', 'RESCUED'].includes(normalizeStatus(statusRaw));
     const isInProgress = ['IN_PROGRESS', 'WORKING', 'PROCESSING', 'ON_SITE', 'AT_SCENE', 'ARRIVED'].includes(normalizeStatus(statusRaw));
     const canCancelRequest = !isCancelled
-        && !['DONE', 'COMPLETED', 'FINISHED', 'RESCUED'].includes(normalizeStatus(statusRaw))
+        && !isCompleted
         && !waitingCitizenConfirmation;
+    const canUpdateRequest = !isCancelled && !isCompleted;
+    const canCitizenMarkCompleted = Boolean(data?.id || requestId)
+        && !isCancelled
+        && (!isCompleted || waitingCitizenConfirmation);
 
     const steps = useMemo(() => ([
         {
@@ -206,6 +212,7 @@ export default function RescueRequestStatusPage() {
     };
 
     const handleGoToUpdateRequest = () => {
+        if (!canUpdateRequest) return;
         const targetId = Number(data?.id || requestId || 0);
         if (!targetId) {
             window.alert('Không tìm thấy mã yêu cầu để cập nhật.');
@@ -227,6 +234,37 @@ export default function RescueRequestStatusPage() {
             navigate(CITIZEN_ROUTES.FEEDBACK, { state: { requestId } });
         } catch (e) {
             window.alert(e?.message || 'Không thể xác nhận trạng thái cứu hộ.');
+        } finally {
+            setConfirmingRescueResult(false);
+        }
+    };
+
+    const applyCompletedState = () => {
+        setStatusRaw('COMPLETED');
+        setLiveRequest((prev) => ({
+            ...(prev || data || {}),
+            status: 'COMPLETED',
+            requestStatus: 'COMPLETED',
+            waitingCitizenRescueConfirmation: false,
+            rescueResultConfirmationStatus: 'CONFIRMED',
+            updatedAt: new Date().toISOString(),
+        }));
+    };
+
+    const handleCitizenMarkCompleted = async () => {
+        const targetId = Number(data?.id || requestId || 0);
+        if (!targetId || confirmingRescueResult || !canCitizenMarkCompleted) return;
+
+        const confirmed = window.confirm('Xác nhận bạn và mọi người đã được cứu hộ an toàn?');
+        if (!confirmed) return;
+
+        setConfirmingRescueResult(true);
+        try {
+            const resp = await confirmRescueResult(targetId, { rescued: true });
+            applyCompletedState();
+            setActionNotice(resp?.message || 'Đã gửi xác nhận hoàn thành tới điều phối và cập nhật yêu cầu sang trạng thái hoàn thành.');
+        } catch (e) {
+            window.alert(e?.message || 'Không thể xác nhận đã được cứu hộ.');
         } finally {
             setConfirmingRescueResult(false);
         }
@@ -393,6 +431,11 @@ export default function RescueRequestStatusPage() {
                                     </button>
                                 </div>
                             )}
+                        </div>
+                    )}
+                    {actionNotice && (
+                        <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                            {actionNotice}
                         </div>
                     )}
                     {waitingForTeam && (
@@ -590,9 +633,10 @@ export default function RescueRequestStatusPage() {
                                 <button
                                     type="button"
                                     onClick={handleGoToUpdateRequest}
+                                    disabled={!canUpdateRequest}
                                     className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-md transition hover:bg-blue-700 hover:shadow-lg"
                                 >
-                                    Cập nhật thêm thông tin
+                                    {canUpdateRequest ? 'Cập nhật thêm thông tin' : 'Yêu cầu đã hoàn thành'}
                                 </button>
                                 <button
                                     type="button"
@@ -617,10 +661,17 @@ export default function RescueRequestStatusPage() {
                         </div>
                         <button
                             type="button"
-                            className="mt-2 inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 sm:mt-0"
-                            disabled
+                            onClick={handleCitizenMarkCompleted}
+                            className="mt-2 inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 sm:mt-0"
+                            disabled={!canCitizenMarkCompleted || confirmingRescueResult}
                         >
-                            Xác nhận đã được cứu (sắp có)
+                            {confirmingRescueResult
+                                ? 'Đang xác nhận...'
+                                : isCancelled
+                                    ? 'Yêu cầu đã hủy'
+                                    : isCompleted && !waitingCitizenConfirmation
+                                        ? 'Đã xác nhận hoàn thành'
+                                        : 'Xác nhận đã được cứu'}
                         </button>
                     </div>
                 </div>
