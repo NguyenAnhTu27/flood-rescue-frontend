@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import {
     AlertCircle,
     RefreshCcw,
@@ -62,7 +62,7 @@ function stepClass(step, currentStatus) {
 
 export default function RescueRequestHandle() {
     const location = useLocation();
-    const navigate = useNavigate();
+    // navigate removed
     const [searchParams] = useSearchParams();
 
     const [statusFilter, setStatusFilter] = useState('');

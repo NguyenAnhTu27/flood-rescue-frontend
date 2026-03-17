@@ -1,0 +1,206 @@
+﻿
+> fe-hethonglulut@0.0.0 lint
+> eslint .
+
+
+D:\SEMESTER IN FPT\SPRING2026\SWP391\flood-rescue-frontend\src\features\assets\components\AssetsAssignToTask.jsx
+  30:12  error  'loading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\SEMESTER IN FPT\SPRING2026\SWP391\flood-rescue-frontend\src\features\citizen\components\RescueRequestList.jsx
+  49:11  error  'handleCreate' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\SEMESTER IN FPT\SPRING2026\SWP391\flood-rescue-frontend\src\features\manager-relief-dispatch\api.js
+  17:12  error  'e' is defined but never used  no-unused-vars
+  26:12  error  'e' is defined but never used  no-unused-vars
+  34:12  error  'e' is defined but never used  no-unused-vars
+  42:12  error  'e' is defined but never used  no-unused-vars
+  51:12  error  'e' is defined but never used  no-unused-vars
+
+D:\SEMESTER IN FPT\SPRING2026\SWP391\flood-rescue-frontend\src\features\manager-relief-dispatch\hooks\useManagerReliefDashboard.js
+  84:11  error  'reverseGeocode' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\SEMESTER IN FPT\SPRING2026\SWP391\flood-rescue-frontend\src\features\map\components\MissionMapView.jsx
+  68:8  warning  React Hook useEffect has missing dependencies: 'safeLat', 'safeLng', and 'zoom'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\SEMESTER IN FPT\SPRING2026\SWP391\flood-rescue-frontend\src\features\rescue\components\AttachmentGallery.jsx
+  31:9  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  29 |         });
+  30 |
+> 31 |         setPreviews(newPreviews);
+     |         ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  32 |
+  33 |         // Cleanup on unmount
+  34 |         return () => {  react-hooks/set-state-in-effect
+  37:8  warning  React Hook useEffect has a missing dependency: 'previews'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    react-hooks/exhaustive-deps
+
+D:\SEMESTER IN FPT\SPRING2026\SWP391\flood-rescue-frontend\src\pages\admin\AdminTeamAssetPage.jsx
+   94:7   warning  React Hook useEffect has a missing dependency: 'getUsers'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         react-hooks/exhaustive-deps
+  221:46  error    Error: Cannot create components during render
+
+Components created during render will reset their state each time they are created. Declare components outside of render.
+
+  219 |                             className="px-2 text-gray-500"
+  220 |                         >
+> 221 |                             {showPassword ? <EyeSlashIcon/> : <EyeIcon/>}
+      |                                              ^^^^^^^^^^^^ This component is created during render
+  222 |                         </button>
+  223 |
+  224 |                     </div>
+
+  36 |     );
+  37 |
+> 38 |     const EyeSlashIcon = () => (
+     |                          ^^^^^^^
+> 39 |         <svg width="20" height="20" viewBox="0:0 24 24">
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 40 |             <path
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 41 |                 fill="currentColor"
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 42 |                 d="M2:5l2-2l18 18l-2 2l-4.2-4.2A10.6 10.6 0 0 1 12 19c-6 0-10-7-10-7a21.8 21.8 0 0 1 5.2-5.8L2 5Zm20 7s-4-7-10-7c-1.4 0-2.7.3-4 .8l1.6 1.6A4 4 0 0 1 16.6 14L22 12Z"
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 43 |             />
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 44 |         </svg>
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 45 |     );
+     | ^^^^^^ The component is created during render here
+  46 |
+  47 |     // =========================
+  48 |     // CREATE USER  react-hooks/static-components
+  221:64  error    Error: Cannot create components during render
+
+Components created during render will reset their state each time they are created. Declare components outside of render.
+
+  219 |                             className="px-2 text-gray-500"
+  220 |                         >
+> 221 |                             {showPassword ? <EyeSlashIcon/> : <EyeIcon/>}
+      |                                                                ^^^^^^^ This component is created during render
+  222 |                         </button>
+  223 |
+  224 |                     </div>
+
+  27 |     // =========================
+  28 |
+> 29 |     const EyeIcon = () => (
+     |                     ^^^^^^^
+> 30 |         <svg width="20" height="20" viewBox="0:0 24 24">
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 31 |             <path
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 32 |                 fill="currentColor"
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 33 |                 d="M12:5C6 5 2 12 2 12s4 7 10 7s10-7 10-7s-4-7-10-7Zm0 11a4 4 0 1 1 0-8a4 4 0 0 1 0 8Z"
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 34 |             />
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 35 |         </svg>
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 36 |     );
+     | ^^^^^^ The component is created during render here
+  37 |
+  38 |     const EyeSlashIcon = () => (
+  39 |         <svg width="20" height="20" viewBox="0:0 24 24">            react-hooks/static-components
+
+D:\SEMESTER IN FPT\SPRING2026\SWP391\flood-rescue-frontend\src\pages\admin\AuditLogsPage.jsx
+  57:5  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  55 |
+  56 |   useEffect(() => {
+> 57 |     loadLogs();
+     |     ^^^^^^^^ Avoid calling setState() directly within an effect
+  58 |   }, []);
+  59 |
+  60 |   const levelClass = (level) => {  react-hooks/set-state-in-effect
+  58:6  warning  React Hook useEffect has a missing dependency: 'loadLogs'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          react-hooks/exhaustive-deps
+
+D:\SEMESTER IN FPT\SPRING2026\SWP391\flood-rescue-frontend\src\pages\admin\NotificationTemplatesPage.jsx
+  84:6  warning  React Hook useEffect has a missing dependency: 'loadTemplates'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\SEMESTER IN FPT\SPRING2026\SWP391\flood-rescue-frontend\src\pages\admin\RolesPermissionsPage.jsx
+  66:6  warning  React Hook useEffect has a missing dependency: 'loadData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  87:6  warning  React Hook useEffect has a missing dependency: 'token'. Either include it or remove the dependency array     react-hooks/exhaustive-deps
+
+D:\SEMESTER IN FPT\SPRING2026\SWP391\flood-rescue-frontend\src\pages\admin\SystemCatalogPage.jsx
+  86:6  warning  React Hook useEffect has missing dependencies: 'loadAllItems' and 'loadGroups'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\SEMESTER IN FPT\SPRING2026\SWP391\flood-rescue-frontend\src\pages\admin\SystemSettingsPage.jsx
+  70:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  68 |
+  69 |   useEffect(() => {
+> 70 |     loadSettings();
+     |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  71 |   }, []);
+  72 |
+  73 |   const save = async () => {  react-hooks/set-state-in-effect
+
+D:\SEMESTER IN FPT\SPRING2026\SWP391\flood-rescue-frontend\src\pages\admin\TeamCreatePage.jsx
+   99:47  error  Unnecessary escape character: \"  no-useless-escape
+   99:96  error  Unnecessary escape character: \"  no-useless-escape
+  127:47  error  Unnecessary escape character: \"  no-useless-escape
+  127:96  error  Unnecessary escape character: \"  no-useless-escape
+
+D:\SEMESTER IN FPT\SPRING2026\SWP391\flood-rescue-frontend\src\pages\admin\UserManagementPage.jsx
+  185:6  warning  React Hook useEffect has missing dependencies: 'getStats' and 'getUsers'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  282:9  error    'resetPassword' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                 no-unused-vars
+  371:9  error    'updateStatus' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                  no-unused-vars
+
+D:\SEMESTER IN FPT\SPRING2026\SWP391\flood-rescue-frontend\src\pages\citizen\CItizenDashboard.jsx
+  171:8  warning  React Hook useEffect has a missing dependency: 'loadLatestRejectedRelief'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\SEMESTER IN FPT\SPRING2026\SWP391\flood-rescue-frontend\src\pages\citizen\ReliefRequestCreatePage.jsx
+  186:8  warning  React Hook useEffect has a missing dependency: 'reverseGeocodeAddress'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\SEMESTER IN FPT\SPRING2026\SWP391\flood-rescue-frontend\src\pages\citizen\ReliefRequestUpdatePage.jsx
+  233:8  warning  React Hook useEffect has a missing dependency: 'newImagePreviews'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\SEMESTER IN FPT\SPRING2026\SWP391\flood-rescue-frontend\src\pages\citizen\RescueRequestCreatePage.jsx
+  127:8  warning  React Hook useEffect has a missing dependency: 'reverseGeocodeAddress'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\SEMESTER IN FPT\SPRING2026\SWP391\flood-rescue-frontend\src\pages\citizen\RescueRequestUpdatePage.jsx
+  199:8  warning  React Hook useEffect has a missing dependency: 'newImagePreviews'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\SEMESTER IN FPT\SPRING2026\SWP391\flood-rescue-frontend\src\pages\coordinator\CoordinatorDashboardPage.jsx
+   21:8   error  'httpClient' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                  no-unused-vars
+   40:9   error  'loadRequestDetail' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+   81:9   error  'setSelectedRequestDetail' is not defined                                                          no-undef
+   82:9   error  'setDetailError' is not defined                                                                    no-undef
+  190:22  error  'error' is not defined                                                                             no-undef
+  192:30  error  'error' is not defined                                                                             no-undef
+  377:65  error  'setError' is not defined                                                                          no-undef
+
+D:\SEMESTER IN FPT\SPRING2026\SWP391\flood-rescue-frontend\src\pages\manager\kho\ReceiptApprovalPage.jsx
+   54:33  error    'setApproveModalLoading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                      no-unused-vars
+   57:12  error    'expandedReceiptDetails' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                      no-unused-vars
+  113:5   warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
+  116:8   warning  React Hook useEffect has a missing dependency: 'fetchReceipts'. Either include it or remove the dependency array. Mutable values like 'pagination.current' aren't valid dependencies because mutating them doesn't re-render the component  react-hooks/exhaustive-deps
+
+D:\SEMESTER IN FPT\SPRING2026\SWP391\flood-rescue-frontend\src\pages\rescuer\RescueUpdateStatusPage.jsx
+  55:11  warning  The 'state' logical expression could make the dependencies of useMemo Hook (at line 72) change on every render. To fix this, wrap the initialization of 'state' in its own useMemo() Hook   react-hooks/exhaustive-deps
+  55:11  warning  The 'state' logical expression could make the dependencies of useMemo Hook (at line 89) change on every render. To fix this, wrap the initialization of 'state' in its own useMemo() Hook   react-hooks/exhaustive-deps
+  55:11  warning  The 'state' logical expression could make the dependencies of useMemo Hook (at line 111) change on every render. To fix this, wrap the initialization of 'state' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  55:11  warning  The 'state' logical expression could make the dependencies of useMemo Hook (at line 161) change on every render. To fix this, wrap the initialization of 'state' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+Γ£û 48 problems (28 errors, 20 warnings)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
+

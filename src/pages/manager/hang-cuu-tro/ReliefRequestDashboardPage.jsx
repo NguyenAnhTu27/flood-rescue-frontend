@@ -1,80 +1,36 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Download, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { MANAGER_ROUTES } from '../../../app/routes/route.constants.js';
 import { listReliefRequests, getAreas, getItemCategories } from '../../../features/relief/api.js';
 
 const STATUS_FILTERS = [
-    { id: 'all', label: 'Tất cả', value: null, count: 128 },
-    { id: 'pending', label: 'Chờ duyệt', value: 'PENDING', count: 42, color: 'bg-yellow-500' },
-    { id: 'approved', label: 'Đã duyệt', value: 'APPROVED', count: 76, color: 'bg-green-500' },
-    { id: 'rejected', label: 'Từ chối', value: 'REJECTED', count: 10, color: 'bg-red-500' },
+    { id: 'all', label: 'Tất cả', value: null },
+    { id: 'draft', label: 'Chờ duyệt', value: 'DRAFT', color: 'bg-yellow-500' },
+    { id: 'approved', label: 'Đã duyệt', value: 'APPROVED', color: 'bg-blue-500' },
+    { id: 'done', label: 'Hoàn thành', value: 'DONE', color: 'bg-green-500' },
+    { id: 'cancelled', label: 'Đã huỷ', value: 'CANCELLED', color: 'bg-red-500' },
 ];
 
 const STATUS_BADGES = {
-    PENDING: { label: 'Chờ duyệt', className: 'bg-yellow-100 text-yellow-700' },
-    APPROVED: { label: 'Đã duyệt', className: 'bg-green-100 text-green-700' },
+    DRAFT: { label: 'Chờ duyệt', className: 'bg-yellow-100 text-yellow-700' },
+    APPROVED: { label: 'Đã duyệt', className: 'bg-blue-100 text-blue-700' },
+    DONE: { label: 'Hoàn thành', className: 'bg-green-100 text-green-700' },
+    CANCELLED: { label: 'Đã huỷ', className: 'bg-red-100 text-red-700' },
+};
+
+const DELIVERY_BADGES = {
+    REQUESTED: { label: 'Mới tạo', className: 'bg-slate-100 text-slate-600' },
+    MANAGER_APPROVED: { label: 'Đã duyệt', className: 'bg-blue-100 text-blue-700' },
+    RESCUER_RECEIVED: { label: 'Đã nhận', className: 'bg-cyan-100 text-cyan-700' },
+    ARRIVED_WAREHOUSE: { label: 'Đã tới kho', className: 'bg-indigo-100 text-indigo-700' },
+    ARRIVED_RELIEF_POINT: { label: 'Đang giao', className: 'bg-amber-100 text-amber-700' },
+    COMPLETED: { label: 'Hoàn thành', className: 'bg-green-100 text-green-700' },
+    RETURNED_TO_WAREHOUSE: { label: 'Trả kho', className: 'bg-orange-100 text-orange-700' },
     REJECTED: { label: 'Từ chối', className: 'bg-red-100 text-red-700' },
 };
 
-const PENDING_STATUSES = new Set(['PENDING', 'PENDING_APPROVAL', 'WAITING_APPROVAL', 'CHO_DUYET']);
 
-const normalizeStatus = (status) => {
-    const normalized = String(status || '').trim().toUpperCase();
-    if (PENDING_STATUSES.has(normalized)) return 'PENDING';
-    if (normalized === 'APPROVED') return 'APPROVED';
-    if (normalized === 'REJECTED') return 'REJECTED';
-    return normalized || 'PENDING';
-};
-
-// Mock data - sẽ được thay thế bằng API
-const mockRequests = [
-    {
-        id: 'REQ-1024',
-        code: 'REQ-1024',
-        sender: { name: 'Nguyễn Văn An', phone: '0905 123 456' },
-        area: 'Huyện Lệ Thủy, Quảng Bình',
-        items: ['Gạo', 'Nước sạch', 'Mi tôm'],
-        dateSent: '20/10/2023',
-        status: 'PENDING',
-    },
-    {
-        id: 'REQ-1023',
-        code: 'REQ-1023',
-        sender: { name: 'Trần Thị Hoa', phone: '0987 654 321' },
-        area: 'Thị xã Ba Đồn, Quảng Bình',
-        items: ['Thuốc men', 'Chăn màn'],
-        dateSent: '19/10/2023',
-        status: 'APPROVED',
-    },
-    {
-        id: 'REQ-1022',
-        code: 'REQ-1022',
-        sender: { name: 'Lê Minh Đức', phone: '0912 345 678' },
-        area: 'Huyện Cam Lộ, Quảng Trị',
-        items: ['Áo phao', 'Pin dự phòng'],
-        dateSent: '19/10/2023',
-        status: 'REJECTED',
-    },
-    {
-        id: 'REQ-1021',
-        code: 'REQ-1021',
-        sender: { name: 'Phạm Thu Trang', phone: '0933 987 654' },
-        area: 'Huyện Hương Khê, Hà Tĩnh',
-        items: ['Sữa trẻ em', 'Thực phẩm khô'],
-        dateSent: '18/10/2023',
-        status: 'PENDING',
-    },
-    {
-        id: 'REQ-1020',
-        code: 'REQ-1020',
-        sender: { name: 'Hoàng Văn Thái', phone: '0944 222 333' },
-        area: 'Huyện Kỳ Anh, Hà Tĩnh',
-        items: ['Gạo', 'Dầu ăn'],
-        dateSent: '18/10/2023',
-        status: 'PENDING',
-    },
-];
 
 const ITEMS_PER_PAGE = 5;
 
@@ -82,17 +38,12 @@ export default function ReliefRequestDashboardPage() {
     const navigate = useNavigate();
     const [statusFilter, setStatusFilter] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [areas, setAreas] = useState([]); // Danh sách khu vực để map targetAreaId -> name
-    const [itemCategories, setItemCategories] = useState([]); // Danh sách loại hàng để map itemCategoryId -> name
-    const [stats, setStats] = useState({
-        all: 128,
-        pending: 42,
-        approved: 76,
-        rejected: 10,
-    });
+    const [areas, setAreas] = useState([]);
+    const [itemCategories, setItemCategories] = useState([]);
 
     // Load areas and item categories for mapping
     useEffect(() => {
@@ -145,20 +96,24 @@ export default function ReliefRequestDashboardPage() {
 
                 // Parse response format
                 let requestsList = [];
-                let totalCount = 0;
-
+                let serverTotalPages = 1;
                 if (Array.isArray(data)) {
                     requestsList = data;
-                    totalCount = data.length;
                 } else if (Array.isArray(data?.content)) {
                     requestsList = data.content;
-                    totalCount = data.totalElements || data.total || data.content.length;
+                    serverTotalPages = data.totalPages || 1;
                 } else if (Array.isArray(data?.data)) {
                     requestsList = data.data;
-                    totalCount = data.total || data.data.length;
+                    serverTotalPages = data.totalPages || 1;
                 } else if (Array.isArray(data?.items)) {
                     requestsList = data.items;
-                    totalCount = data.total || data.items.length;
+                    serverTotalPages = data.totalPages || 1;
+                }
+
+                if (requestsList.length > ITEMS_PER_PAGE) {
+                     setTotalPages(Math.max(1, Math.ceil(requestsList.length / ITEMS_PER_PAGE)));
+                } else {
+                     setTotalPages(serverTotalPages);
                 }
 
                 // Map và normalize dữ liệu requests
@@ -202,45 +157,41 @@ export default function ReliefRequestDashboardPage() {
                     };
                 });
 
-                // Update stats if available
-                if (data?.stats) {
-                    setStats(data.stats);
-                }
-
-                // Nếu API trả về rỗng, dùng mock data
-                setRequests(mappedRequests.length > 0 ? mappedRequests : mockRequests);
+                setRequests(mappedRequests);
             } catch (e) {
-                console.warn('[ReliefRequestDashboardPage] Could not load requests, using mock data:', e);
-                // Nếu API fail, dùng mock data
-                setRequests(mockRequests);
+                console.warn('[ReliefRequestDashboardPage] Could not load requests:', e);
+                setError(e?.message || 'Không thể tải danh sách yêu cầu.');
+                setRequests([]);
             } finally {
                 setLoading(false);
             }
         };
         loadRequests();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, [statusFilter, currentPage, areas, itemCategories]);
 
-    const filteredRequests = useMemo(() => {
-        if (!statusFilter) return requests;
-        return requests.filter((req) => normalizeStatus(req.status) === statusFilter);
-    }, [requests, statusFilter]);
-
-    const totalPages = Math.max(1, Math.ceil((statusFilter ? filteredRequests.length : stats.all) / ITEMS_PER_PAGE));
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const endIndex = startIndex + ITEMS_PER_PAGE;
-    const paginatedRequests = filteredRequests.slice(startIndex, endIndex);
+    const paginatedRequests = useMemo(() => {
+        let list = requests;
+        if (statusFilter && requests.length > ITEMS_PER_PAGE) {
+            list = requests.filter((req) => String(req.status || '').toUpperCase() === statusFilter);
+        }
+        if (requests.length > ITEMS_PER_PAGE) {
+            const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+            return list.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+        }
+        return list;
+    }, [requests, statusFilter, currentPage]);
 
     const handleViewDetail = (request) => {
         // Navigate to detail/verify page
         navigate(`${MANAGER_ROUTES.RELIEF_APPROVE}?id=${request.id}`);
     };
 
-    const handleExportReport = () => {
-        // TODO: Implement export functionality
-        console.log('Export report with filters:', { statusFilter });
-        window.alert('Tính năng xuất báo cáo đang được phát triển');
-    };
+    // const handleExportReport = () => {
+    //     // TODO: Implement export functionality
+    //     console.log('Export report with filters:', { statusFilter });
+    //     window.alert('Tính năng xuất báo cáo đang được phát triển');
+    // };
 
     const handleCreateDistributionVoucher = () => {
         navigate(MANAGER_ROUTES.DISTRIBUTION_VOUCHER);
@@ -261,7 +212,6 @@ export default function ReliefRequestDashboardPage() {
                 <div className="flex flex-wrap items-center gap-2">
                     {STATUS_FILTERS.map((filter) => {
                         const isActive = statusFilter === filter.value;
-                        const count = stats[filter.id] || filter.count || 0;
                         return (
                             <button
                                 key={filter.id}
@@ -274,7 +224,7 @@ export default function ReliefRequestDashboardPage() {
                                     : 'bg-white text-slate-700 hover:bg-slate-50'
                                     }`}
                             >
-                                {filter.label} {count}
+                                {filter.label}
                                 {!isActive && filter.color && (
                                     <span className={`h-2 w-2 rounded-full ${filter.color}`} />
                                 )}
@@ -333,16 +283,20 @@ export default function ReliefRequestDashboardPage() {
                                             TRẠNG THÁI
                                         </th>
                                         <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-700">
+                                            GIAO HÀNG
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-700">
                                             THAO TÁC
                                         </th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-200 bg-white">
                                     {paginatedRequests.map((request) => {
-                                        const normalizedStatus = normalizeStatus(request.status);
-                                        const statusKey = STATUS_BADGES[normalizedStatus] ? normalizedStatus : 'PENDING';
-                                        const statusBadge = STATUS_BADGES[statusKey];
-                                        const isPending = statusKey === 'PENDING';
+                                        const statusKey = String(request.status || 'DRAFT').toUpperCase();
+                                        const statusBadge = STATUS_BADGES[statusKey] || STATUS_BADGES.DRAFT;
+                                        const deliveryKey = String(request.deliveryStatus || '').toUpperCase();
+                                        const deliveryBadge = DELIVERY_BADGES[deliveryKey] || null;
+                                        const isPending = statusKey === 'DRAFT';
                                         return (
                                             <tr key={request.id} className="hover:bg-slate-50">
                                                 <td className="whitespace-nowrap px-6 py-4">
@@ -394,6 +348,15 @@ export default function ReliefRequestDashboardPage() {
                                                     </span>
                                                 </td>
                                                 <td className="whitespace-nowrap px-6 py-4">
+                                                    {deliveryBadge && (
+                                                        <span
+                                                            className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${deliveryBadge.className}`}
+                                                        >
+                                                            {deliveryBadge.label}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="whitespace-nowrap px-6 py-4">
                                                     <button
                                                         onClick={() => handleViewDetail(request)}
                                                         className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium transition ${isPending
@@ -401,8 +364,7 @@ export default function ReliefRequestDashboardPage() {
                                                             : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                                                             }`}
                                                     >
-
-                                                        {isPending ? 'xác minh' : 'Chi tiết'}
+                                                        {isPending ? 'Xác minh' : 'Chi tiết'}
                                                     </button>
                                                 </td>
                                             </tr>
@@ -425,8 +387,7 @@ export default function ReliefRequestDashboardPage() {
             {/* ===== PAGINATION ===== */}
             <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
                 <p className="text-sm text-slate-500">
-                    Hiển thị {startIndex + 1}-{Math.min(endIndex, filteredRequests.length)} trong{' '}
-                    {statusFilter ? filteredRequests.length : stats.all} yêu cầu
+                    Trang {currentPage} / {totalPages}
                 </p>
                 <div className="flex items-center gap-1">
                     <button

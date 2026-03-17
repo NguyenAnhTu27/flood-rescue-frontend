@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { MAPBOX_ACCESS_TOKEN } from '../../../app/config/env.js';
@@ -30,8 +30,14 @@ export default function MissionMapView({
     const mapRef = useRef(null);
     const markerRef = useRef(null);
     const [isLoaded, setIsLoaded] = useState(false);
-    const target = useMemo(() => markerPosition || center, [center, markerPosition]);
+    const fallbackLat = 10.8231;
+    const fallbackLng = 106.6297;
+    const targetLat = Number(markerPosition?.lat ?? center?.lat ?? fallbackLat);
+    const targetLng = Number(markerPosition?.lng ?? center?.lng ?? fallbackLng);
+    const safeLat = Number.isFinite(targetLat) ? targetLat : fallbackLat;
+    const safeLng = Number.isFinite(targetLng) ? targetLng : fallbackLng;
 
+    /* eslint-disable react-hooks/exhaustive-deps */
     useEffect(() => {
         if (!containerRef.current || mapRef.current) return;
         mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN || '';
@@ -39,7 +45,7 @@ export default function MissionMapView({
         const map = new mapboxgl.Map({
             container: containerRef.current,
             style: getMapStyle(),
-            center: [Number(target.lng), Number(target.lat)],
+            center: [safeLng, safeLat],
             zoom: Number(zoom) || 15,
             interactive: false,
         });
@@ -47,7 +53,7 @@ export default function MissionMapView({
         map.on('load', () => setIsLoaded(true));
 
         const marker = new mapboxgl.Marker({ draggable: false, color: '#ef4444' })
-            .setLngLat([Number(target.lng), Number(target.lat)])
+            .setLngLat([safeLng, safeLat])
             .addTo(map);
 
         mapRef.current = map;
@@ -60,18 +66,16 @@ export default function MissionMapView({
             mapRef.current = null;
             setIsLoaded(false);
         };
-    }, [target, zoom]);
+    }, []);
+    /* eslint-enable react-hooks/exhaustive-deps */
 
     useEffect(() => {
         const map = mapRef.current;
         const marker = markerRef.current;
         if (!map || !marker) return;
-        if (!Number.isFinite(Number(target.lat)) || !Number.isFinite(Number(target.lng))) return;
-        const lng = Number(target.lng);
-        const lat = Number(target.lat);
-        marker.setLngLat([lng, lat]);
-        map.jumpTo({ center: [lng, lat] });
-    }, [target]);
+        marker.setLngLat([safeLng, safeLat]);
+        map.jumpTo({ center: [safeLng, safeLat], zoom: Number(zoom) || 15 });
+    }, [safeLat, safeLng, zoom]);
 
     return (
         <div className="relative h-full w-full">

@@ -13,7 +13,7 @@ mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
  * @param {Object} props.markerPosition - Current marker position { lat, lng }
  * @param {number} props.zoom - Map zoom level (default: 15)
  */
-export default function GoogleMap({
+export default function MapBox({
     center = { lat: 10.8231, lng: 106.6297 },
     onLocationSelect,
     markerPosition,
@@ -44,7 +44,7 @@ export default function GoogleMap({
 
     // Initialize map once
     useEffect(() => {
-        if (!containerRef.current || mapRef.current) return;
+        if (!MAPBOX_ACCESS_TOKEN || !containerRef.current || mapRef.current) return;
 
         const map = new mapboxgl.Map({
             container: containerRef.current,
@@ -100,14 +100,25 @@ export default function GoogleMap({
         mapRef.current.flyTo({ center: [markerPosition.lng, markerPosition.lat] });
     }, [markerPosition]);
 
+    if (!MAPBOX_ACCESS_TOKEN) {
+        return (
+            <div className="relative w-full h-full bg-slate-100 rounded-xl flex items-center justify-center border border-slate-200">
+                <div className="text-center p-4">
+                    <p className="text-sm font-semibold text-slate-700">Chưa cấu hình bản đồ</p>
+                    <p className="mt-1 text-xs text-slate-500">Vui lòng thêm VITE_MAPBOX_ACCESS_TOKEN vào file .env</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="relative w-full h-full">
+        <div className="relative w-full h-full bg-slate-100 rounded-xl">
             <div ref={containerRef} className="w-full h-full rounded-xl" />
             {!isLoaded && (
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-100 rounded-xl">
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-100/80 rounded-xl backdrop-blur-sm z-10">
                     <div className="text-center">
                         <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent" />
-                        <p className="mt-2 text-sm text-slate-600">Đang tải bản đồ...</p>
+                        <p className="mt-2 text-sm font-medium text-slate-700">Đang tải bản đồ...</p>
                     </div>
                 </div>
             )}

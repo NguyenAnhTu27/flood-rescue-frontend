@@ -3,9 +3,46 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, MapPin, Phone, FileText, User, Clock } from 'lucide-react';
 import Card from '../../shared/ui/Card.jsx';
 import Button from '../../shared/ui/Button.jsx';
-import GoogleMap from '../../features/map/components/GoogleMap.jsx';
+import MapBox from '../../features/map/components/MapBox.jsx';
 import { getInventoryIssue, getReliefRequest, updateRescuerReliefStatus } from '../../features/relief/api.js';
 import { RESCUER_ROUTES } from '../../app/routes/route.constants.js';
+
+const DELIVERY_STATUS_LABELS = {
+    REQUESTED: 'Mới tạo',
+    MANAGER_APPROVED: 'Đã duyệt',
+    RESCUER_RECEIVED: 'Đã nhận',
+    ARRIVED_WAREHOUSE: 'Đã tới kho',
+    ARRIVED_RELIEF_POINT: 'Đang giao hàng',
+    COMPLETED: 'Hoàn thành',
+    RETURNED_TO_WAREHOUSE: 'Trả kho',
+    REJECTED: 'Từ chối',
+};
+
+const STATUS_LABELS = {
+    DRAFT: 'Chờ duyệt',
+    APPROVED: 'Đã duyệt',
+    DONE: 'Hoàn thành',
+    CANCELLED: 'Đã huỷ',
+};
+
+function getNextActions(deliveryStatus) {
+    const s = String(deliveryStatus || '').toUpperCase();
+    switch (s) {
+        case 'MANAGER_APPROVED':
+            return [{ status: 'RESCUER_RECEIVED', label: 'Đã nhận', variant: 'primary' }];
+        case 'RESCUER_RECEIVED':
+            return [{ status: 'ARRIVED_WAREHOUSE', label: 'Đã tới kho', variant: 'primary' }];
+        case 'ARRIVED_WAREHOUSE':
+            return [{ status: 'ARRIVED_RELIEF_POINT', label: 'Đã tới điểm cứu trợ', variant: 'primary' }];
+        case 'ARRIVED_RELIEF_POINT':
+            return [
+                { status: 'COMPLETED', label: 'Hoàn thành', variant: 'primary' },
+                { status: 'RETURNED_TO_WAREHOUSE', label: 'Trả kho', variant: 'secondary' },
+            ];
+        default:
+            return [];
+    }
+}
 
 function extractCoordinates(req) {
     const lat = Number(req?.citizenLatitude ?? req?.latitude ?? req?.lat);
@@ -50,6 +87,7 @@ export default function ReliefPrioritizeDetailPage() {
     const [updating, setUpdating] = useState(false);
     const [request, setRequest] = useState(null);
     const [issue, setIssue] = useState(null);
+    const [updateNote, setUpdateNote] = useState('');
 
     useEffect(() => {
         const load = async () => {
@@ -100,25 +138,39 @@ export default function ReliefPrioritizeDetailPage() {
         );
     }, [request?.note, request?.contactPhone, request?.citizenPhone, request?.createdByPhone]);
 
-    const statusLabel = useMemo(() => {
+    const deliveryLabel = useMemo(() => {
         const s = String(request?.deliveryStatus || '').toUpperCase();
-        if (s === 'ARRIVED_RELIEF_POINT') return 'Đang giao hàng';
-        if (s === 'COMPLETED') return 'Hoàn thành';
-        if (s === 'ARRIVED_WAREHOUSE') return 'Đã tới kho';
-        if (s === 'RESCUER_RECEIVED') return 'Đã nhận';
-        if (s === 'MANAGER_APPROVED') return 'Đã duyệt';
-        return s || 'REQUESTED';
+        return DELIVERY_STATUS_LABELS[s] || s || 'REQUESTED';
+    }, [request]);
+
+    const statusLabel = useMemo(() => {
+        const s = String(request?.status || '').toUpperCase();
+        return STATUS_LABELS[s] || s || '';
+    }, [request]);
+
+    const nextActions = useMemo(() => {
+        if (String(request?.status || '').toUpperCase() === 'DONE' ||
+            String(request?.status || '').toUpperCase() === 'CANCELLED') {
+            return [];
+        }
+        return getNextActions(request?.deliveryStatus);
     }, [request]);
 
     const handleUpdateStatus = async (status) => {
         if (!request?.id) return;
         try {
             setUpdating(true);
-            await updateRescuerReliefStatus(Number(request.id), { status });
+            setError('');
+            await updateRescuerReliefStatus(Number(request.id), {
+                status,
+                note: updateNote.trim() || undefined,
+            });
+            setUpdateNote('');
             const latest = await getReliefRequest(Number(request.id));
             setRequest(latest || null);
         } catch (e) {
-            window.alert(e?.message || 'Không thể cập nhật trạng thái yêu cầu cứu trợ.');
+            const msg = e?.message || 'Không thể cập nhật trạng thái.';
+            setError(msg);
         } finally {
             setUpdating(false);
         }
@@ -131,34 +183,24 @@ export default function ReliefPrioritizeDetailPage() {
                     <ArrowLeft className="h-4 w-4" />
                     Quay lại sắp xếp cứu trợ
                 </Button>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                        Trạng thái hiện tại: {statusLabel}
+                        Đơn: {statusLabel}
                     </span>
-                    <Button
-                        type="button"
-                        variant="secondary"
-                        disabled={updating}
-                        onClick={() => handleUpdateStatus('ARRIVED_WAREHOUSE')}
-                    >
-                        Chưa đi giao hàng
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="secondary"
-                        disabled={updating}
-                        onClick={() => handleUpdateStatus('ARRIVED_RELIEF_POINT')}
-                    >
-                        Đang giao hàng
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="primary"
-                        disabled={updating}
-                        onClick={() => handleUpdateStatus('COMPLETED')}
-                    >
-                        Hoàn thành
-                    </Button>
+                    <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">
+                        Giao: {deliveryLabel}
+                    </span>
+                    {nextActions.map((action) => (
+                        <Button
+                            key={action.status}
+                            type="button"
+                            variant={action.variant}
+                            disabled={updating}
+                            onClick={() => handleUpdateStatus(action.status)}
+                        >
+                            {updating ? 'Đang xử lý...' : action.label}
+                        </Button>
+                    ))}
                 </div>
             </div>
 
@@ -179,7 +221,7 @@ export default function ReliefPrioritizeDetailPage() {
                                 </div>
                             </div>
                             <div className="h-[460px]">
-                                <GoogleMap
+                                <MapBox
                                     center={coords || { lat: 10.8231, lng: 106.6297 }}
                                     markerPosition={coords || null}
                                     zoom={coords ? 15 : 11}
@@ -263,6 +305,19 @@ export default function ReliefPrioritizeDetailPage() {
                             </div>
                         )}
                     </Card>
+
+                    {nextActions.length > 0 && (
+                        <Card className="p-4">
+                            <div className="mb-2 text-sm font-semibold text-slate-900">Ghi chú cập nhật (tuỳ chọn)</div>
+                            <textarea
+                                value={updateNote}
+                                onChange={(e) => setUpdateNote(e.target.value)}
+                                rows={2}
+                                placeholder="Ghi chú khi cập nhật trạng thái..."
+                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500"
+                            />
+                        </Card>
+                    )}
                 </>
             )}
         </div>

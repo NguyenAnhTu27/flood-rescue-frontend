@@ -1,4 +1,5 @@
 import httpClient from "../../shared/lib/http.js";
+import { normalizePagination } from '../../shared/lib/httpUtils.js';
 
 const DISTRIBUTION_BASE = "/distributions";
 
@@ -9,7 +10,7 @@ export async function createDistributionVoucher(payload) {
 
 // Danh sách phiếu điều phối
 export async function listDistributionVouchers(params = {}) {
-  return await httpClient.get(DISTRIBUTION_BASE, { params });
+  return httpClient.get(DISTRIBUTION_BASE, { params: normalizePagination(params) });
 }
 
 // (Optional) Lấy chi tiết phiếu điều phối

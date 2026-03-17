@@ -15,6 +15,7 @@ export default function AttachmentGallery({ files = [], onChange, maxFiles = 10,
     const [previews, setPreviews] = useState([]);
 
     // Create preview URLs when files change
+    /* eslint-disable react-hooks/exhaustive-deps */
     useEffect(() => {
         const newPreviews = files.map(file => ({
             file,
@@ -35,6 +36,7 @@ export default function AttachmentGallery({ files = [], onChange, maxFiles = 10,
             newPreviews.forEach(preview => URL.revokeObjectURL(preview.url));
         };
     }, [files]);
+    /* eslint-enable react-hooks/exhaustive-deps */
 
     const handleFileChange = (e) => {
         const selectedFiles = Array.from(e.target.files || []);

@@ -1,362 +1,145 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
-import {
-    Home as HomeIcon,
-    MapPin,
-    LogIn,
-    BellRing,
-    HeartPulse,
-    Mail,
-    Phone,
-    Facebook,
-    Twitter,
-    Youtube,
-} from "lucide-react";
+import { ArrowRight, BellRing, HeartPulse, MapPin, ShieldCheck, Truck, Waves, Radar, LifeBuoy } from "lucide-react";
 
-import { AUTH_ROUTES, PUBLIC_ROUTES, CITIZEN_ROUTES } from "../../app/routes/route.constants.js";
-import httpClient from "../../shared/lib/http.js";
+import { AUTH_ROUTES, PUBLIC_ROUTES } from "../../app/routes/route.constants.js";
 
-const normalizeExternalUrl = (url) => {
-    const value = String(url || "").trim();
-    if (!value || value === "#") return "#";
-    if (value.startsWith("/")) return value;
-    const lower = value.toLowerCase();
-    if (lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("mailto:") || lower.startsWith("tel:")) {
-        return value;
-    }
-    return `https://${value}`;
-};
-
-const resolveFooterLink = (rawUrl, fallbackPath) => {
-    const value = String(rawUrl || "").trim();
-    if (!value || value === "#") return fallbackPath;
-    return normalizeExternalUrl(value);
-};
-
-/** ============ Small UI helpers ============ */
 function Container({ children, className = "" }) {
-    return <div className={`mx-auto w-full max-w-[90%] px-2 lg:px-3 ${className}`}>{children}</div>;
+    return <div className={`mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 ${className}`}>{children}</div>;
 }
 
-function IconBadge({ children, className = "" }) {
-    return (
-        <div
-            className={[
-                "flex items-center justify-center rounded-xl",
-                "h-10 w-10 sm:h-11 sm:w-11",
-                "bg-blue-50 border border-blue-100",
-                "shrink-0",
-                className,
-            ].join(" ")}
-        >
-            {children}
-        </div>
-    );
-}
+const CAPABILITIES = [
+    { icon: Radar, title: "Theo dõi thời gian thực", body: "Nhận cảnh báo và cập nhật hiện trường liên tục từ đội điều phối." },
+    { icon: BellRing, title: "Yêu cầu cứu hộ tức thì", body: "Gửi tín hiệu khẩn cấp với vị trí và tình trạng chỉ trong vài chạm." },
+    { icon: Truck, title: "Điều phối cứu trợ", body: "Phân bổ nhu yếu phẩm và phương tiện theo mức độ ưu tiên." },
+    { icon: ShieldCheck, title: "Quy trình rõ ràng", body: "Thông tin, liên hệ và hướng dẫn an toàn được chuẩn hóa trên cùng một hệ." },
+];
 
-function PrimaryButton({ to, children }) {
-    return (
-        <Link
-            to={to}
-            className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 hover:shadow-md"
-        >
-            {children}
-        </Link>
-    );
-}
+const SCENARIOS = [
+    { icon: MapPin, title: "Xác định vị trí an toàn", body: "Xem hướng dẫn thoát hiểm, khu vực sơ tán và điểm tập kết gần nhất." },
+    { icon: LifeBuoy, title: "Liên hệ hỗ trợ nhanh", body: "Tập trung đầu mối liên lạc, hotline và nội dung công khai quan trọng." },
+    { icon: HeartPulse, title: "Ưu tiên người yếu thế", body: "Cung cấp checklist riêng cho người già, trẻ nhỏ và người cần hỗ trợ y tế." },
+];
 
-function SecondaryButton({ to, children }) {
-    return (
-        <Link
-            to={to}
-            className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-        >
-            {children}
-        </Link>
-    );
-}
+const HERO_STEPS = [
+    { title: "Mở hướng dẫn khẩn cấp", body: "Đọc theo đúng thứ tự hành động trước khi di chuyển hoặc liên lạc." },
+    { title: "Kiểm tra đầu mối hỗ trợ", body: "Xác định ngay hotline, email và nơi tiếp nhận thông tin phù hợp." },
+    { title: "Gửi yêu cầu cứu hộ", body: "Đăng nhập để gửi vị trí, tình trạng và cập nhật khẩn cấp." },
+];
 
 export default function HomePage() {
-    const [footerSettings, setFooterSettings] = useState({
-        footerBrandName: "QUẢN LÝ CỨU HỘ",
-        footerDescription: "Hệ thống hỗ trợ cộng đồng trong tình huống thiên tai khẩn cấp. Thông tin được bảo mật và điều phối theo quy định của cơ quan chức năng.",
-        footerTermsLabel: "Điều khoản sử dụng",
-        footerTermsUrl: PUBLIC_ROUTES.TERMS_OF_USE,
-        footerPrivacyLabel: "Chính sách bảo mật",
-        footerPrivacyUrl: PUBLIC_ROUTES.PRIVACY_POLICY,
-        footerSupportLabel: "Liên hệ hỗ trợ",
-        footerSupportUrl: PUBLIC_ROUTES.SUPPORT_CONTACT,
-        footerSupportEmail: "support@cuuho.gov.vn",
-        hotline: "1900-xxxx",
-        footerFacebookUrl: "#",
-        footerTwitterUrl: "#",
-        footerYoutubeUrl: "#",
-        footerCopyright: "© 2024 Hệ thống Quản lý Cứu hộ - Cứu trợ. Bản quyền thuộc về Cơ quan chủ quản.",
-    });
-
-    useEffect(() => {
-        const loadRuntimeSettings = async () => {
-            try {
-                const runtime = await httpClient.get("/public/runtime-settings");
-                setFooterSettings((prev) => ({
-                    ...prev,
-                    ...runtime,
-                }));
-            } catch (err) {
-                console.error("[HomePage] load runtime settings error:", err);
-            }
-        };
-        loadRuntimeSettings();
-    }, []);
-
     return (
-        <div className="min-h-screen bg-white text-slate-900">
-            {/* ================= Header ================= */}
-            <header className="sticky top-0 z-50 border-b border-slate-200  bg-white/90 backdrop-blur">
-                <Container>
-                    <div className="flex h-14 items-center justify-between">
-                        {/* Logo */}
-                        <div className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
-                                <HomeIcon className="text-white" size={18} strokeWidth={2.2} />
+        <div className="space-y-14 sm:space-y-16">
+            <Container>
+                <section className="space-y-7">
+                    <article className="glass-card reveal-rise relative overflow-hidden px-7 py-8 sm:px-10 sm:py-10 lg:px-12 lg:py-12">
+                        <div className="pointer-events-none absolute -left-10 top-8 h-36 w-36 rounded-full bg-cyan-200/30 blur-3xl" />
+                        <div className="pointer-events-none absolute right-0 top-0 h-44 w-44 rounded-full bg-blue-200/35 blur-3xl" />
+                        <div className="relative max-w-3xl">
+                            <span className="glass-chip text-blue-700">
+                                <Waves size={16} className="text-blue-600" />
+                                Ứng phó khẩn cấp mùa mưa lũ
+                            </span>
+                            <h1 className="mt-5 text-4xl font-extrabold leading-[1.08] tracking-[-0.04em] text-slate-900 sm:text-5xl lg:text-6xl">
+                                3 bước rõ ràng để nhận hỗ trợ ngay khi cần
+                            </h1>
+                            <p className="mt-6 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
+                                Hướng tiếp cận mới ưu tiên bình tĩnh và hành động nhanh: đọc hướng dẫn, xác định đầu mối hỗ trợ, sau đó gửi yêu cầu cứu hộ chính thức.
+                            </p>
+
+                            <div className="mt-8 flex flex-wrap gap-3">
+                                <Link
+                                    to={AUTH_ROUTES.LOGIN}
+                                    className="inline-flex items-center gap-2 rounded-[18px] bg-blue-600 px-6 py-3.5 text-sm font-semibold text-white shadow-[0_16px_30px_rgba(37,99,235,0.28)] transition hover:-translate-y-0.5 hover:bg-blue-700"
+                                >
+                                    Gửi yêu cầu cứu hộ
+                                    <ArrowRight size={16} />
+                                </Link>
+                                <Link to={PUBLIC_ROUTES.EMERGENCY_GUIDE} className="inline-flex items-center rounded-[18px] border border-slate-200 bg-white px-6 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                                    Mở hướng dẫn khẩn cấp
+                                </Link>
                             </div>
-                            <span className="text-sm font-bold tracking-wide">QUẢN LÝ CỨU HỘ</span>
                         </div>
+                    </article>
 
-                        {/* Nav */}
-                        <nav className="hidden items-center gap-8 md:flex">
-                            <Link to={PUBLIC_ROUTES.HOME} className="text-sm font-medium text-slate-700 hover:text-blue-600">
-                                Giới thiệu
-                            </Link>
-                            <Link
-                                to={PUBLIC_ROUTES.EMERGENCY_GUIDE}
-                                className="text-sm font-medium text-slate-700 hover:text-blue-600"
-                            >
-                                Hướng dẫn
-                            </Link>
-                            <Link to={PUBLIC_ROUTES.SUPPORT_CONTACT} className="text-sm font-medium text-slate-700 hover:text-blue-600">
-                                Liên hệ
-                            </Link>
-                        </nav>
+                    <aside className="glass-card reveal-rise overflow-hidden bg-[linear-gradient(145deg,rgba(37,99,235,0.94),rgba(8,145,178,0.82))] px-6 py-7 text-white sm:px-7" style={{ animationDelay: '120ms' }}>
+                        <p className="text-xs font-bold uppercase tracking-[0.24em] text-cyan-100">Checklist hành động</p>
+                        <h2 className="mt-3 text-3xl font-extrabold tracking-[-0.04em]">Việc cần làm ngay trong 60 giây đầu</h2>
+                        <div className="mt-6 space-y-4">
+                            {HERO_STEPS.map((item, index) => (
+                                <article key={item.title} className="rounded-[22px] border border-white/20 bg-white/10 px-5 py-4 backdrop-blur-xl">
+                                    <p className="text-sm font-bold uppercase tracking-[0.16em] text-cyan-100">0{index + 1}</p>
+                                    <h3 className="mt-2 text-lg font-bold">{item.title}</h3>
+                                    <p className="mt-2 text-sm leading-7 text-blue-50/90">{item.body}</p>
+                                </article>
+                            ))}
+                        </div>
+                    </aside>
+                </section>
+            </Container>
 
-                        {/* Login */}
-                        <Link
-                            to={AUTH_ROUTES.LOGIN}
-                            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
-                        >
-                            <LogIn size={16} className="shrink-0" />
-                            Đăng nhập
-                        </Link>
+            <Container>
+                <section>
+                    <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-600">Năng lực hệ thống</p>
+                    <h2 className="mt-2 text-3xl font-extrabold tracking-[-0.04em] text-slate-900 sm:text-4xl">Hệ thống hỗ trợ bạn như thế nào</h2>
+                    <div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+                    {CAPABILITIES.map(({ icon: Icon, title, body }) => (
+                        <article key={title} className="glass-card glass-hover reveal-rise px-6 py-6">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-[18px] border border-white/80 bg-white/[0.55] text-blue-600 backdrop-blur-xl">
+                                <Icon size={22} />
+                            </div>
+                            <h3 className="mt-5 text-lg font-extrabold tracking-[-0.02em] text-slate-900">{title}</h3>
+                            <p className="mt-3 text-sm leading-7 text-slate-600">{body}</p>
+                        </article>
+                    ))}
                     </div>
-                </Container>
-            </header>
-
-            {/* ================= Hero ================= */}
-            <main >
-                <section className="pt-10 sm:pt-14">
-                    <Container>
-                        <div className="grid items-center gap-10 lg:grid-cols-2">
-                            {/* Left */}
-                            <div>
-                                <div className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-[11px] font-bold tracking-wider text-blue-700">
-                                    HỆ THỐNG HỖ TRỢ KHẨN CẤP
-                                </div>
-
-                                <h1 className="mt-4 text-3xl font-extrabold leading-tight sm:text-4xl lg:text-5xl">
-                                    Hệ thống Quản lý <br className="hidden sm:block" />
-                                    Cứu hộ - Cứu trợ Lũ lụt
-                                </h1>
-
-                                <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-600 sm:text-base">
-                                    Sứ mệnh kết nối người dân và đội ngũ cứu hộ trong thời gian thực, đảm bảo hỗ trợ nhanh nhất và chính
-                                    xác nhất đến các khu vực bị ảnh hưởng bởi thiên tai.
-                                </p>
-
-                                <div className="mt-6 flex flex-wrap gap-3">
-                                    <PrimaryButton to={AUTH_ROUTES.LOGIN}>Gửi yêu cầu cứu hộ</PrimaryButton>
-                                    <SecondaryButton to={CITIZEN_ROUTES.DASHBOARD}>Theo dõi bản đồ</SecondaryButton>
-                                </div>
-                            </div>
-
-                            {/* Right image card */}
-                            <div className="lg:justify-self-end">
-                                <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-                                    <div className="overflow-hidden rounded-xl bg-slate-100">
-                                        {/* Bạn thay src theo ảnh thật của bạn */}
-                                        <img
-                                            src="https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=1200&auto=format&fit=crop"
-                                            alt="Hero"
-                                            className="h-[280px] w-full object-cover sm:h-[340px] lg:h-[360px] lg:w-[420px]"
-                                            loading="lazy"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </Container>
                 </section>
+            </Container>
 
-                {/* ================= Emergency Guide ================= */}
-                <section className="pt-16 sm:pt-20">
-                    <Container>
-                        <div className="text-center">
-                            <h2 className="text-xl font-extrabold tracking-wide sm:text-2xl">HƯỚNG DẪN KHẨN CẤP</h2>
-                            <p className="mx-auto mt-2 max-w-2xl text-sm text-slate-600 sm:text-base">
-                                Các bước cần thực hiện ngay lập tức để đảm bảo an toàn cho bản thân và gia đình khi lũ lụt xảy ra.
-                            </p>
-                        </div>
-
-                        <div className="mt-10 grid gap-4 sm:gap-6 md:grid-cols-3">
-                            {/* Card 1 */}
-                            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-                                <IconBadge>
-                                    <BellRing className="text-blue-600" size={20} />
-                                </IconBadge>
-                                <h3 className="mt-4 text-sm font-bold sm:text-base">Tiếp nhận thông tin</h3>
-                                <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                                    Luôn cập nhật thông tin từ các nguồn chính thống, sạc đầy pin điện thoại và chuẩn bị sẵn pin dự phòng.
-                                </p>
+            <Container>
+                <section className="space-y-5">
+                    <div className="grid gap-4 sm:grid-cols-3">
+                        {[
+                            { value: "24/7", label: "Hỗ trợ liên tục" },
+                            { value: "100+", label: "Đội cứu hộ" },
+                            { value: "63", label: "Tỉnh thành" },
+                        ].map((item) => (
+                            <div key={item.label} className="glass-panel rounded-[24px] px-5 py-5">
+                                <p className="text-3xl font-extrabold tracking-[-0.04em] text-blue-700">{item.value}</p>
+                                <p className="mt-1 text-sm text-slate-500">{item.label}</p>
                             </div>
+                        ))}
+                    </div>
 
-                            {/* Card 2 */}
-                            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-                                <IconBadge>
-                                    <MapPin className="text-blue-600" size={20} />
-                                </IconBadge>
-                                <h3 className="mt-4 text-sm font-bold sm:text-base">Xác định vị trí</h3>
-                                <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                                    Sử dụng bản đồ của hệ thống để tìm khu vực an toàn hoặc gửi tọa độ GPS cho đội cứu hộ.
-                                </p>
-                            </div>
-
-                            {/* Card 3 */}
-                            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-                                <IconBadge>
-                                    <HeartPulse className="text-blue-600" size={20} />
-                                </IconBadge>
-                                <h3 className="mt-4 text-sm font-bold sm:text-base">Hỗ trợ y tế</h3>
-                                <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                                    Thực hiện sơ cứu cơ bản và thông báo ngay cho hệ thống nếu có người bị thương cần hỗ trợ y tế khẩn cấp.
-                                </p>
-                            </div>
-                        </div>
-                    </Container>
-                </section>
-
-                {/* ================= CTA Box (gray) ================= */}
-                <section className="pt-16 sm:pt-20">
-                    <Container>
-                        <div className="rounded-2xl bg-slate-100 px-5 py-10 text-center sm:px-10">
-                            <h3 className="text-xl font-extrabold sm:text-2xl">Bạn đang cần hỗ trợ khẩn cấp?</h3>
-                            <p className="mx-auto mt-3 max-w-2xl text-sm text-slate-600 sm:text-base">
-                                Đừng ngần ngại. Hãy đăng nhập để gửi yêu cầu cứu hộ hoặc kiểm tra trên bản đồ cứu hộ ngay bây giờ.
-                            </p>
-
-                            <div className="mt-6 flex flex-wrap justify-center gap-3">
-                                <PrimaryButton to={AUTH_ROUTES.REGISTER}>Đăng ký nhận hỗ trợ</PrimaryButton>
-                                <SecondaryButton to="#">Xem bản đồ cứu hộ</SecondaryButton>
-                            </div>
-                        </div>
-                    </Container>
-                </section>
-
-                {/* ================= Footer ================= */}
-                <footer className="mt-16 border-t border-slate-200 bg-white">
-                    <Container className="py-10">
-                        <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
-                            {/* Left */}
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
-                                        <HomeIcon className="text-white" size={18} strokeWidth={2.2} />
+                    <details className="glass-card reveal-rise rounded-[28px] px-7 py-6 sm:px-8">
+                        <summary className="cursor-pointer text-2xl font-extrabold tracking-[-0.03em] text-slate-900 sm:text-3xl">
+                            Xem thêm tài nguyên công khai trước khi đăng nhập
+                        </summary>
+                        <p className="mt-4 max-w-3xl text-sm leading-8 text-slate-600">
+                            Tài nguyên mở rộng giúp người dân nhận diện tình huống, chuẩn bị liên hệ và ưu tiên nhóm dễ tổn thương trước khi gửi yêu cầu chính thức.
+                        </p>
+                        <div className="mt-6 grid gap-5 md:grid-cols-3">
+                            {SCENARIOS.map(({ icon: Icon, title, body }) => (
+                                <article key={title} className="glass-card glass-hover reveal-rise px-6 py-6">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-[18px] border border-white/80 bg-white/[0.55] text-blue-600 backdrop-blur-xl">
+                                        <Icon size={21} />
                                     </div>
-                                    <span className="text-sm font-bold">{footerSettings.footerBrandName}</span>
-                                </div>
-                                <p className="max-w-md text-xs leading-relaxed text-slate-500 sm:text-sm">
-                                    {footerSettings.footerDescription}
-                                </p>
-                            </div>
-
-                            {/* Mid links */}
-                            <div className="flex gap-10">
-                                <div>
-                                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Liên kết</h4>
-                                    <ul className="mt-3 space-y-2 text-sm text-slate-600">
-                                        <li>
-                                            <a href={resolveFooterLink(footerSettings.footerTermsUrl, PUBLIC_ROUTES.TERMS_OF_USE)} target="_blank" rel="noreferrer" className="hover:text-blue-600">
-                                                {footerSettings.footerTermsLabel}
-                                            </a>
-                                        </li>
-                                        <li>
-                                            <a href={resolveFooterLink(footerSettings.footerPrivacyUrl, PUBLIC_ROUTES.PRIVACY_POLICY)} target="_blank" rel="noreferrer" className="hover:text-blue-600">
-                                                {footerSettings.footerPrivacyLabel}
-                                            </a>
-                                        </li>
-                                        <li>
-                                            <a href={resolveFooterLink(footerSettings.footerSupportUrl, PUBLIC_ROUTES.SUPPORT_CONTACT)} target="_blank" rel="noreferrer" className="hover:text-blue-600">
-                                                {footerSettings.footerSupportLabel}
-                                            </a>
-                                        </li>
-                                    </ul>
-                                </div>
-
-                                <div>
-                                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Thông tin</h4>
-                                    <div className="mt-3 space-y-2 text-sm text-slate-600">
-                                        <div className="flex items-center gap-2">
-                                            <Mail size={16} className="shrink-0 text-slate-500" />
-                                            <a href={normalizeExternalUrl(`mailto:${footerSettings.footerSupportEmail || ""}`)} className="break-all hover:text-blue-600">
-                                                {footerSettings.footerSupportEmail}
-                                            </a>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Phone size={16} className="shrink-0 text-slate-500" />
-                                            <a href={normalizeExternalUrl(`tel:${footerSettings.hotline || ""}`)} className="hover:text-blue-600">
-                                                {footerSettings.hotline || "1900-xxxx"}
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Social */}
-                            <div className="md:text-right">
-                                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Kết nối</h4>
-                                <div className="mt-3 flex gap-3 md:justify-end">
-                                    <a
-                                        href={normalizeExternalUrl(footerSettings.footerFacebookUrl)}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-50"
-                                    >
-                                        <Facebook size={16} className="text-slate-600" />
-                                    </a>
-                                    <a
-                                        href={normalizeExternalUrl(footerSettings.footerTwitterUrl)}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-50"
-                                    >
-                                        <Twitter size={16} className="text-slate-600" />
-                                    </a>
-                                    <a
-                                        href={normalizeExternalUrl(footerSettings.footerYoutubeUrl)}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-50"
-                                    >
-                                        <Youtube size={16} className="text-slate-600" />
-                                    </a>
-                                </div>
-                            </div>
+                                    <h3 className="mt-5 text-lg font-extrabold tracking-[-0.02em] text-slate-900">{title}</h3>
+                                    <p className="mt-3 text-sm leading-7 text-slate-600">{body}</p>
+                                </article>
+                            ))}
                         </div>
-
-                        <div className="mt-8 border-t border-slate-200 pt-6 text-center text-xs text-slate-500 sm:text-sm">
-                            {footerSettings.footerCopyright}
+                        <div className="mt-6 flex flex-wrap gap-3">
+                            <Link to={PUBLIC_ROUTES.EMERGENCY_GUIDE} className="glass-chip rounded-[18px] px-5 py-3 font-semibold">
+                                Xem hướng dẫn chi tiết
+                            </Link>
+                            <Link to={PUBLIC_ROUTES.SUPPORT_CONTACT} className="glass-chip rounded-[18px] px-5 py-3 font-semibold">
+                                Xem thông tin hỗ trợ
+                            </Link>
                         </div>
-                    </Container>
-                </footer>
-            </main>
+                    </details>
+                </section>
+            </Container>
         </div>
     );
 }

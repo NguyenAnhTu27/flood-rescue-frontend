@@ -140,9 +140,9 @@ export default function ManagerDashboard() {
                 {
                     id: 'central-warehouse',
                     label: 'Kho Trung tâm',
-                    value: String(warehouseCount),
+                    value: '1',
                     unit: 'Kho',
-                    sub: warehouseCount > 0 ? 'Dữ liệu theo hệ thống' : 'Chưa có dữ liệu',
+                    sub: 'Kho trung tâm duy nhất',
                     icon: Warehouse,
                     highlighted: false,
                 },
@@ -180,7 +180,7 @@ export default function ManagerDashboard() {
                     unit: 'Đơn',
                     sub: `${processingDistributionCount} đang xử lý`,
                     icon: Package,
-                    highlighted: true,
+                    highlighted: false,
                 },
             ]);
 
@@ -317,25 +317,23 @@ export default function ManagerDashboard() {
             </div>
 
             {error && (
-                <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700">{error}</div>
+                <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700">{error}</div>
             )}
 
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-                {stats.map((stat) => {
+                {stats.map((stat, idx) => {
                     const Icon = stat.icon;
                     const isHighlighted = Boolean(stat.highlighted);
                     return (
                         <div
                             key={stat.id}
-                            className={`relative overflow-hidden rounded-xl border p-4 shadow-sm transition hover:shadow-md ${isHighlighted ? 'border-blue-200 bg-blue-600 text-white' : 'border-slate-200 bg-white'}`}
+                            className="animate-fade-in-up relative overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md"
+                            style={{ animationDelay: `${idx * 60}ms` }}
                         >
                             <div className="flex items-start justify-between">
-                                <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${isHighlighted ? 'bg-white/20' : 'bg-slate-100'}`}>
-                                    <Icon className={`h-5 w-5 ${isHighlighted ? 'text-white' : 'text-slate-600'}`} />
+                                <div className={`flex h-10 w-10 items-center justify-center rounded-md ${isHighlighted ? 'bg-blue-100' : 'bg-slate-100'}`}>
+                                    <Icon className={`h-5 w-5 ${isHighlighted ? 'text-blue-600' : 'text-slate-600'}`} />
                                 </div>
-                                {isHighlighted && (
-                                    <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold text-white">Đơn phân phối</span>
-                                )}
                             </div>
 
                             <div className="mt-3">
@@ -370,18 +368,18 @@ export default function ManagerDashboard() {
                 </div>
 
                 <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-                    {managementCards.map((card) => (
-                        <div key={card.id} className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
+                    {managementCards.map((card, idx) => (
+                        <div key={card.id} className="animate-fade-in-up group overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:shadow-md active:scale-[0.98]" style={{ animationDelay: `${idx * 80}ms` }}>
                             <div className="relative h-44 overflow-hidden">
                                 <img src={card.image} alt={card.title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
                             </div>
 
                             <div className="p-5">
-                                <h3 className="text-base font-bold text-slate-900">{card.title}</h3>
+                                <h3 className="font-heading text-base font-bold text-slate-900">{card.title}</h3>
                                 <p className="mt-1.5 line-clamp-2 text-sm text-slate-500">{card.description}</p>
 
-                                <Link to={card.route} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700">
+                                <Link to={card.route} className="mt-4 inline-flex items-center gap-2 rounded-md bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-blue-700 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70 focus-visible:ring-offset-2">
                                     Truy cập
                                     <ArrowRight className="h-4 w-4" />
                                 </Link>
@@ -392,7 +390,7 @@ export default function ManagerDashboard() {
             </div>
 
             <div className="grid gap-6 lg:grid-cols-2">
-                <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+                <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
                     <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
                         <h2 className="text-base font-semibold text-slate-900">Giao dịch gần đây</h2>
                         <span className="flex items-center gap-1 text-xs text-slate-400">
@@ -438,7 +436,7 @@ export default function ManagerDashboard() {
                     </div>
                 </div>
 
-                <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+                <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
                     <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
                         <h2 className="text-base font-semibold text-slate-900">Bảng tồn kho hiện có</h2>
                     </div>
@@ -492,7 +490,7 @@ export default function ManagerDashboard() {
                 </div>
             </div>
 
-            <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 px-5 py-4">
+            <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 px-5 py-4">
                 <Info className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
                 <div>
                     <p className="text-sm font-semibold text-blue-900">Lưu ý điều phối</p>

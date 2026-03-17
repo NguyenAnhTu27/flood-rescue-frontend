@@ -4,13 +4,25 @@
 
 import httpClient from '../../shared/lib/http.js';
 
+function extractPayload(response) {
+    const root = response?.data ?? response;
+    if (root?.result && typeof root.result === 'object') {
+        const result = root.result;
+        if (Object.prototype.hasOwnProperty.call(result, 'data')) return result.data;
+        return result;
+    }
+    if (Object.prototype.hasOwnProperty.call(root || {}, 'data')) {
+        return root.data;
+    }
+    return root;
+}
+
 /**
  * Login API
  * @param {Object} credentials - Login credentials
- * @param {string} credentials.email - User email or phone
+ * @param {string} credentials.identifier - User email or phone (BE field: identifier)
  * @param {string} credentials.password - User password
- * @param {string} credentials.role - User role (CITIZEN, COORDINATOR, etc.)
- * @returns {Promise} User data and token
+ * @returns {Promise<{token: string, tokenType: string, userId: number, fullName: string, role: string}>}
  */
 export async function login(credentials) {
     const response = await httpClient.post('/auth/login', credentials);
@@ -23,8 +35,8 @@ export async function login(credentials) {
  * @param {string} userData.fullName - Full name
  * @param {string} userData.phone - Phone number
  * @param {string} userData.email - Email (optional)
- * @param {string} userData.password - Password
- * @returns {Promise} User data and token
+ * @param {string} userData.password - Password (min 6 chars, must contain uppercase, lowercase, digit)
+ * @returns {Promise<{message: string}>} Success message (no token — user must login after register)
  */
 export async function register(userData) {
     const response = await httpClient.post('/auth/register', userData);
@@ -45,8 +57,13 @@ export async function logout() {
  * @returns {Promise} User data
  */
 export async function getCurrentUser() {
-    const response = await httpClient.get('/auth/me');
-    return response;
+    try {
+        const response = await httpClient.get('/api/auth/me');
+        return extractPayload(response);
+    } catch (error) {
+        const response = await httpClient.get('/auth/me');
+        return extractPayload(response);
+    }
 }
 
 /**
@@ -59,23 +76,27 @@ export async function refreshToken() {
 }
 
 /**
- * Request password reset
- * @param {string} email - User email
+ * Request password reset (BE: ForgotPasswordRequest { identifier })
+ * @param {string} identifier - User email or phone (BE field: identifier)
  * @returns {Promise}
  */
-export async function forgotPassword(email) {
-    const response = await httpClient.post('/auth/forgot-password', { email });
+export async function forgotPassword(identifier) {
+    const response = await httpClient.post('/auth/forgot-password', { identifier });
     return response;
 }
 
 /**
- * Reset password with token
+ * Reset password with token (BE: ResetPasswordRequest { token, newPassword })
  * @param {Object} data - Reset password data
- * @param {string} data.token - Reset token
- * @param {string} data.password - New password
+ * @param {string} data.token - Reset token from email/link
+ * @param {string} data.newPassword - New password (or pass data.password, will be sent as newPassword)
  * @returns {Promise}
  */
 export async function resetPassword(data) {
-    const response = await httpClient.post('/auth/reset-password', data);
+    const payload = {
+        token: data.token,
+        newPassword: data.newPassword != null ? data.newPassword : data.password,
+    };
+    const response = await httpClient.post('/auth/reset-password', payload);
     return response;
 }

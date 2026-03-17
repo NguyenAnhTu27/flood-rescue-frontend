@@ -96,7 +96,7 @@ export default function TeamCreatePage() {
     const inOtherTeam = candidate.teamId && String(candidate.teamId) !== String(teamId || '');
     if (inOtherTeam) {
       const ok = window.confirm(
-        `${candidate.fullName} đang thuộc đội \"${candidate.teamName || `#${candidate.teamId}`}\". Xác nhận điều chuyển thành viên này?`
+        `${candidate.fullName} đang thuộc đội "${candidate.teamName || `#${candidate.teamId}`}". Xác nhận điều chuyển thành viên này?`
       );
       if (!ok) return;
 
@@ -124,7 +124,7 @@ export default function TeamCreatePage() {
     const inOtherTeam = candidate.teamId && String(candidate.teamId) !== String(teamId || '');
     if (inOtherTeam) {
       const ok = window.confirm(
-        `${candidate.fullName} đang thuộc đội \"${candidate.teamName || `#${candidate.teamId}`}\". Xác nhận điều chuyển và đặt làm đội trưởng?`
+        `${candidate.fullName} đang thuộc đội "${candidate.teamName || `#${candidate.teamId}`}". Xác nhận điều chuyển và đặt làm đội trưởng?`
       );
       if (!ok) return;
     }

@@ -53,9 +53,11 @@ export default function AuditLogsPage() {
     }
   };
 
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     loadLogs();
   }, []);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const levelClass = (level) => {
     if (level === "SUCCESS") return "bg-emerald-100 text-emerald-700";

@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { List, MapPin, Navigation, Plus } from 'lucide-react';
+import { Gift, List, MapPin, Navigation, Plus } from 'lucide-react';
 import { CITIZEN_ROUTES } from '../../app/routes/route.constants.js';
 import { useNavigate } from 'react-router-dom';
-import GoogleMap from '../../features/map/components/GoogleMap.jsx';
+import MapBox from '../../features/map/components/MapBox.jsx';
 import Button from '../../shared/ui/Button.jsx';
 import { confirmRescueResult, getMyRescueRequests, reopenCancelledRequest } from '../../features/citizen/api.js';
 import { getMyCitizenReliefRequests } from '../../features/relief/api.js';
@@ -168,6 +168,7 @@ export default function CitizenDashboard() {
             window.clearInterval(reliefId);
             window.clearInterval(blockId);
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [dismissedRejectedReliefIds]);
 
     const gpsLabel = useMemo(() => {
@@ -267,12 +268,12 @@ export default function CitizenDashboard() {
     return (
         <div className="space-y-5 pb-8">
             {waitingCitizenConfirmation && (
-                <section className="rounded-2xl border border-amber-300 bg-amber-50 p-4">
+                <section className="animate-fade-in-up rounded-[20px] border border-amber-300 bg-amber-50/95 p-4">
                     <h2 className="text-sm font-bold text-amber-900">Đội cứu hộ báo đã hoàn thành. Bạn đã được cứu hộ chưa?</h2>
                     <p className="mt-1 text-xs text-amber-800">
                         Nếu bạn chọn chưa được cứu hộ, hệ thống sẽ tự gửi lại yêu cầu cứu hộ cho điều phối với mô tả phù hợp.
                     </p>
-                    <div className="mt-3 rounded-xl border border-amber-200 bg-white p-3 text-xs text-slate-700">
+                    <div className="mt-3 rounded-md border border-amber-200 bg-white p-3 text-xs text-slate-700">
                         <div><span className="font-semibold text-slate-900">Mã yêu cầu:</span> {latestRequest?.code || `#${latestRequest?.id || '—'}`}</div>
                         <div className="mt-1"><span className="font-semibold text-slate-900">Địa chỉ:</span> {latestRequest?.addressText || '—'}</div>
                         <div className="mt-1"><span className="font-semibold text-slate-900">Số người:</span> {latestRequest?.affectedPeopleCount || 1}</div>
@@ -291,7 +292,7 @@ export default function CitizenDashboard() {
             )}
 
             {showCancelledPrompt && (
-                <section className="rounded-2xl border border-rose-300 bg-rose-50 p-4">
+                <section className="animate-fade-in-up rounded-[20px] border border-rose-300 bg-rose-50/95 p-4">
                     <h2 className="text-sm font-bold text-rose-900">Yêu cầu cứu hộ đã bị hủy</h2>
                     <p className="mt-1 text-xs text-rose-800">
                         {latestRequest?.coordinatorCancelNote
@@ -310,14 +311,14 @@ export default function CitizenDashboard() {
             )}
 
             {showRejectedReliefPrompt && (
-                <section className="rounded-2xl border border-rose-300 bg-rose-50 p-4">
+                <section className="animate-fade-in-up rounded-[20px] border border-rose-300 bg-rose-50/95 p-4">
                     <h2 className="text-sm font-bold text-rose-900">Yêu cầu cứu trợ bị từ chối</h2>
                     <p className="mt-1 text-xs text-rose-800">
                         {latestRejectedRelief?.deliveryNote
                             ? `Lý do: ${latestRejectedRelief.deliveryNote}`
                             : 'Yêu cầu cứu trợ của bạn đã bị từ chối.'}
                     </p>
-                    <div className="mt-2 rounded-xl border border-rose-200 bg-white p-3 text-xs text-slate-700">
+                    <div className="mt-2 rounded-md border border-rose-200 bg-white p-3 text-xs text-slate-700">
                         <div><span className="font-semibold text-slate-900">Mã yêu cầu:</span> {latestRejectedRelief?.code || `#${latestRejectedRelief?.id || '—'}`}</div>
                         <div className="mt-1"><span className="font-semibold text-slate-900">Địa chỉ:</span> {latestRejectedRelief?.targetArea || latestRejectedRelief?.citizenAddressText || '—'}</div>
                     </div>
@@ -330,7 +331,7 @@ export default function CitizenDashboard() {
             )}
 
             {citizenBlock?.blocked && (
-                <section className="rounded-2xl border border-rose-300 bg-rose-50 p-4">
+                <section className="rounded-[20px] border border-rose-300 bg-rose-50/95 p-4">
                     <h2 className="text-sm font-bold text-rose-900">Bạn đang bị khóa gửi yêu cầu</h2>
                     <p className="mt-1 text-xs text-rose-800">
                         {citizenBlock?.reason || 'Điều phối đã khóa quyền gửi yêu cầu của tài khoản này.'}
@@ -338,10 +339,10 @@ export default function CitizenDashboard() {
                 </section>
             )}
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h1 className="text-2xl font-bold text-slate-900">Bảng điều khiển công dân</h1>
-                <p className="mt-1 text-sm text-slate-600">
-                    Chọn một thao tác bên dưới để tạo yêu cầu cứu hộ mới hoặc xem các yêu cầu đã tạo.
+            <section className="animate-fade-in-up ui-surface p-5">
+                <h1 className="ui-section-title text-2xl sm:text-3xl">Bảng điều khiển công dân</h1>
+                <p className="ui-section-subtitle">
+                    Chọn một thao tác bên dưới để tạo yêu cầu cứu hộ / cứu trợ mới hoặc xem các yêu cầu đã tạo.
                 </p>
 
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row">
@@ -357,18 +358,40 @@ export default function CitizenDashboard() {
                         Tạo yêu cầu cứu hộ
                     </Button>
                     <Button
+                        type="button"
+                        variant="primary"
+                        size="lg"
+                        fullWidth
+                        disabled={Boolean(citizenBlock?.blocked)}
+                        onClick={() => navigate(CITIZEN_ROUTES.CREATE_RELIEF_REQUEST)}
+                    >
+                        <Gift className="h-4 w-4" />
+                        Tạo yêu cầu cứu trợ
+                    </Button>
+                </div>
+                <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                    <Button
                         to={CITIZEN_ROUTES.MY_RESCUE_REQUESTS}
                         variant="secondary"
                         size="lg"
                         fullWidth
                     >
                         <List className="h-4 w-4" />
-                        Xem yêu cầu đã tạo
+                        Yêu cầu cứu hộ của tôi
+                    </Button>
+                    <Button
+                        to={CITIZEN_ROUTES.MY_RELIEF_REQUESTS}
+                        variant="secondary"
+                        size="lg"
+                        fullWidth
+                    >
+                        <List className="h-4 w-4" />
+                        Yêu cầu cứu trợ của tôi
                     </Button>
                 </div>
             </section>
 
-            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <section className="animate-fade-in-up ui-surface overflow-hidden" style={{ animationDelay: '100ms' }}>
                 <div className="border-b border-slate-200 px-4 py-3">
                     <h2 className="text-sm font-semibold text-slate-900">Vị trí hiện tại của bạn (GPS)</h2>
                     <p className="mt-1 text-xs text-slate-600 inline-flex items-center gap-1">
@@ -381,7 +404,7 @@ export default function CitizenDashboard() {
                 </div>
 
                 <div className="relative h-[420px] w-full bg-slate-100">
-                    <GoogleMap
+                    <MapBox
                         center={mapCenter}
                         zoom={15}
                         markerPosition={mapCenter}

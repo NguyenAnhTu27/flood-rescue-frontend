@@ -1,9 +1,28 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import httpClient from "../../shared/lib/http.js";
+import Button from "../../shared/ui/Button.jsx";
+import Input from "../../shared/ui/Input.jsx";
+import Card from "../../shared/ui/Card.jsx";
+
+const EyeIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+    <path
+      fill="currentColor"
+      d="M12 5C6 5 2 12 2 12s4 7 10 7s10-7 10-7s-4-7-10-7Zm0 11a4 4 0 1 1 0-8a4 4 0 0 1 0 8Z"
+    />
+  </svg>
+);
+
+const EyeSlashIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+    <path
+      fill="currentColor"
+      d="M2 5l2-2l18 18l-2 2l-4.2-4.2A10.6 10.6 0 0 1 12 19c-6 0-10-7-10-7a21.8 21.8 0 0 1 5.2-5.8L2 5Zm20 7s-4-7-10-7c-1.4 0-2.7.3-4 .8l1.6 1.6A4 4 0 0 1 16.6 14L22 12Z"
+    />
+  </svg>
+);
 
 export default function UserManagementPage() {
-  const API = "http://localhost:8080/api/admin";
-  const token = localStorage.getItem("token");
-
   const [users, setUsers] = useState([]);
   const [keyword, setKeyword] = useState("");
   const [roleId, setRoleId] = useState("");
@@ -12,6 +31,8 @@ export default function UserManagementPage() {
   const [totalUsers, setTotalUsers] = useState(0);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("info");
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [loadingStats, setLoadingStats] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [createErrors, setCreateErrors] = useState({});
@@ -42,8 +63,6 @@ export default function UserManagementPage() {
     teamId: null,
   });
 
-  const [resetPasswords, setResetPasswords] = useState({});
-
   const roleOptions = useMemo(
     () => [
       { id: "", label: "Tất cả" },
@@ -65,27 +84,6 @@ export default function UserManagementPage() {
     }),
     []
   );
-
-  const authHeaders = {
-    Authorization: `Bearer ${token}`,
-  };
-
-  const parseResponse = async (res) => {
-    const contentType = res.headers.get("content-type") || "";
-    const isJson = contentType.includes("application/json");
-    const data = isJson ? await res.json() : await res.text();
-    if (!res.ok) {
-      if (typeof data === "string") {
-        throw new Error(data);
-      }
-      if (data?.errors && typeof data.errors === "object") {
-        const details = Object.values(data.errors).join("; ");
-        throw new Error(details || data?.message || "Request failed");
-      }
-      throw new Error(data?.message || "Request failed");
-    }
-    return data;
-  };
 
   const validateCreateForm = (input) => {
     const errors = {};
@@ -139,14 +137,14 @@ export default function UserManagementPage() {
     setMessageType(type);
   };
 
-  const getUsers = async (nextPage = page) => {
+  const getUsers = useCallback(async (nextPage = page) => {
     try {
-      let url = `${API}/users?page=${nextPage}`;
-      if (keyword.trim()) url += `&keyword=${encodeURIComponent(keyword.trim())}`;
-      if (roleId !== "") url += `&roleId=${roleId}`;
+      setLoadingUsers(true);
+      const params = { page: nextPage };
+      if (keyword.trim()) params.keyword = keyword.trim();
+      if (roleId !== "") params.roleId = roleId;
 
-      const res = await fetch(url, { headers: authHeaders });
-      const data = await parseResponse(res);
+      const data = await httpClient.get("/admin/users", { params });
       const incomingUsers = Array.isArray(data.users) ? data.users : [];
       const incomingTotalUsers = data.totalUsers || 0;
       const incomingTotalPages = data.totalPages || 1;
@@ -162,13 +160,15 @@ export default function UserManagementPage() {
       setTotalUsers(incomingTotalUsers);
     } catch (e) {
       showMessage(e.message, "error");
+    } finally {
+      setLoadingUsers(false);
     }
-  };
+  }, [keyword, page, roleId]);
 
-  const getStats = async () => {
+  const getStats = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/stats`, { headers: authHeaders });
-      const data = await parseResponse(res);
+      setLoadingStats(true);
+      const data = await httpClient.get("/admin/stats");
       setStats({
         totalUsers: data.totalUsers || 0,
         activeUsers: data.activeUsers || 0,
@@ -176,12 +176,15 @@ export default function UserManagementPage() {
       });
     } catch (e) {
       showMessage(e.message, "error");
+    } finally {
+      setLoadingStats(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     getUsers(page);
     getStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
   const createUser = async () => {
@@ -193,67 +196,28 @@ export default function UserManagementPage() {
     }
 
     try {
+      setCreatingUser(true);
       const payload = { ...form };
-      const res = await fetch(`${API}/create-user`, {
-        method: "POST",
-        headers: {
-          ...authHeaders,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-      const data = await parseResponse(res);
+      const data = await httpClient.post("/admin/create-user", payload);
       showMessage(typeof data === "string" ? data : "Tạo tài khoản thành công", "success");
       setShowCreate(false);
       setShowCreatePassword(false);
       setCreateErrors({});
       setForm({ fullName: "", email: "", phone: "", password: "", roleId: 1, teamId: null });
 
-      const createdUser = {
-        id: Date.now(), // temporary client id for instant UI update
-        fullName: payload.fullName,
-        email: payload.email,
-        phone: payload.phone,
-        role: roleCodeById[payload.roleId] || "UNKNOWN",
-        status: "ACTIVE",
-        createdAt: new Date().toISOString(),
-      };
-
-      const matchesRole = roleId === "" || String(payload.roleId) === String(roleId);
-      const q = keyword.trim().toLowerCase();
-      const matchesKeyword =
-        !q ||
-        [createdUser.fullName, createdUser.email, createdUser.phone, createdUser.id]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase()
-          .includes(q);
-
-      if (matchesRole && matchesKeyword) {
-        setUsers((prev) => [createdUser, ...prev.slice(0, 19)]);
-      }
-
-      setTotalUsers((prev) => prev + 1);
-      setStats((prev) => ({
-        ...prev,
-        totalUsers: prev.totalUsers + 1,
-        activeUsers: prev.activeUsers + 1,
-      }));
-
-      // Force full page refresh so UI always reflects latest backend state.
-      window.location.reload();
+      setPage(0);
+      await Promise.all([getUsers(0), getStats()]);
     } catch (e) {
       showMessage(e.message, "error");
+    } finally {
+      setCreatingUser(false);
     }
   };
 
   const deleteUser = async (user) => {
     try {
-      const res = await fetch(`${API}/users/${user.id}`, {
-        method: "DELETE",
-        headers: authHeaders,
-      });
-      const data = await parseResponse(res);
+      setDeletingUser(true);
+      const data = await httpClient.delete(`/admin/users/${user.id}`);
       showMessage(typeof data === "string" ? data : "Đã xoá user", "success");
 
       // Remove immediately from current UI list without full-page refresh.
@@ -264,44 +228,15 @@ export default function UserManagementPage() {
         activeUsers: user.status === "ACTIVE" ? Math.max(0, prev.activeUsers - 1) : prev.activeUsers,
         lockedUsers: user.status === "LOCKED" ? Math.max(0, prev.lockedUsers - 1) : prev.lockedUsers,
       }));
-      setResetPasswords((prev) => {
-        const next = { ...prev };
-        delete next[user.id];
-        return next;
-      });
-
-      // Force full page refresh so UI always reflects latest backend state.
-      window.location.reload();
     } catch (e) {
       showMessage(e.message, "error");
     } finally {
+      setDeletingUser(false);
       setDeleteTarget(null);
     }
   };
 
-  const resetPassword = async (id) => {
-    try {
-      const password = resetPasswords[id];
-      if (!password?.trim()) {
-        showMessage("Nhập password mới", "error");
-        return;
-      }
 
-      const res = await fetch(`${API}/users/${id}/reset-password`, {
-        method: "PUT",
-        headers: {
-          ...authHeaders,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ password }),
-      });
-      const data = await parseResponse(res);
-      showMessage(typeof data === "string" ? data : "Reset password thành công", "success");
-      setResetPasswords((prev) => ({ ...prev, [id]: "" }));
-    } catch (e) {
-      showMessage(e.message, "error");
-    }
-  };
 
   const openDetail = (user) => {
     setDetailUser(user);
@@ -319,20 +254,13 @@ export default function UserManagementPage() {
   const saveDetail = async () => {
     if (!detailUser) return;
     try {
+      setSavingDetail(true);
       const payload = {
         ...detailForm,
         roleId: Number(detailForm.roleId),
         teamId: null,
       };
-      const res = await fetch(`${API}/users/${detailUser.id}`, {
-        method: "PUT",
-        headers: {
-          ...authHeaders,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-      const data = await parseResponse(res);
+      const data = await httpClient.put(`/admin/users/${detailUser.id}`, payload);
       showMessage(typeof data === "string" ? data : "Cập nhật người dùng thành công", "success");
       setDetailUser(null);
       setPage(0);
@@ -340,6 +268,8 @@ export default function UserManagementPage() {
       await getStats();
     } catch (e) {
       showMessage(e.message, "error");
+    } finally {
+      setSavingDetail(false);
     }
   };
 
@@ -350,42 +280,21 @@ export default function UserManagementPage() {
       return;
     }
     try {
-      const res = await fetch(`${API}/users/${detailUser.id}/reset-password`, {
-        method: "PUT",
-        headers: {
-          ...authHeaders,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ password: detailResetPassword }),
+      setResettingPassword(true);
+      const data = await httpClient.put(`/admin/users/${detailUser.id}/reset-password`, {
+        password: detailResetPassword,
       });
-      const data = await parseResponse(res);
       showMessage(typeof data === "string" ? data : "Reset password thành công", "success");
       setDetailResetPassword("");
       setShowDetailPassword(false);
-      setResetPasswords((prev) => ({ ...prev, [detailUser.id]: "" }));
     } catch (e) {
       showMessage(e.message, "error");
+    } finally {
+      setResettingPassword(false);
     }
   };
 
-  const updateStatus = async (id, status) => {
-    try {
-      const res = await fetch(`${API}/users/${id}/status`, {
-        method: "PUT",
-        headers: {
-          ...authHeaders,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ status }),
-      });
-      const data = await parseResponse(res);
-      showMessage(typeof data === "string" ? data : "Cập nhật trạng thái thành công", "success");
-      await getUsers();
-      await getStats();
-    } catch (e) {
-      showMessage(e.message, "error");
-    }
-  };
+
 
   const handleSearch = async () => {
     setPage(0);
@@ -410,23 +319,7 @@ export default function UserManagementPage() {
     });
   };
 
-  const EyeIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M12 5C6 5 2 12 2 12s4 7 10 7s10-7 10-7s-4-7-10-7Zm0 11a4 4 0 1 1 0-8a4 4 0 0 1 0 8Z"
-      />
-    </svg>
-  );
 
-  const EyeSlashIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M2 5l2-2l18 18l-2 2l-4.2-4.2A10.6 10.6 0 0 1 12 19c-6 0-10-7-10-7a21.8 21.8 0 0 1 5.2-5.8L2 5Zm20 7s-4-7-10-7c-1.4 0-2.7.3-4 .8l1.6 1.6A4 4 0 0 1 16.6 14L22 12Z"
-      />
-    </svg>
-  );
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800">
@@ -469,10 +362,10 @@ export default function UserManagementPage() {
       </header>
 
       <main className="mx-auto max-w-7xl p-6 space-y-5">
-        <section className="rounded-2xl border bg-white p-4">
+        <Card className="p-4">
           <div className="flex flex-wrap items-center gap-3">
-            <input
-              className="min-w-[280px] flex-1 rounded-xl border bg-slate-50 px-4 py-2.5 outline-none focus:border-blue-500"
+            <Input
+              className="min-w-[280px] flex-1 rounded-xl bg-slate-50"
               placeholder="Tìm theo họ tên, email, số điện thoại..."
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
@@ -490,13 +383,13 @@ export default function UserManagementPage() {
                 {r.label}
               </button>
             ))}
-            <button onClick={handleSearch} className="rounded-xl bg-slate-800 px-4 py-2.5 text-white">
+            <Button onClick={handleSearch} variant="secondary" size="md">
               Tìm
-            </button>
+            </Button>
           </div>
-        </section>
+        </Card>
 
-        <section className="overflow-hidden rounded-2xl border bg-white">
+        <Card className="overflow-hidden">
           <div className="grid grid-cols-12 border-b bg-slate-50 px-6 py-3 text-sm font-semibold text-slate-500">
             <div className="col-span-4">HỌ TÊN & THÔNG TIN</div>
             <div className="col-span-2">VAI TRÒ</div>
@@ -505,32 +398,35 @@ export default function UserManagementPage() {
             <div className="col-span-2">THAO TÁC</div>
           </div>
 
-          {users.map((user) => (
-            <div key={user.id} className="grid grid-cols-12 items-center border-b px-6 py-4">
-              <div className="col-span-4">
-                <p className="font-semibold">{user.fullName}</p>
-                <p className="text-sm text-slate-500">{user.email || "-"}</p>
-                <p className="text-sm text-slate-500">{user.phone || "-"}</p>
+          {loadingUsers ? (
+            <div className="px-6 py-10 text-center text-sm text-slate-500">Đang tải danh sách người dùng...</div>
+          ) : users.length === 0 ? (
+            <div className="px-6 py-10 text-center text-sm text-slate-500">Không có người dùng phù hợp.</div>
+          ) : (
+            users.map((user) => (
+              <div key={user.id} className="grid grid-cols-12 items-center border-b px-6 py-4">
+                <div className="col-span-4">
+                  <p className="font-semibold">{user.fullName}</p>
+                  <p className="text-sm text-slate-500">{user.email || "-"}</p>
+                  <p className="text-sm text-slate-500">{user.phone || "-"}</p>
+                </div>
+                <div className="col-span-2">
+                  <span className="rounded-lg bg-slate-100 px-3 py-1 text-sm">{user.role}</span>
+                </div>
+                <div className="col-span-2">
+                  <span className={`rounded-full px-3 py-1 text-sm font-medium ${statusClass(user.status)}`}>
+                    {user.status === "ACTIVE" ? "Hoạt động" : "Đã khóa"}
+                  </span>
+                </div>
+                <div className="col-span-2 text-sm text-slate-500">{formatCreatedAt(user.createdAt)}</div>
+                <div className="col-span-2">
+                  <Button onClick={() => openDetail(user)} variant="primary" size="sm">
+                    Xem chi tiết
+                  </Button>
+                </div>
               </div>
-              <div className="col-span-2">
-                <span className="rounded-lg bg-slate-100 px-3 py-1 text-sm">{user.role}</span>
-              </div>
-              <div className="col-span-2">
-                <span className={`rounded-full px-3 py-1 text-sm font-medium ${statusClass(user.status)}`}>
-                  {user.status === "ACTIVE" ? "Hoạt động" : "Đã khóa"}
-                </span>
-              </div>
-              <div className="col-span-2 text-sm text-slate-500">{formatCreatedAt(user.createdAt)}</div>
-              <div className="col-span-2">
-                <button
-                  onClick={() => openDetail(user)}
-                  className="rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white"
-                >
-                  Xem chi tiết
-                </button>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
 
           <div className="flex items-center justify-between px-6 py-4 text-sm text-slate-600">
             <div>
@@ -553,21 +449,21 @@ export default function UserManagementPage() {
               </button>
             </div>
           </div>
-        </section>
+        </Card>
 
         <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border bg-white p-5">
+          <Card className="p-5">
             <p className="text-sm text-slate-500">Tổng người dùng</p>
-            <p className="text-4xl font-bold">{stats.totalUsers}</p>
-          </div>
-          <div className="rounded-2xl border bg-white p-5">
+            <p className="text-4xl font-bold">{loadingStats ? "—" : stats.totalUsers}</p>
+          </Card>
+          <Card className="p-5">
             <p className="text-sm text-slate-500">Đang hoạt động</p>
-            <p className="text-4xl font-bold text-green-600">{stats.activeUsers}</p>
-          </div>
-          <div className="rounded-2xl border bg-white p-5">
+            <p className="text-4xl font-bold text-green-600">{loadingStats ? "—" : stats.activeUsers}</p>
+          </Card>
+          <Card className="p-5">
             <p className="text-sm text-slate-500">Bị tạm khóa</p>
-            <p className="text-4xl font-bold text-rose-600">{stats.lockedUsers}</p>
-          </div>
+            <p className="text-4xl font-bold text-rose-600">{loadingStats ? "—" : stats.lockedUsers}</p>
+          </Card>
         </section>
 
       </main>
@@ -718,7 +614,6 @@ export default function UserManagementPage() {
                         value={detailResetPassword}
                         onChange={(e) => {
                           setDetailResetPassword(e.target.value);
-                          setResetPasswords((prev) => ({ ...prev, [detailUser.id]: e.target.value }));
                         }}
                       />
                       <button

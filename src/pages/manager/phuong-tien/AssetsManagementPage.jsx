@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sailboat, Truck, Zap, MapPin, FileText, Plus, ChevronLeft, ChevronRight, Users } from 'lucide-react';
-import { MANAGER_ROUTES } from '../../../app/routes/route.constants.js';
-import { getAssets } from '../../../features/assets/api.js';
+import { Sailboat, Truck, Zap, MapPin, FileText, Plus, ChevronLeft, ChevronRight, Users, Pencil, Trash2 } from 'lucide-react';
+import { MANAGER_ROUTES, ADMIN_ROUTES } from '../../../app/routes/route.constants.js';
+import { getAssets, deleteAsset } from '../../../features/assets/api.js';
+import { getRole } from '../../../shared/lib/storage.js';
 
 const STATUS_FILTERS = [
     { id: 'all', label: 'Tất cả', value: null },
@@ -29,14 +30,7 @@ const TYPE_CONFIG = {
     'water-vehicle': { Icon: Truck, iconBg: 'bg-amber-100', iconColor: 'text-amber-600' },
 };
 
-const mockAssets = [
-    { id: '1', code: '#CN-042', name: 'Cano Cứu Hộ #CN-042', desc: 'CANO CAO TỐC', type: 'canoe', status: 'available', location: 'Bến Chương Dương, Quận 1', task: 'Chưa có nhiệm vụ' },
-    { id: '2', code: '#AM-108', name: 'Xe Lội Nước #AM-108', desc: 'PHƯƠNG TIỆN LỘI NƯỚC', type: 'water-vehicle', status: 'in-use', location: 'Huyện Bình Chánh, TPHCM', task: 'Cứu trợ vùng ngập lụt' },
-    { id: '3', code: '#GEN-22', name: 'Máy Phát Điện #GEN-22', desc: 'CÔNG SUẤT 5KW', type: 'generator', status: 'maintenance', location: 'Kho Tổng Thủ Đức', task: 'Đang sửa chữa định kỳ' },
-    { id: '4', code: '#CN-091', name: 'Cano Phao #CN-091', desc: 'CANO PHÃO CAO TỐC', type: 'canoe', status: 'available', location: 'Bến Ninh Kiều, Cần Thơ', task: 'Sẵn sàng điều động' },
-    { id: '5', code: '#AM-202', name: 'Xe Lội Nước #AM-202', desc: 'PHƯƠNG TIỆN LỘI NƯỚC', type: 'water-vehicle', status: 'available', location: 'Kho Tổng Thủ Đức', task: 'Chưa có nhiệm vụ' },
-    { id: '6', code: '#GEN-07', name: 'Máy Phát Điện #GEN-07', desc: 'CÔNG SUẤT 5KW', type: 'generator', status: 'in-use', location: 'Trạm y tế xã Phong Nha', task: 'Cấp điện khẩn cấp' },
-];
+
 
 const ITEMS_PER_PAGE = 6;
 
@@ -58,6 +52,9 @@ function normalizeType(rawType) {
 
 export default function AssetsManagementPage() {
     const navigate = useNavigate();
+    const role = getRole();
+    const isAdmin = role === 'ADMIN';
+    const routes = isAdmin ? ADMIN_ROUTES : MANAGER_ROUTES;
     const [statusFilter, setStatusFilter] = useState(null);
     const [typeFilter, setTypeFilter] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
@@ -66,54 +63,55 @@ export default function AssetsManagementPage() {
     const [error, setError] = useState(null);
 
     // Load assets from API
-    useEffect(() => {
-        const loadAssets = async () => {
-            try {
-                setLoading(true);
-                setError(null);
-                const data = await getAssets();
-                // Parse response format
-                let assetsList = [];
-                if (Array.isArray(data)) {
-                    assetsList = data;
-                } else if (Array.isArray(data?.content)) {
-                    assetsList = data.content;
-                } else if (Array.isArray(data?.data)) {
-                    assetsList = data.data;
-                } else if (Array.isArray(data?.items)) {
-                    assetsList = data.items;
-                }
-                const normalizedAssets = (assetsList.length > 0 ? assetsList : mockAssets).map((asset) => {
-                    const normalizedType = normalizeType(asset?.type || asset?.assetType);
-                    const code = asset?.code || asset?.assetCode || asset?.licensePlate || `PT-${asset?.id || ''}`;
-                    const teamHolder = asset?.assignedTeamName
-                        || asset?.currentTeamName
-                        || asset?.teamName
-                        || asset?.holderTeamName
-                        || (asset?.assignedTeamId ? `Đội #${asset.assignedTeamId}` : null)
-                        || (asset?.teamId ? `Đội #${asset.teamId}` : null)
-                        || 'Chưa có đội giữ';
-                    return {
-                        ...asset,
-                        code,
-                        type: normalizedType,
-                        status: normalizeStatus(asset?.status),
-                        name: asset?.name || asset?.assetName || code,
-                        desc: asset?.desc || asset?.assetType || normalizedType.toUpperCase(),
-                        location: asset?.location || asset?.currentLocation || 'Chưa cập nhật vị trí',
-                        task: asset?.task || asset?.taskName || asset?.currentTaskName || 'Chưa có nhiệm vụ',
-                        teamHolder,
-                    };
-                });
-                setAssets(normalizedAssets);
-            } catch (e) {
-                console.warn('[AssetsManagementPage] Could not load assets, using mock data:', e);
-                // Nếu API fail, dùng mock data
-                setAssets(mockAssets);
-            } finally {
-                setLoading(false);
+    const loadAssets = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const data = await getAssets();
+            // Parse response format
+            let assetsList = [];
+            if (Array.isArray(data)) {
+                assetsList = data;
+            } else if (Array.isArray(data?.content)) {
+                assetsList = data.content;
+            } else if (Array.isArray(data?.data)) {
+                assetsList = data.data;
+            } else if (Array.isArray(data?.items)) {
+                assetsList = data.items;
             }
-        };
+            const normalizedAssets = assetsList.map((asset) => {
+                const normalizedType = normalizeType(asset?.type || asset?.assetType);
+                const code = asset?.code || asset?.assetCode || asset?.licensePlate || `PT-${asset?.id || ''}`;
+                const teamHolder = asset?.assignedTeamName
+                    || asset?.currentTeamName
+                    || asset?.teamName
+                    || asset?.holderTeamName
+                    || (asset?.assignedTeamId ? `Đội #${asset.assignedTeamId}` : null)
+                    || (asset?.teamId ? `Đội #${asset.teamId}` : null)
+                    || 'Chưa có đội giữ';
+                return {
+                    ...asset,
+                    code,
+                    type: normalizedType,
+                    status: normalizeStatus(asset?.status),
+                    name: asset?.name || asset?.assetName || code,
+                    desc: asset?.desc || asset?.assetType || normalizedType.toUpperCase(),
+                    location: asset?.location || asset?.currentLocation || 'Chưa cập nhật vị trí',
+                    task: asset?.task || asset?.taskName || asset?.currentTaskName || 'Chưa có nhiệm vụ',
+                    teamHolder,
+                };
+            });
+            setAssets(normalizedAssets);
+        } catch (e) {
+            console.warn('[AssetsManagementPage] Could not load assets:', e);
+            setError('Không thể tải danh sách phương tiện.');
+            setAssets([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
         loadAssets();
     }, []);
 
@@ -135,12 +133,26 @@ export default function AssetsManagementPage() {
 
     const totalPages = Math.max(1, Math.ceil(filteredAssets.length / ITEMS_PER_PAGE));
 
+
+
     const handleAddNew = () => {
-        navigate(MANAGER_ROUTES.CREATE_ASSET);
+        navigate(routes.CREATE_ASSET);
     };
 
-    const handleViewDetail = () => {
-        // TODO: Navigate to asset detail
+    const handleEdit = (asset) => {
+        navigate(`${routes.CREATE_ASSET}?id=${asset.id}`);
+    };
+
+    const handleDelete = async (asset) => {
+        if (!window.confirm(`Bạn có chắc chắn muốn xóa phương tiện "${asset.name}"?`)) return;
+        try {
+            await deleteAsset(asset.id);
+            window.alert('Xóa phương tiện thành công!');
+            loadAssets();
+        } catch (e) {
+            console.error('[AssetsManagementPage] delete error:', e);
+            window.alert(e?.message || 'Không thể xóa phương tiện');
+        }
     };
 
     return (
@@ -159,7 +171,7 @@ export default function AssetsManagementPage() {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-wrap items-center gap-2">
                     <button
-                        onClick={() => navigate(MANAGER_ROUTES.ASSIGN_ASSET_TO_TASK)}
+                        onClick={() => navigate(isAdmin ? routes.ASSETS_MANAGEMENT : MANAGER_ROUTES.ASSIGN_ASSET_TO_TASK)}
                         className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
                     >
                         <Plus className="h-4 w-4" />
@@ -254,10 +266,18 @@ export default function AssetsManagementPage() {
                                 </div>
                                 <div className="mt-4 flex gap-2">
                                     <button
-                                        onClick={() => handleViewDetail(asset)}
-                                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                                        onClick={() => handleEdit(asset)}
+                                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                                     >
-                                        Xem chi tiết
+                                        <Pencil className="h-3.5 w-3.5" />
+                                        Sửa
+                                    </button>
+                                    <button
+                                        onClick={() => handleDelete(asset)}
+                                        className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                        Xóa
                                     </button>
                                 </div>
                             </div>

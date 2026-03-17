@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import {
@@ -12,84 +12,88 @@ import {
 } from './route.constants.js';
 import RootLayout from '../../layouts/RootLayout.jsx';
 import AuthLayout from '../../layouts/AuthLayout.jsx';
+import PublicLayout from '../../layouts/PublicLayout.jsx';
 import RequireAuth from '../../shared/guards/RequireAuth.jsx';
 import RequireRole from '../../shared/guards/RequireRole.jsx';
+import PageLoader from '../../shared/ui/PageLoader.jsx';
 
 // Public
 import HomePage from '../../pages/public/HomePage.jsx';
 import EmergencyGuidePage from '../../pages/public/EmergencyGuidePage.jsx';
 import NotFoundPage from '../../pages/public/NotFoundPage.jsx';
 import StaticContentPage from '../../pages/public/StaticContentPage.jsx';
+import SupportContactPage from '../../pages/public/SupportContactPage.jsx';
 
 // Auth
 import LoginPage from '../../pages/auth/LoginPage.jsx';
 import RegisterPage from '../../pages/auth/RegisterPage.jsx';
 
-// Citizen
-import CitizenDashboard from '../../pages/citizen/CItizenDashboard.jsx';
-import RescueRequestCreatePage from '../../pages/citizen/RescueRequestCreatePage.jsx';
-import RescueRequestStatusPage from '../../pages/citizen/RescueRequestStatusPage.jsx';
-import MyRescueRequestsPage from '../../pages/citizen/MyRescueRequestsPage.jsx';
-import RescueRequestUpdatePage from '../../pages/citizen/RescueRequestUpdatePage.jsx';
-import ReliefRequestUpdatePage from '../../pages/citizen/ReliefRequestUpdatePage.jsx';
-import FeedbackPage from '../../pages/citizen/FeedbackPage.jsx';
-import MyReliefRequestsPage from '../../pages/citizen/MyReliefRequestsPage.jsx';
-import ReliefRequestStatusPage from '../../pages/citizen/ReliefRequestStatusPage.jsx';
+// Citizen (lazy-loaded)
+const CitizenDashboard = lazy(() => import('../../pages/citizen/CItizenDashboard.jsx'));
+const RescueRequestCreatePage = lazy(() => import('../../pages/citizen/RescueRequestCreatePage.jsx'));
+const RescueRequestStatusPage = lazy(() => import('../../pages/citizen/RescueRequestStatusPage.jsx'));
+const MyRescueRequestsPage = lazy(() => import('../../pages/citizen/MyRescueRequestsPage.jsx'));
+const RescueRequestUpdatePage = lazy(() => import('../../pages/citizen/RescueRequestUpdatePage.jsx'));
+const ReliefRequestUpdatePage = lazy(() => import('../../pages/citizen/ReliefRequestUpdatePage.jsx'));
+const CitizenReliefRequestCreatePage = lazy(() => import('../../pages/citizen/ReliefRequestCreatePage.jsx'));
+const FeedbackPage = lazy(() => import('../../pages/citizen/FeedbackPage.jsx'));
+const MyReliefRequestsPage = lazy(() => import('../../pages/citizen/MyReliefRequestsPage.jsx'));
+const ReliefRequestStatusPage = lazy(() => import('../../pages/citizen/ReliefRequestStatusPage.jsx'));
 
-// Coordinator
-import CoordinatorDashboard from '../../pages/coordinator/CoordinatorDashboardPage.jsx';
-import RescueVerifyPage from '../../pages/coordinator/RescueVerifyPage.jsx';
-import RescueAssignPage from '../../pages/coordinator/RescueAssignPage.jsx';
-import RescueRequestHandle from '../../pages/coordinator/RescueRequestHandle.jsx';
-import RescueHistoryPage from '../../pages/coordinator/RescueHistoryPage.jsx';
-import TeamWorkloadPage from '../../pages/coordinator/TeamWorkloadPage.jsx';
-import GroupRequestsByAreaPage from '../../pages/coordinator/GroupRequestsByAreaPage.jsx';
-import RescuePrioritizePage from '../../pages/coordinator/RescuePrioritizePage.jsx';
-import DuplicateManagementPage from '../../pages/coordinator/DuplicateManagementPage.jsx';
-import BlockedCitizensPage from '../../pages/coordinator/BlockedCitizensPage.jsx';
+// Coordinator (lazy-loaded)
+const CoordinatorDashboard = lazy(() => import('../../pages/coordinator/CoordinatorDashboardPage.jsx'));
+const RescueVerifyPage = lazy(() => import('../../pages/coordinator/RescueVerifyPage.jsx'));
+const RescueAssignPage = lazy(() => import('../../pages/coordinator/RescueAssignPage.jsx'));
+const RescueRequestHandle = lazy(() => import('../../pages/coordinator/RescueRequestHandle.jsx'));
+const RescueHistoryPage = lazy(() => import('../../pages/coordinator/RescueHistoryPage.jsx'));
+const TeamWorkloadPage = lazy(() => import('../../pages/coordinator/TeamWorkloadPage.jsx'));
+const GroupRequestsByAreaPage = lazy(() => import('../../pages/coordinator/GroupRequestsByAreaPage.jsx'));
+const RescuePrioritizePage = lazy(() => import('../../pages/coordinator/RescuePrioritizePage.jsx'));
+const DuplicateManagementPage = lazy(() => import('../../pages/coordinator/DuplicateManagementPage.jsx'));
+const BlockedCitizensPage = lazy(() => import('../../pages/coordinator/BlockedCitizensPage.jsx'));
 
-// Rescuer
-import RescuerDashboard from '../../pages/rescuer/RescuerDashboard.jsx';
-import MyAssignmentsPage from '../../pages/rescuer/MyAssignmentsPage.jsx';
-import AssignmentDetailPage from '../../pages/rescuer/AssignmentDetailPage.jsx';
-import MissionMapTrackingPage from '../../pages/rescuer/MissionMapTrackingPage.jsx';
-import FieldUpdatePage from '../../pages/rescuer/FieldUpdatePage.jsx';
-import RescueUpdateStatusPage from '../../pages/rescuer/RescueUpdateStatusPage.jsx';
-import ReliefPrioritizeDetailPage from '../../pages/rescuer/ReliefPrioritizeDetailPage.jsx';
+// Rescuer (lazy-loaded)
+const RescuerDashboard = lazy(() => import('../../pages/rescuer/RescuerDashboard.jsx'));
+const MyAssignmentsPage = lazy(() => import('../../pages/rescuer/MyAssignmentsPage.jsx'));
+const AssignmentDetailPage = lazy(() => import('../../pages/rescuer/AssignmentDetailPage.jsx'));
+const MissionMapTrackingPage = lazy(() => import('../../pages/rescuer/MissionMapTrackingPage.jsx'));
+const FieldUpdatePage = lazy(() => import('../../pages/rescuer/FieldUpdatePage.jsx'));
+const RescueUpdateStatusPage = lazy(() => import('../../pages/rescuer/RescueUpdateStatusPage.jsx'));
+const ReliefPrioritizeDetailPage = lazy(() => import('../../pages/rescuer/ReliefPrioritizeDetailPage.jsx'));
 
-// Manager
-import ManagerDashboard from '../../pages/manager/ManagerDashboard.jsx';
-import ManagerLayout from '../../layouts/ManagerLayout.jsx';
-import InventoryOverviewPage from '../../pages/manager/kho/InventoryOverviewPage.jsx';
-import DistributionPlanPage from '../../pages/manager/hang-cuu-tro/DistributionPlanPage.jsx';
-import DistributionVoucherPage from '../../pages/manager/hang-cuu-tro/DistributionVoucherPage.jsx';
-import AssetsManagementPage from '../../pages/manager/phuong-tien/AssetsManagementPage.jsx';
-import AssetCreatePage from '../../pages/manager/phuong-tien/AssetCreatePage.jsx';
-import AssetsAssignToTask from '../../features/assets/components/AssetsAssignToTask.jsx';
-import ReceiptCreatePage from '../../pages/manager/kho/ReceiptCreatePage.jsx';
-import ReceiptApprovalPage from '../../pages/manager/kho/ReceiptApprovalPage.jsx';
-import IssueCreatePage from '../../pages/manager/kho/IssueCreatePage.jsx';
-import ItemCategoriesPage from '../../pages/manager/kho/ItemCategoriesPage.jsx';
-import ItemClassificationsPage from '../../pages/manager/ItemClassificationsPage.jsx';
-import ItemUnitsPage from '../../pages/manager/ItemUnitsPage.jsx';
-import ReliefRequestDashboardPage from '../../pages/manager/hang-cuu-tro/ReliefRequestDashboardPage.jsx';
-import ReliefRequestCreatePage from '../../pages/manager/hang-cuu-tro/ReliefRequestCreatePage.jsx';
-import ReliefRequestVerifyPage from '../../pages/manager/hang-cuu-tro/ReliefRequestVerifyPage.jsx';
-import ReliefRequestsPage from '../../pages/manager/ReliefRequestsPage.jsx';
-import ReliefTeamManagementPage from '../../pages/manager/ReliefTeamManagementPage.jsx';
-import ApprovedReliefIssueRequestsPage from '../../pages/manager/ApprovedReliefIssueRequestsPage.jsx';
-import ReliefPrioritizePage from '../../pages/manager/ReliefPrioritizePage.jsx';
-import ReportsPage from '../../pages/manager/ReportsPage.jsx';
+// Manager (lazy-loaded)
+const ManagerDashboard = lazy(() => import('../../pages/manager/ManagerDashboard.jsx'));
+const ManagerLayout = lazy(() => import('../../layouts/ManagerLayout.jsx'));
+const InventoryOverviewPage = lazy(() => import('../../pages/manager/kho/InventoryOverviewPage.jsx'));
+const DistributionPlanPage = lazy(() => import('../../pages/manager/hang-cuu-tro/DistributionPlanPage.jsx'));
+const DistributionVoucherPage = lazy(() => import('../../pages/manager/hang-cuu-tro/DistributionVoucherPage.jsx'));
+const AssetsManagementPage = lazy(() => import('../../pages/manager/phuong-tien/AssetsManagementPage.jsx'));
+const AssetCreatePage = lazy(() => import('../../pages/manager/phuong-tien/AssetCreatePage.jsx'));
+const AssetsAssignToTask = lazy(() => import('../../features/assets/components/AssetsAssignToTask.jsx'));
+const ReceiptCreatePage = lazy(() => import('../../pages/manager/kho/ReceiptCreatePage.jsx'));
+const ReceiptApprovalPage = lazy(() => import('../../pages/manager/kho/ReceiptApprovalPage.jsx'));
+const IssueCreatePage = lazy(() => import('../../pages/manager/kho/IssueCreatePage.jsx'));
+const ItemCategoriesPage = lazy(() => import('../../pages/manager/kho/ItemCategoriesPage.jsx'));
+const ItemClassificationsPage = lazy(() => import('../../pages/manager/ItemClassificationsPage.jsx'));
+const ItemUnitsPage = lazy(() => import('../../pages/manager/ItemUnitsPage.jsx'));
+const ReliefRequestDashboardPage = lazy(() => import('../../pages/manager/hang-cuu-tro/ReliefRequestDashboardPage.jsx'));
+const ReliefRequestCreatePage = lazy(() => import('../../pages/manager/hang-cuu-tro/ReliefRequestCreatePage.jsx'));
+const ReliefRequestVerifyPage = lazy(() => import('../../pages/manager/hang-cuu-tro/ReliefRequestVerifyPage.jsx'));
+const ReliefRequestsPage = lazy(() => import('../../pages/manager/ReliefRequestsPage.jsx'));
+const ReliefTeamManagementPage = lazy(() => import('../../pages/manager/ReliefTeamManagementPage.jsx'));
+const ApprovedReliefIssueRequestsPage = lazy(() => import('../../pages/manager/ApprovedReliefIssueRequestsPage.jsx'));
+const ReliefPrioritizePageManager = lazy(() => import('../../pages/manager/ReliefPrioritizePage.jsx'));
+const ReportsPage = lazy(() => import('../../pages/manager/ReportsPage.jsx'));
 
-// Admin
-import AdminDashboard from '../../pages/admin/AdminDashboard.jsx';
-import UserManagementPage from '../../pages/admin/UserManagementPage.jsx';
-import SystemSettingsPage from '../../pages/admin/SystemSettingsPage.jsx';
-import AuditLogsPage from '../../pages/admin/AuditLogsPage.jsx';
-import TeamsManagementPage from '../../pages/admin/TeamsManagementPage.jsx';
-import TeamCreatePage from '../../pages/admin/TeamCreatePage.jsx';
-import SystemFeedbacksPage from '../../pages/admin/SystemFeedbacksPage.jsx';
-import ContentPagesSettingsPage from '../../pages/admin/ContentPagesSettingsPage.jsx';
+// Admin (lazy-loaded)
+const AdminDashboard = lazy(() => import('../../pages/admin/AdminDashboard.jsx'));
+const UserManagementPage = lazy(() => import('../../pages/admin/UserManagementPage.jsx'));
+const SystemSettingsPage = lazy(() => import('../../pages/admin/SystemSettingsPage.jsx'));
+const AuditLogsPage = lazy(() => import('../../pages/admin/AuditLogsPage.jsx'));
+const TeamsManagementPage = lazy(() => import('../../pages/admin/TeamsManagementPage.jsx'));
+const TeamCreatePage = lazy(() => import('../../pages/admin/TeamCreatePage.jsx'));
+const SystemFeedbacksPage = lazy(() => import('../../pages/admin/SystemFeedbacksPage.jsx'));
+const ContentPagesSettingsPage = lazy(() => import('../../pages/admin/ContentPagesSettingsPage.jsx'));
 
 
 /* =========================
@@ -101,38 +105,43 @@ export default function AppRoutes() {
             {/* -------- PUBLIC -------- */}
             <Route
                 path={PUBLIC_ROUTES.HOME}
-                element={<HomePage />}
+                element={
+                    <PublicLayout>
+                        <HomePage />
+                    </PublicLayout>
+                }
             />
             <Route
                 path={PUBLIC_ROUTES.EMERGENCY_GUIDE}
                 element={
-                    <RootLayout>
+                    <PublicLayout>
                         <EmergencyGuidePage />
-                    </RootLayout>
+                    </PublicLayout>
                 }
             />
             <Route
                 path={PUBLIC_ROUTES.TERMS_OF_USE}
                 element={
-                    <RootLayout>
+                    <PublicLayout>
                         <StaticContentPage />
-                    </RootLayout>
+                    </PublicLayout>
                 }
             />
+            <Route path="/dieu-khoan-su-dung" element={<Navigate replace to={PUBLIC_ROUTES.TERMS_OF_USE} />} />
             <Route
                 path={PUBLIC_ROUTES.PRIVACY_POLICY}
                 element={
-                    <RootLayout>
+                    <PublicLayout>
                         <StaticContentPage />
-                    </RootLayout>
+                    </PublicLayout>
                 }
             />
             <Route
                 path={PUBLIC_ROUTES.SUPPORT_CONTACT}
                 element={
-                    <RootLayout>
-                        <StaticContentPage />
-                    </RootLayout>
+                    <PublicLayout>
+                        <SupportContactPage />
+                    </PublicLayout>
                 }
             />
 
@@ -161,7 +170,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['CITIZEN']}>
                             <RootLayout>
-                                <CitizenDashboard />
+                                <Suspense fallback={<PageLoader />}>
+                                    <CitizenDashboard />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -173,7 +184,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['CITIZEN']}>
                             <RootLayout>
-                                <RescueRequestCreatePage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <RescueRequestCreatePage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -185,7 +198,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['CITIZEN']}>
                             <RootLayout>
-                                <RescueRequestStatusPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <RescueRequestStatusPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -196,7 +211,11 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['CITIZEN']}>
-                            <Navigate to={CITIZEN_ROUTES.DASHBOARD} replace />
+                            <RootLayout>
+                                <Suspense fallback={<PageLoader />}>
+                                    <CitizenReliefRequestCreatePage />
+                                </Suspense>
+                            </RootLayout>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -207,7 +226,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['CITIZEN']}>
                             <RootLayout>
-                                <MyReliefRequestsPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <MyReliefRequestsPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -219,7 +240,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['CITIZEN']}>
                             <RootLayout>
-                                <ReliefRequestStatusPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <ReliefRequestStatusPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -231,7 +254,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['CITIZEN']}>
                             <RootLayout>
-                                <MyRescueRequestsPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <MyRescueRequestsPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -243,7 +268,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['CITIZEN']}>
                             <RootLayout>
-                                <RescueRequestUpdatePage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <RescueRequestUpdatePage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -255,7 +282,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['CITIZEN']}>
                             <RootLayout>
-                                <ReliefRequestUpdatePage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <ReliefRequestUpdatePage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -267,7 +296,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['CITIZEN']}>
                             <RootLayout>
-                                <FeedbackPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <FeedbackPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -281,7 +312,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['COORDINATOR']}>
                             <RootLayout>
-                                <CoordinatorDashboard />
+                                <Suspense fallback={<PageLoader />}>
+                                    <CoordinatorDashboard />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -293,7 +326,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['COORDINATOR']}>
                             <RootLayout>
-                                <RescueVerifyPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <RescueVerifyPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -305,7 +340,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['COORDINATOR']}>
                             <RootLayout>
-                                <RescueAssignPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <RescueAssignPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -317,7 +354,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['COORDINATOR']}>
                             <RootLayout>
-                                <RescueRequestHandle />
+                                <Suspense fallback={<PageLoader />}>
+                                    <RescueRequestHandle />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -329,7 +368,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['COORDINATOR']}>
                             <RootLayout>
-                                <RescueHistoryPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <RescueHistoryPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -341,7 +382,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['COORDINATOR']}>
                             <RootLayout>
-                                <TeamWorkloadPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <TeamWorkloadPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -353,7 +396,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['COORDINATOR']}>
                             <RootLayout>
-                                <RescuePrioritizePage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <RescuePrioritizePage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -365,7 +410,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['COORDINATOR']}>
                             <RootLayout>
-                                <DuplicateManagementPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <DuplicateManagementPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -377,7 +424,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['COORDINATOR']}>
                             <RootLayout>
-                                <BlockedCitizensPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <BlockedCitizensPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -391,7 +440,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['RESCUER']}>
                             <RootLayout>
-                                <RescuerDashboard />
+                                <Suspense fallback={<PageLoader />}>
+                                    <RescuerDashboard />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -403,7 +454,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['RESCUER']}>
                             <RootLayout>
-                                <MyAssignmentsPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <MyAssignmentsPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -415,7 +468,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['RESCUER']}>
                             <RootLayout>
-                                <AssignmentDetailPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <AssignmentDetailPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -427,7 +482,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['RESCUER']}>
                             <RootLayout>
-                                <MissionMapTrackingPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <MissionMapTrackingPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -439,7 +496,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['RESCUER']}>
                             <RootLayout>
-                                <FieldUpdatePage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <FieldUpdatePage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -451,7 +510,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['RESCUER']}>
                             <RootLayout>
-                                <RescueUpdateStatusPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <RescueUpdateStatusPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -463,7 +524,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['RESCUER']}>
                             <RootLayout>
-                                <MyAssignmentsPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <MyAssignmentsPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -475,7 +538,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['RESCUER']}>
                             <RootLayout>
-                                <MyAssignmentsPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <MyAssignmentsPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -487,7 +552,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['RESCUER']}>
                             <RootLayout>
-                                <ReliefPrioritizePage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <ReliefPrioritizePageManager />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -499,7 +566,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['RESCUER']}>
                             <RootLayout>
-                                <ReliefPrioritizeDetailPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <ReliefPrioritizeDetailPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -512,9 +581,11 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <ManagerLayout>
-                                <ManagerDashboard />
-                            </ManagerLayout>
+                            <Suspense fallback={<PageLoader />}>
+                                <ManagerLayout>
+                                    <ManagerDashboard />
+                                </ManagerLayout>
+                            </Suspense>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -525,7 +596,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
                             <RootLayout>
-                                <ReliefRequestsPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <ReliefRequestsPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -536,9 +609,11 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <ManagerLayout>
-                                <InventoryOverviewPage />
-                            </ManagerLayout>
+                            <Suspense fallback={<PageLoader />}>
+                                <ManagerLayout>
+                                    <InventoryOverviewPage />
+                                </ManagerLayout>
+                            </Suspense>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -548,9 +623,11 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <ManagerLayout>
-                                <ItemCategoriesPage />
-                            </ManagerLayout>
+                            <Suspense fallback={<PageLoader />}>
+                                <ManagerLayout>
+                                    <ItemCategoriesPage />
+                                </ManagerLayout>
+                            </Suspense>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -560,9 +637,11 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <ManagerLayout>
-                                <ItemClassificationsPage />
-                            </ManagerLayout>
+                            <Suspense fallback={<PageLoader />}>
+                                <ManagerLayout>
+                                    <ItemClassificationsPage />
+                                </ManagerLayout>
+                            </Suspense>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -572,9 +651,11 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <ManagerLayout>
-                                <ItemUnitsPage />
-                            </ManagerLayout>
+                            <Suspense fallback={<PageLoader />}>
+                                <ManagerLayout>
+                                    <ItemUnitsPage />
+                                </ManagerLayout>
+                            </Suspense>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -584,9 +665,11 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <ManagerLayout>
-                                <ReceiptCreatePage />
-                            </ManagerLayout>
+                            <Suspense fallback={<PageLoader />}>
+                                <ManagerLayout>
+                                    <ReceiptCreatePage />
+                                </ManagerLayout>
+                            </Suspense>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -596,9 +679,11 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <ManagerLayout>
-                                <IssueCreatePage />
-                            </ManagerLayout>
+                            <Suspense fallback={<PageLoader />}>
+                                <ManagerLayout>
+                                    <IssueCreatePage />
+                                </ManagerLayout>
+                            </Suspense>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -609,7 +694,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
                             <RootLayout>
-                                <ReliefTeamManagementPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <ReliefTeamManagementPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -621,7 +708,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
                             <RootLayout>
-                                <ApprovedReliefIssueRequestsPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <ApprovedReliefIssueRequestsPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -632,9 +721,11 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <ManagerLayout>
-                                <ReliefRequestCreatePage />
-                            </ManagerLayout>
+                            <Suspense fallback={<PageLoader />}>
+                                <ManagerLayout>
+                                    <ReliefRequestCreatePage />
+                                </ManagerLayout>
+                            </Suspense>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -644,9 +735,11 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <ManagerLayout>
-                                <ReliefRequestDashboardPage />
-                            </ManagerLayout>
+                            <Suspense fallback={<PageLoader />}>
+                                <ManagerLayout>
+                                    <ReliefRequestDashboardPage />
+                                </ManagerLayout>
+                            </Suspense>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -656,9 +749,11 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <ManagerLayout>
-                                <ReliefRequestVerifyPage />
-                            </ManagerLayout>
+                            <Suspense fallback={<PageLoader />}>
+                                <ManagerLayout>
+                                    <ReliefRequestVerifyPage />
+                                </ManagerLayout>
+                            </Suspense>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -668,9 +763,11 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <ManagerLayout>
-                                <DistributionPlanPage />
-                            </ManagerLayout>
+                            <Suspense fallback={<PageLoader />}>
+                                <ManagerLayout>
+                                    <DistributionPlanPage />
+                                </ManagerLayout>
+                            </Suspense>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -680,9 +777,11 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <ManagerLayout>
-                                <DistributionVoucherPage />
-                            </ManagerLayout>
+                            <Suspense fallback={<PageLoader />}>
+                                <ManagerLayout>
+                                    <DistributionVoucherPage />
+                                </ManagerLayout>
+                            </Suspense>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -692,9 +791,11 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <ManagerLayout>
-                                <AssetsManagementPage />
-                            </ManagerLayout>
+                            <Suspense fallback={<PageLoader />}>
+                                <ManagerLayout>
+                                    <AssetsManagementPage />
+                                </ManagerLayout>
+                            </Suspense>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -704,9 +805,11 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <ManagerLayout>
-                                <AssetCreatePage />
-                            </ManagerLayout>
+                            <Suspense fallback={<PageLoader />}>
+                                <ManagerLayout>
+                                    <AssetCreatePage />
+                                </ManagerLayout>
+                            </Suspense>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -716,9 +819,11 @@ export default function AppRoutes() {
                 element={
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
-                            <ManagerLayout>
-                                <AssetsAssignToTask />
-                            </ManagerLayout>
+                            <Suspense fallback={<PageLoader />}>
+                                <ManagerLayout>
+                                    <AssetsAssignToTask />
+                                </ManagerLayout>
+                            </Suspense>
                         </RequireRole>
                     </RequireAuth>
                 }
@@ -729,7 +834,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['MANAGER']}>
                             <RootLayout>
-                                <ReportsPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <ReportsPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -743,7 +850,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['ADMIN']}>
                             <RootLayout>
-                                <AdminDashboard />
+                                <Suspense fallback={<PageLoader />}>
+                                    <AdminDashboard />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -755,7 +864,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['ADMIN']}>
                             <RootLayout>
-                                <UserManagementPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <UserManagementPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -767,7 +878,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['ADMIN']}>
                             <RootLayout>
-                                <TeamsManagementPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <TeamsManagementPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -779,7 +892,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['ADMIN']}>
                             <RootLayout>
-                                <TeamCreatePage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <TeamCreatePage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -791,7 +906,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['ADMIN']}>
                             <RootLayout>
-                                <SystemSettingsPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <SystemSettingsPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -803,7 +920,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['ADMIN']}>
                             <RootLayout>
-                                <AuditLogsPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <AuditLogsPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -815,7 +934,37 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['ADMIN']}>
                             <RootLayout>
-                                <SystemFeedbacksPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <SystemFeedbacksPage />
+                                </Suspense>
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={ADMIN_ROUTES.ASSETS_MANAGEMENT}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['ADMIN']}>
+                            <RootLayout>
+                                <Suspense fallback={<PageLoader />}>
+                                    <AssetsManagementPage />
+                                </Suspense>
+                            </RootLayout>
+                        </RequireRole>
+                    </RequireAuth>
+                }
+            />
+            <Route
+                path={ADMIN_ROUTES.CREATE_ASSET}
+                element={
+                    <RequireAuth>
+                        <RequireRole allow={['ADMIN']}>
+                            <RootLayout>
+                                <Suspense fallback={<PageLoader />}>
+                                    <AssetCreatePage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -827,7 +976,9 @@ export default function AppRoutes() {
                     <RequireAuth>
                         <RequireRole allow={['ADMIN']}>
                             <RootLayout>
-                                <ContentPagesSettingsPage />
+                                <Suspense fallback={<PageLoader />}>
+                                    <ContentPagesSettingsPage />
+                                </Suspense>
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -838,9 +989,9 @@ export default function AppRoutes() {
             <Route
                 path={PUBLIC_ROUTES.NOT_FOUND}
                 element={
-                    <RootLayout>
+                    <PublicLayout>
                         <NotFoundPage />
-                    </RootLayout>
+                    </PublicLayout>
                 }
             />
         </Routes>

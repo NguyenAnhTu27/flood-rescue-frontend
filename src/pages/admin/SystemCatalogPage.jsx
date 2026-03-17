@@ -80,10 +80,12 @@ export default function SystemCatalogPage() {
     }
   };
 
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     loadAllItems();
     loadGroups();
   }, []);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const tabItems = useMemo(() => {
     const map = new Map();

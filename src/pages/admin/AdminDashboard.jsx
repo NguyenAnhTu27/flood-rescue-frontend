@@ -64,28 +64,28 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100 p-8">
+      <section className="animate-fade-in-up ui-surface p-8">
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div>
-            <h1 className="text-5xl font-black tracking-tight text-slate-900">Quản trị hệ thống</h1>
-            <p className="mt-3 text-2xl text-slate-600">Quản lý người dùng, đội cứu hộ, cấu hình và vận hành hệ thống</p>
+            <h1 className="ui-section-title">Quản trị hệ thống</h1>
+            <p className="ui-section-subtitle">Quản lý người dùng, đội cứu hộ, cấu hình và vận hành hệ thống</p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-right shadow-sm">
+          <div className="rounded-md border border-blue-200 bg-white px-5 py-4 text-right shadow-sm">
             <p className="text-xs uppercase tracking-wide text-slate-500">System Administrator</p>
-            <p className="text-lg font-semibold text-slate-900">ADMIN</p>
+            <p className="text-lg font-semibold text-blue-700">ADMIN</p>
           </div>
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <div className="animate-fade-in-up ui-surface p-4" style={{ animationDelay: '60ms' }}>
             <p className="text-xs uppercase text-slate-500">Tổng người dùng</p>
             <p className="mt-2 text-3xl font-bold text-slate-900">{stats.totalUsers}</p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <div className="animate-fade-in-up ui-surface p-4" style={{ animationDelay: '120ms' }}>
             <p className="text-xs uppercase text-slate-500">Đang hoạt động</p>
-            <p className="mt-2 text-3xl font-bold text-emerald-600">{stats.activeUsers}</p>
+            <p className="mt-2 text-3xl font-bold text-blue-600">{stats.activeUsers}</p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <div className="animate-fade-in-up ui-surface p-4" style={{ animationDelay: '180ms' }}>
             <p className="text-xs uppercase text-slate-500">Bị khóa</p>
             <p className="mt-2 text-3xl font-bold text-rose-600">{stats.lockedUsers}</p>
           </div>
@@ -95,22 +95,26 @@ export default function AdminDashboard() {
       </section>
 
       <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {modules.map((module) => {
+        {modules.map((module, idx) => {
           const Icon = module.icon;
           return (
-            <article key={module.title} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
-                <Icon size={28} />
+            <article
+              key={module.title}
+              className="animate-fade-in-up group ui-surface p-6 transition-all duration-200 active:scale-[0.98]"
+              style={{ animationDelay: `${idx * 80}ms` }}
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-blue-100 text-blue-600">
+                <Icon size={24} />
               </div>
-              <h2 className="mt-5 text-4xl font-bold leading-tight text-slate-900">{module.title}</h2>
-              <p className="mt-3 min-h-[56px] text-xl text-slate-600">{module.description}</p>
+              <h2 className="mt-5 font-heading text-xl font-bold leading-tight text-slate-900">{module.title}</h2>
+              <p className="mt-2 min-h-[48px] text-sm text-slate-600">{module.description}</p>
 
               <Link
                 to={module.to}
-                className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-lg font-semibold text-white transition hover:bg-blue-700"
+                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-[14px] bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_14px_26px_rgba(37,99,235,0.24)] transition-all duration-150 hover:bg-blue-700 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70 focus-visible:ring-offset-2"
               >
                 Truy cập
-                <ArrowRight size={18} />
+                <ArrowRight size={16} />
               </Link>
             </article>
           );

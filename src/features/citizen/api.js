@@ -3,6 +3,7 @@
  */
 
 import httpClient from '../../shared/lib/http.js';
+import { normalizePagination } from '../../shared/lib/httpUtils.js';
 
 /**
  * Get citizen dashboard data
@@ -30,22 +31,15 @@ export async function getCitizenDashboard() {
  * @returns {Promise} List of rescue requests
  */
 export async function getMyRescueRequests(params = {}) {
-    // Normalize pagination params across FE (page/limit) vs BE (page/size)
-    // Many Spring-style APIs are 0-based: page=0 is first page.
-    const normalized = { ...(params || {}) };
-
-    if (normalized.limit !== undefined && normalized.size === undefined) {
-        normalized.size = normalized.limit;
-        delete normalized.limit;
+    try {
+        const response = await httpClient.get('/rescue/citizen/requests', {
+            params: normalizePagination(params)
+        });
+        return response;
+    } catch (error) {
+        console.error('Error fetching rescue requests:', error);
+        throw error;
     }
-
-    if (typeof normalized.page === 'number' && normalized.page >= 1) {
-        // FE previously used 1-based. Convert to 0-based to avoid "empty list" regressions.
-        normalized.page = normalized.page - 1;
-    }
-
-    const response = await httpClient.get('/rescue/citizen/requests', { params: normalized });
-    return response;
 }
 
 /**
@@ -80,13 +74,27 @@ export async function updateRescueRequest(id, data) {
  * @returns {Promise<Array<{fileUrl: string, fileType: string}>>}
  */
 export async function uploadRescueAttachments(files) {
-    const formData = new FormData();
-    files.forEach((file) => {
-        formData.append('files', file);
-    });
+    if (!Array.isArray(files) || files.length === 0) return [];
 
-    const response = await httpClient.post('/rescue/citizen/attachments', formData);
-    return response;
+    const buildFormData = (fieldName) => {
+        const formData = new FormData();
+        files.forEach((file) => {
+            formData.append(fieldName, file);
+        });
+        return formData;
+    };
+
+    try {
+        // Preferred field name used by current FE
+        return await httpClient.post('/rescue/citizen/attachments', buildFormData('files'));
+    } catch (error) {
+        // Fallback for BE variants that expect `attachments` instead of `files`
+        const canRetryWithAlias = Number(error?.status) >= 400 && Number(error?.status) < 500;
+        if (!canRetryWithAlias) {
+            throw error;
+        }
+        return httpClient.post('/rescue/citizen/attachments', buildFormData('attachments'));
+    }
 }
 
 /**

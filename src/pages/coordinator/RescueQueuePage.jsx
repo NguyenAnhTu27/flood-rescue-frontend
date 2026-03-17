@@ -268,7 +268,7 @@ export default function RescueQueuePage() {
                                         </td>
                                         <td className="px-4 py-3 text-sm">
                                             <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(r.status)}`}>
-                                                {Boolean(r.waitingForTeam) ? 'CHỜ CÓ ĐỘI' : (r.status || '—')}
+                                                {r.waitingForTeam ? 'CHỜ CÓ ĐỘI' : (r.status || '—')}
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 text-sm text-slate-600">{fmtDate(r.createdAt)}</td>

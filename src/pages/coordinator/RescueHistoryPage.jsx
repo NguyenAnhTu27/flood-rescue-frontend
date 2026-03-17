@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { MapPin, Search } from 'lucide-react';
-import GoogleMap from '../../features/map/components/GoogleMap.jsx';
+import MapBox from '../../features/map/components/MapBox.jsx';
 import { getTaskGroupById, getTaskGroups } from '../../features/coordinator/api.js';
 
 function fmtDate(value) {
@@ -245,7 +245,7 @@ export default function RescueHistoryPage() {
                                 <p className="mt-0.5 text-xs text-slate-500 inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />Vị trí theo tọa độ hợp lệ đầu tiên của nhiệm vụ.</p>
                             </div>
                             <div className="h-[calc(100%-57px)] min-h-[260px]">
-                                <GoogleMap center={mapCenter} markerPosition={mapCenter} zoom={13} />
+                                <MapBox center={mapCenter} markerPosition={mapCenter} zoom={13} />
                             </div>
                         </div>
                     </div>

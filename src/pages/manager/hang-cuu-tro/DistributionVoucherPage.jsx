@@ -4,13 +4,11 @@ import { AlertCircle, CheckCircle2, FilePlus2, Info, Package, TriangleAlert } fr
 import { MANAGER_ROUTES } from '../../../app/routes/route.constants.js';
 import { getInventoryStock, getReliefRequest, listInventoryIssues, listReliefRequests } from '../../../features/relief/api.js';
 import { createDistributionVoucher } from '../../../features/relief/apiDistribution.js';
-import { getTeams } from '../../../features/teams/api.js';
-import { getAssets } from '../../../features/assets/api.js';
 
 const SAMPLE_ITEMS = [
-    { id: 'gao', name: 'Gao', unit: 'Kg', requestedQty: 1000, itemCategoryId: null },
-    { id: 'mi-goi', name: 'Mi tom Hao Hao', unit: 'Thung', requestedQty: 500, itemCategoryId: null },
-    { id: 'nuoc-uong', name: 'Nuoc tinh khiet (500ml)', unit: 'Chai', requestedQty: 2000, itemCategoryId: null },
+    { id: 'gao', name: 'Gạo', unit: 'Kg', requestedQty: 1000, itemCategoryId: null },
+    { id: 'mi-goi', name: 'Mì tôm Hảo Hảo', unit: 'Thung', requestedQty: 500, itemCategoryId: null },
+    { id: 'nuoc-uong', name: 'Nước tinh khiết (500ml)', unit: 'Chai', requestedQty: 2000, itemCategoryId: null },
 ];
 
 function parseList(data) {
@@ -67,7 +65,7 @@ function normalizeIssue(issue, idx = 0) {
         issue?.warehouse ||
         issue?.warehouseCode ||
         issue?.fromWarehouseName ||
-        'Kho Trung tam';
+        'Kho Trung tâm';
 
     return {
         id,
@@ -127,7 +125,7 @@ function mapReliefItems(requestDetail) {
 
         return {
             id: item?.id || item?.itemId || item?.itemCategoryId || `line-${index}`,
-            name: item?.itemName || item?.name || item?.item || `Mat hang ${index + 1}`,
+            name: item?.itemName || item?.name || item?.item || `Mặt hàng ${index + 1}`,
             unit: item?.unit || '',
             requestedQty: toNumber(item?.quantity || item?.qty || 0),
             itemCategoryId: item?.itemCategoryId ?? item?.itemId ?? item?.id ?? null,
@@ -204,7 +202,7 @@ function isCentralWarehouseStock(stockItem) {
 
 async function loadCentralWarehouseStock() {
     const preferredParams = {
-        warehouseName: 'Kho Trung tam',
+        warehouseName: 'Kho Trung tâm',
         warehouseType: 'CENTRAL',
     };
 
@@ -227,19 +225,15 @@ export default function DistributionVoucherPage() {
     const requestId = searchParams.get('requestId');
 
     const [voucherCode] = useState(() => createVoucherCode());
-    const [warehouse, setWarehouse] = useState('Kho Trung tam');
-    const [requestLabel, setRequestLabel] = useState('Khong co yeu cau cuu tro tham chieu');
+    const [warehouse, setWarehouse] = useState('Kho Trung tâm');
+    const [requestLabel, setRequestLabel] = useState('Không có yêu cầu cứu trợ tham chiếu');
     const [rows, setRows] = useState([]);
     const [stockSnapshot, setStockSnapshot] = useState([]);
-    const [teams, setTeams] = useState([]);
-    const [assets, setAssets] = useState([]);
     const [issueOptions, setIssueOptions] = useState([]);
     const [approvedRequests, setApprovedRequests] = useState([]);
     const [selectedApprovedRequestId, setSelectedApprovedRequestId] = useState('');
     const [dispatchForm, setDispatchForm] = useState({
         issueRefCode: '',
-        teamId: '',
-        assetId: '',
         contactName: '',
         contactPhone: '',
         deliveryAddress: '',
@@ -258,17 +252,13 @@ export default function DistributionVoucherPage() {
                 setLoading(true);
                 setError('');
 
-                const [stockRes, teamsRes, assetsRes, issuesRes, approvedReqRes] = await Promise.allSettled([
+                const [stockRes, issuesRes, approvedReqRes] = await Promise.allSettled([
                     loadCentralWarehouseStock(),
-                    getTeams(),
-                    getAssets(),
                     listInventoryIssues({ size: 100 }),
                     listReliefRequests({ status: 'APPROVED', size: 100 }),
                 ]);
 
                 const stockList = stockRes.status === 'fulfilled' ? parseList(stockRes.value) : [];
-                const loadedTeams = teamsRes.status === 'fulfilled' ? parseList(teamsRes.value) : [];
-                const loadedAssets = assetsRes.status === 'fulfilled' ? parseList(assetsRes.value) : [];
                 const issueListRaw = issuesRes.status === 'fulfilled' ? parseList(issuesRes.value) : [];
                 const approvedRaw = approvedReqRes.status === 'fulfilled' ? parseList(approvedReqRes.value) : [];
                 const sortedIssues = issueListRaw
@@ -286,8 +276,6 @@ export default function DistributionVoucherPage() {
                     });
 
                 setStockSnapshot(stockList);
-                setTeams(loadedTeams);
-                setAssets(loadedAssets);
                 setIssueOptions(sortedIssues);
                 setApprovedRequests(sortedApprovedRequests);
                 if (sortedApprovedRequests.length > 0) {
@@ -296,10 +284,10 @@ export default function DistributionVoucherPage() {
                         : null;
                     const selectedRequest = queryMatched || sortedApprovedRequests[0];
                     setSelectedApprovedRequestId(String(selectedRequest.id));
-                    setRequestLabel(`${selectedRequest.code}${selectedRequest.area ? ` - ${selectedRequest.area}` : ''} (Da duyet)`);
+                    setRequestLabel(`${selectedRequest.code}${selectedRequest.area ? ` - ${selectedRequest.area}` : ''} (Đã duyệt)`);
                 } else {
                     setSelectedApprovedRequestId('');
-                    setRequestLabel('Khong co yeu cau cuu tro da duyet');
+                    setRequestLabel('Không có yêu cầu cứu trợ đã duyệt');
                     setRows([]);
                 }
                 if (sortedIssues.length > 0) {
@@ -308,11 +296,11 @@ export default function DistributionVoucherPage() {
                         ...prev,
                         issueRefCode: prev.issueRefCode || latestIssue.code,
                     }));
-                    setWarehouse(latestIssue.warehouseName || 'Kho Trung tam');
+                    setWarehouse(latestIssue.warehouseName || 'Kho Trung tâm');
                 }
                 setLastUpdated(new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }));
             } catch (e) {
-                setError(e?.message || 'Khong the tai du lieu tao phieu dieu phoi.');
+                setError(e?.message || 'Không thể tải dữ liệu tạo phiếu điều phối.');
                 setRows(
                     SAMPLE_ITEMS.map((item) => ({
                         ...item,
@@ -351,7 +339,7 @@ export default function DistributionVoucherPage() {
                 const detail = await getReliefRequest(selectedApprovedRequestId);
                 const code = detail?.code || detail?.requestCode || detail?.id || selectedApprovedRequestId;
                 const area = detail?.targetAreaName || detail?.targetArea || detail?.area || detail?.location || '';
-                setRequestLabel(`${code}${area ? ` - ${area}` : ''} (Da duyet)`);
+                setRequestLabel(`${code}${area ? ` - ${area}` : ''} (Đã duyệt)`);
 
                 const requestItems = mapReliefItems(detail);
                 const stockLookup = buildStockLookups(stockSnapshot);
@@ -374,10 +362,10 @@ export default function DistributionVoucherPage() {
                 });
 
                 setRows(mappedRows);
-            } catch (e) {
+            } catch {
                 const selectedReq = approvedRequests.find((req) => String(req.id) === String(selectedApprovedRequestId));
                 if (selectedReq) {
-                    setRequestLabel(`${selectedReq.code}${selectedReq.area ? ` - ${selectedReq.area}` : ''} (Da duyet)`);
+                    setRequestLabel(`${selectedReq.code}${selectedReq.area ? ` - ${selectedReq.area}` : ''} (Đã duyệt)`);
                 }
                 setRows([]);
             }
@@ -423,15 +411,15 @@ export default function DistributionVoucherPage() {
 
     const handleCreateVoucher = async () => {
         if (!dispatchForm.issueRefCode) {
-            setError('Vui long chon phieu xuat kho tham chieu.');
+            setError('Vui lòng chọn phiếu xuất kho tham chiếu.');
             return;
         }
         if (!selectedApprovedRequestId) {
-            setError('Vui long chon yeu cau cuu tro da duyet.');
+            setError('Vui lòng chọn yêu cầu cứu trợ đã duyệt.');
             return;
         }
         if (!canSubmit) {
-            setError('Khong the tao phieu: vui long dieu chinh so luong dieu phoi hop le.');
+            setError('Không thể tạo phiếu: vui lòng điều chỉnh số lượng điều phối hợp lệ.');
             return;
         }
 
@@ -444,7 +432,7 @@ export default function DistributionVoucherPage() {
             }));
 
         if (validLines.length === 0) {
-            setError('Khong tim thay itemCategoryId de tao phieu xuat kho tu danh sach hien tai.');
+            setError('Không tìm thấy itemCategoryId để tạo phiếu xuất kho từ danh sách hiện tại.');
             return;
         }
 
@@ -468,18 +456,12 @@ export default function DistributionVoucherPage() {
             if (selectedApprovedRequestId && Number.isFinite(Number(selectedApprovedRequestId))) {
                 payload.reliefRequestId = Number(selectedApprovedRequestId);
             }
-            if (dispatchForm.teamId && Number.isFinite(Number(dispatchForm.teamId))) {
-                payload.teamId = Number(dispatchForm.teamId);
-            }
-            if (dispatchForm.assetId && Number.isFinite(Number(dispatchForm.assetId))) {
-                payload.assetId = Number(dispatchForm.assetId);
-            }
 
             await createDistributionVoucher(payload);
-            window.alert('Da tao phieu dieu phoi thanh cong.');
+            window.alert('Đã tạo phiếu điều phối thành công.');
             navigate(MANAGER_ROUTES.RELIEF_REQUEST_DASHBOARD);
         } catch (e) {
-            setError(e?.message || 'Tao phieu dieu phoi that bai. Vui long thu lai.');
+            setError(e?.message || 'Tạo phiếu điều phối thất bại. Vui lòng thử lại.');
         } finally {
             setSubmitting(false);
         }
@@ -489,19 +471,19 @@ export default function DistributionVoucherPage() {
         <div className="w-full space-y-4">
             <div className="text-xs text-slate-500">
                 <button onClick={() => navigate(MANAGER_ROUTES.DASHBOARD)} className="hover:text-slate-700">
-                    Trang chu
+                    Trang chủ
                 </button>{' '}
                 /{' '}
                 <button onClick={() => navigate(MANAGER_ROUTES.DISTRIBUTION_PLAN)} className="hover:text-slate-700">
-                    Phan phoi
+                    Phân phối
                 </button>{' '}
-                / <span className="font-medium text-blue-600">Tao phieu dieu phoi</span>
+                / <span className="font-medium text-blue-600">Tạo phiếu điều phối</span>
             </div>
 
             <div>
-                <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Tao Phieu Dieu phoi Giao hang</h1>
+                <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Tạo Phiếu Điều Phối Giao Hàng</h1>
                 <p className="mt-1 text-sm text-slate-500">
-                    Chung tu dieu phoi cho khau giao hang, tach biet voi nghiep vu xuat kho.
+                    Chứng từ điều phối cho khâu giao hàng, tách biệt với nghiệp vụ xuất kho.
                 </p>
             </div>
 
@@ -510,15 +492,15 @@ export default function DistributionVoucherPage() {
                     <div>
                         <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
                             <FilePlus2 className="h-4 w-4 text-blue-600" />
-                            Thong tin chung
+                            Thông tin chung
                         </h2>
-                        <p className="mt-2 text-[11px] uppercase tracking-wide text-slate-400">Ma yeu cau da duyet</p>
+                        <p className="mt-2 text-[11px] uppercase tracking-wide text-slate-400">Mã yêu cầu đã duyệt</p>
                         <select
                             value={selectedApprovedRequestId}
                             onChange={(e) => setSelectedApprovedRequestId(e.target.value)}
                             className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         >
-                            <option value="">Chon yeu cau da duyet</option>
+                            <option value="">Chọn yêu cầu đã duyệt</option>
                             {approvedRequests.map((req) => (
                                 <option key={req.id} value={String(req.id)}>
                                     {req.code}{req.area ? ` - ${req.area}` : ''}{req.createdAt ? ` - ${new Date(req.createdAt).toLocaleDateString('vi-VN')}` : ''}
@@ -528,24 +510,24 @@ export default function DistributionVoucherPage() {
                         <p className="mt-1 text-[11px] text-slate-500">{requestLabel}</p>
                     </div>
                     <div className="text-left sm:text-right">
-                        <p className="text-[11px] uppercase tracking-wide text-slate-400">Kho xuat hang</p>
+                        <p className="text-[11px] uppercase tracking-wide text-slate-400">Kho xuất hàng</p>
                         <p className="text-sm font-semibold text-blue-600">{warehouse}</p>
-                        <p className="mt-2 text-[11px] uppercase tracking-wide text-slate-400">Ma phieu</p>
+                        <p className="mt-2 text-[11px] uppercase tracking-wide text-slate-400">Mã phiếu</p>
                         <p className="text-sm font-semibold text-slate-700">{voucherCode}</p>
                     </div>
                 </div>
 
                 <div className="mb-4 rounded-lg border border-slate-200 p-4">
-                    <h3 className="mb-3 text-sm font-semibold text-slate-900">Thong tin dieu phoi giao hang</h3>
+                    <h3 className="mb-3 text-sm font-semibold text-slate-900">Thông tin điều phối giao hàng</h3>
                     <div className="grid gap-3 md:grid-cols-2">
                         <div>
-                            <label className="text-xs font-medium text-slate-600">Tham chieu phieu xuat kho</label>
+                            <label className="text-xs font-medium text-slate-600">Tham chiếu phiếu xuất kho</label>
                             <select
                                 value={dispatchForm.issueRefCode}
                                 onChange={(e) => handleDispatchField('issueRefCode', e.target.value)}
                                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                             >
-                                <option value="">Chon phieu xuat kho</option>
+                                <option value="">Chọn phiếu xuất kho</option>
                                 {issueOptions.map((issue) => (
                                     <option key={`${issue.code}-${issue.id ?? 'none'}`} value={issue.code}>
                                         {issue.code}
@@ -554,63 +536,34 @@ export default function DistributionVoucherPage() {
                                 ))}
                             </select>
                             {issueOptions.length > 0 && (
-                                <p className="mt-1 text-[11px] text-slate-500">Mac dinh da chon phieu xuat kho moi nhat.</p>
+                                <p className="mt-1 text-[11px] text-slate-500">Mặc định đã chọn phiếu xuất kho mới nhất.</p>
                             )}
                         </div>
                         <div>
-                            <label className="text-xs font-medium text-slate-600">Muc uu tien</label>
+                            <label className="text-xs font-medium text-slate-600">Mức ưu tiên</label>
                             <select
                                 value={dispatchForm.priority}
                                 onChange={(e) => handleDispatchField('priority', e.target.value)}
                                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                             >
-                                <option value="KHAN_CAP">Khan cap</option>
-                                <option value="TRUNG_BINH">Trung binh</option>
-                                <option value="THAP">Thap</option>
+                                <option value="KHAN_CAP">Khẩn cấp</option>
+                                <option value="TRUNG_BINH">Trung bình</option>
+                                <option value="THAP">Thấp</option>
                             </select>
                         </div>
+
                         <div>
-                            <label className="text-xs font-medium text-slate-600">Doi giao hang</label>
-                            <select
-                                value={dispatchForm.teamId}
-                                onChange={(e) => handleDispatchField('teamId', e.target.value)}
-                                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                            >
-                                <option value="">Chon doi giao hang</option>
-                                {teams.map((team) => (
-                                    <option key={team.id} value={team.id}>
-                                        {team.name || team.teamName || `Doi ${team.id}`}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-xs font-medium text-slate-600">Phuong tien giao</label>
-                            <select
-                                value={dispatchForm.assetId}
-                                onChange={(e) => handleDispatchField('assetId', e.target.value)}
-                                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                            >
-                                <option value="">Chon phuong tien</option>
-                                {assets.map((asset) => (
-                                    <option key={asset.id} value={asset.id}>
-                                        {asset.code || asset.assetCode || `PT-${asset.id}`} - {asset.type || asset.name || 'Phuong tien'}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-xs font-medium text-slate-600">Nguoi nhan tai diem giao</label>
+                            <label className="text-xs font-medium text-slate-600">Người nhận tại điểm giao</label>
                             <input
                                 type="text"
                                 value={dispatchForm.contactName}
                                 onChange={(e) => handleDispatchField('contactName', e.target.value)}
                                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                                placeholder="Ho ten nguoi nhan"
+                                placeholder="Họ tên người nhận"
                             />
                         </div>
                         <div>
-                            <label className="text-xs font-medium text-slate-600">So dien thoai nguoi nhan</label>
+                            <label className="text-xs font-medium text-slate-600">Số điện thoại người nhận</label>
                             <input
                                 type="text"
                                 value={dispatchForm.contactPhone}
@@ -620,17 +573,17 @@ export default function DistributionVoucherPage() {
                             />
                         </div>
                         <div className="md:col-span-2">
-                            <label className="text-xs font-medium text-slate-600">Dia chi giao chi tiet</label>
+                            <label className="text-xs font-medium text-slate-600">Địa chỉ giao chi tiết</label>
                             <input
                                 type="text"
                                 value={dispatchForm.deliveryAddress}
                                 onChange={(e) => handleDispatchField('deliveryAddress', e.target.value)}
                                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                                placeholder="Thon/Xa/Huyen/Tinh"
+                                placeholder="Thôn/Xã/Huyện/Tỉnh"
                             />
                         </div>
                         <div>
-                            <label className="text-xs font-medium text-slate-600">Thoi gian du kien giao</label>
+                            <label className="text-xs font-medium text-slate-600">Thời gian dự kiến giao</label>
                             <input
                                 type="datetime-local"
                                 value={dispatchForm.eta}
@@ -639,13 +592,13 @@ export default function DistributionVoucherPage() {
                             />
                         </div>
                         <div>
-                            <label className="text-xs font-medium text-slate-600">Ghi chu dieu phoi</label>
+                            <label className="text-xs font-medium text-slate-600">Ghi chú điều phối</label>
                             <input
                                 type="text"
                                 value={dispatchForm.dispatchNote}
                                 onChange={(e) => handleDispatchField('dispatchNote', e.target.value)}
                                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                                placeholder="Luu y cho doi giao hang"
+                                placeholder="Lưu ý cho đội giao hàng"
                             />
                         </div>
                     </div>
@@ -653,28 +606,28 @@ export default function DistributionVoucherPage() {
 
                 {loading ? (
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-                        Dang tai danh sach hang dieu phoi...
+                        Đang tải danh sách hàng điều phối...
                     </div>
                 ) : (
                     <>
                         <div className="mb-3 flex items-center justify-between">
                             <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
                                 <Package className="h-4 w-4 text-blue-600" />
-                                Danh sach hang dieu phoi
+                                Danh sách hàng điều phối
                             </h3>
-                            {lastUpdated && <span className="text-xs text-slate-400">Tai luc {lastUpdated}</span>}
+                            {lastUpdated && <span className="text-xs text-slate-400">Tải lúc {lastUpdated}</span>}
                         </div>
 
                         <div className="overflow-x-auto">
                             <table className="w-full min-w-[760px]">
                                 <thead>
                                     <tr className="border-y border-slate-100 text-left text-[11px] uppercase tracking-wide text-slate-400">
-                                        <th className="py-2">Hang hoa</th>
-                                        <th className="py-2">DVT</th>
-                                        <th className="py-2 text-right">So luong yeu cau</th>
-                                        <th className="py-2 text-right">Ton kho thuc te</th>
-                                        <th className="py-2 text-right">So luong dieu phoi</th>
-                                        <th className="py-2 text-center">Canh bao</th>
+                                        <th className="py-2">Hàng hóa</th>
+                                        <th className="py-2">ĐVT</th>
+                                        <th className="py-2 text-right">Số lượng yêu cầu</th>
+                                        <th className="py-2 text-right">Tồn kho thực tế</th>
+                                        <th className="py-2 text-right">Số lượng điều phối</th>
+                                        <th className="py-2 text-center">Cảnh báo</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 text-sm">
@@ -716,7 +669,7 @@ export default function DistributionVoucherPage() {
                             <div className="flex items-start gap-2 rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-700">
                                 <Info className="mt-0.5 h-4 w-4 shrink-0" />
                                 <span>
-                                    Luu y: Phieu dieu phoi phuc vu khau giao nhan. So luong dieu phoi phai khop voi kha nang xuat kho thuc te.
+                                    Luu y: Phieu dieu phoi phuc vu khau giao nhan. Số lượng điều phối phai khop voi kha nang xuat kho thuc te.
                                 </span>
                             </div>
                             <div className="flex items-center justify-end gap-2">
@@ -725,14 +678,14 @@ export default function DistributionVoucherPage() {
                                     disabled={submitting}
                                     className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
-                                    Gan nhiem vu
+                                    Gán nhiệm vụ
                                 </button>
                                 <button
                                     onClick={handleCancel}
                                     disabled={submitting}
                                     className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
-                                    Huy bo
+                                    Hủy bỏ
                                 </button>
                                 <button
                                     onClick={handleCreateVoucher}
@@ -740,7 +693,7 @@ export default function DistributionVoucherPage() {
                                     className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                     <FilePlus2 className="h-4 w-4" />
-                                    {submitting ? 'Dang tao...' : 'Tao phieu dieu phoi'}
+                                    {submitting ? 'Đang tạo...' : 'Tạo phiếu điều phối'}
                                 </button>
                             </div>
                         </div>
@@ -754,7 +707,7 @@ export default function DistributionVoucherPage() {
                         <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                         <span>
                             {error ||
-                                `Co ${shortageRows.length} mat hang dang vuot qua ton kho. Vui long kiem tra lai truoc khi tao phieu.`}
+                                `Có ${shortageRows.length} mặt hàng đang vượt qua tồn kho. Vui lòng kiểm tra lại trước khi tạo phiếu.`}
                         </span>
                     </p>
                 </div>

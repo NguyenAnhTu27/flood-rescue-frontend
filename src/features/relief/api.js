@@ -1,51 +1,43 @@
 import httpClient from '../../shared/lib/http.js';
+import { normalizePagination } from '../../shared/lib/httpUtils.js';
 
-const DISTRIBUTION_BASE_PATHS = ['/distribution', '/manager/distribution', '/relief'];
-const DISTRIBUTION_RESOURCE_PATHS = ['/vouchers', '/orders', '/distributions', '/distribution-vouchers'];
+function parseApiResult(response, { checkSuccess = false } = {}) {
+  const root = response?.data ?? response;
+  const wrapped = root?.result && typeof root.result === 'object' ? root.result : root;
 
-function buildDistributionCollectionCandidates() {
-  return DISTRIBUTION_BASE_PATHS.flatMap((basePath) =>
-    DISTRIBUTION_RESOURCE_PATHS.map((resourcePath) => `${basePath}${resourcePath}`)
-  );
+  if (checkSuccess && Object.prototype.hasOwnProperty.call(wrapped || {}, 'success') && wrapped.success === false) {
+    const message = wrapped?.message || root?.message || 'ApiResult indicates request failed.';
+    const error = new Error(message);
+    error.data = wrapped;
+    throw error;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(wrapped || {}, 'data')) {
+    return wrapped.data;
+  }
+
+  return wrapped;
 }
 
 /**
- * Manager (cứu trợ) dashboard
- * Thử nhiều endpoint khác nhau để tương thích với BE.
+ * MANAGER (CỨU TRỢ) DASHBOARD
+ * Backend: GET /api/relief/dashboard hoặc /api/manager/relief/dashboard
  */
 export async function getManagerDashboard() {
-  const candidates = [
-    '/relief/manager/dashboard',
-    '/manager/relief/dashboard',
-    '/relief/dashboard',
-    '/inventory/manager/dashboard',
-  ];
-
-  let lastErr;
-
-  for (const path of candidates) {
-    try {
-      // httpClient đã unwrap data nên return thẳng
-      const res = await httpClient.get(path);
-      return res;
-    } catch (e) {
-      lastErr = e;
-      // Nếu BE trả 404/401/403 cho endpoint này thì thử tiếp endpoint khác
-      if (e?.status !== 404 && e?.status !== 401 && e?.status !== 403) {
-        throw e;
-      }
-    }
-  }
-
-  // Nếu tất cả endpoint đều fail 404 thì ném lỗi cuối cùng
-  throw lastErr || new Error('Không tìm thấy endpoint dashboard cứu trợ');
+  // BE mapping hỗ trợ cả /api/manager/relief/dashboard và /api/relief/dashboard
+  return httpClient.get('/manager/relief/dashboard');
 }
 
 /**
  * INVENTORY RECEIPTS (phiếu nhập kho)
  * Backend base path: /api/inventory/receipts
- * → FE chỉ cần gọi /inventory/receipts vì httpClient đã prefix /api
  */
+
+// Lấy danh sách phiếu nhập kho
+export async function listInventoryReceipts(params = {}) {
+  const response = await httpClient.get('/inventory/receipts', { params: normalizePagination(params) });
+  return parseApiResult(response, { checkSuccess: true });
+}
 
 // Tạo phiếu nhập kho mới
 export async function createInventoryReceipt(payload) {
@@ -54,7 +46,8 @@ export async function createInventoryReceipt(payload) {
 
 // Lấy chi tiết 1 phiếu nhập kho
 export async function getInventoryReceipt(id) {
-  return httpClient.get(`/inventory/receipts/${id}`);
+  const response = await httpClient.get(`/inventory/receipts/${id}`);
+  return parseApiResult(response, { checkSuccess: true });
 }
 
 // Duyệt phiếu nhập kho
@@ -67,16 +60,16 @@ export async function cancelInventoryReceipt(id) {
   return httpClient.put(`/inventory/receipts/${id}/cancel`);
 }
 
-// Danh sách phiếu nhập kho (có thể filter theo status, page, size)
-export async function listInventoryReceipts(params = {}) {
-  return httpClient.get('/inventory/receipts', { params });
-}
-
 /**
  * INVENTORY ISSUES (phiếu xuất kho)
  * Backend base path: /api/inventory/issues
- * → FE chỉ cần gọi /inventory/issues vì httpClient đã prefix /api
  */
+
+// Lấy danh sách phiếu xuất kho
+export async function listInventoryIssues(params = {}) {
+  const response = await httpClient.get('/inventory/issues', { params: normalizePagination(params) });
+  return parseApiResult(response, { checkSuccess: true });
+}
 
 // Tạo phiếu xuất kho mới
 export async function createInventoryIssue(payload) {
@@ -85,7 +78,8 @@ export async function createInventoryIssue(payload) {
 
 // Lấy chi tiết 1 phiếu xuất kho
 export async function getInventoryIssue(id) {
-  return httpClient.get(`/inventory/issues/${id}`);
+  const response = await httpClient.get(`/inventory/issues/${id}`);
+  return parseApiResult(response, { checkSuccess: true });
 }
 
 // Duyệt phiếu xuất kho
@@ -98,163 +92,51 @@ export async function cancelInventoryIssue(id) {
   return httpClient.put(`/inventory/issues/${id}/cancel`);
 }
 
-// Danh sách phiếu xuất kho (có thể filter theo status, page, size)
-export async function listInventoryIssues(params = {}) {
-  const candidates = [
-    '/inventory/issues',
-    '/inventory/issue',
-    '/issues',
-  ];
-
-  let lastErr;
-  for (const path of candidates) {
-    try {
-      const res = await httpClient.get(path, { params });
-      return res;
-    } catch (e) {
-      lastErr = e;
-      if (e?.status !== 404 && e?.status !== 401 && e?.status !== 403) {
-        throw e;
-      }
-    }
-  }
-  throw lastErr || new Error('Không tìm thấy endpoint phiếu xuất kho');
+export async function getTemporaryInventoryIssues() {
+  const response = await httpClient.get('/inventory/issues/temporary');
+  return parseApiResult(response, { checkSuccess: true });
 }
 
-export async function getTemporaryInventoryIssues() {
-  return httpClient.get('/inventory/issues/temporary');
+export async function generateInventoryIssueCode() {
+  return httpClient.get('/inventory/issues/generate-code');
 }
 
 /**
  * DISTRIBUTION VOUCHERS (phiếu điều phối giao hàng)
- * Backend tách riêng khỏi nghiệp vụ kho.
+ * LƯU Ý: Frontend đã có apiDistribution.js gọi trực tiếp /distributions.
+ * Nếu muốn dùng qua file này thì route BE là: /api/distributions
  */
 
 // Tạo phiếu điều phối giao hàng
 export async function createDistributionVoucher(payload) {
-  const candidates = buildDistributionCollectionCandidates();
-
-  let lastErr;
-  for (const path of candidates) {
-    try {
-      return await httpClient.post(path, payload);
-    } catch (e) {
-      lastErr = e;
-      if (e?.status !== 404 && e?.status !== 401 && e?.status !== 403) {
-        throw e;
-      }
-    }
-  }
-
-  throw lastErr || new Error('Không tìm thấy endpoint phiếu điều phối');
+  return httpClient.post('/distributions', payload);
 }
 
 // Danh sách phiếu điều phối
 export async function listDistributionVouchers(params = {}) {
-  const candidates = buildDistributionCollectionCandidates();
-
-  let lastErr;
-  for (const path of candidates) {
-    try {
-      return await httpClient.get(path, { params });
-    } catch (e) {
-      lastErr = e;
-      if (e?.status !== 404 && e?.status !== 401 && e?.status !== 403) {
-        throw e;
-      }
-    }
-  }
-
-  throw lastErr || new Error('Không tìm thấy endpoint danh sách phiếu điều phối');
+  return httpClient.get('/distributions', { params: normalizePagination(params) });
 }
 
 /**
  * INVENTORY STOCK (tồn kho hiện tại)
+ * Backend: GET /api/inventory/stock
  */
-
-// Lấy danh sách hàng tồn kho hiện tại
 export async function getInventoryStock(params = {}) {
-  const candidates = [
-    '/inventory/stock',
-    '/inventory/items/stock',
-    '/inventory/current-stock',
-    '/inventory/stock/current',
-    '/stock',
-  ];
-
-  let lastErr;
-  for (const path of candidates) {
-    try {
-      const res = await httpClient.get(path, { params });
-      return res;
-    } catch (e) {
-      lastErr = e;
-      if (e?.status !== 404 && e?.status !== 401 && e?.status !== 403) {
-        throw e;
-      }
-    }
-  }
-  throw lastErr || new Error('Không tìm thấy endpoint tồn kho');
+  const response = await httpClient.get('/inventory/stock', { params: normalizePagination(params) });
+  return parseApiResult(response, { checkSuccess: true });
 }
 
 /**
- * ITEM CATEGORIES (danh mục hàng hóa)
+ * ITEM CATEGORIES / ITEMS (danh mục hàng hóa)
+ * Backend: GET /api/inventory/items
  */
-
-// Lấy danh sách tất cả danh mục / loại hàng hóa
 export async function getItemCategories(params = {}) {
-  const candidates = [
-    // BE hiện tại: GET /api/inventory/items trả về danh sách loại hàng (ItemCategoryResponse)
-    '/inventory/items',
-    '/items',
-    // Dự phòng nếu BE đổi path sang item-categories
-    '/inventory/item-categories',
-    '/inventory/itemCategories',
-    '/inventory/categories',
-    '/item-categories',
-  ];
-
-  let lastErr;
-  for (const path of candidates) {
-    try {
-      const res = await httpClient.get(path, { params });
-      return res;
-    } catch (e) {
-      lastErr = e;
-      if (e?.status !== 404 && e?.status !== 401 && e?.status !== 403) {
-        throw e;
-      }
-    }
-  }
-  throw lastErr || new Error('Không tìm thấy endpoint danh mục hàng hóa');
+  const response = await httpClient.get('/inventory/items', { params: normalizePagination(params) });
+  return parseApiResult(response, { checkSuccess: true });
 }
 
-// Tạo danh mục / loại hàng hóa mới
 export async function createItemCategory(payload) {
-  const candidates = [
-    // Chính: tạo loại hàng qua /api/inventory/items
-    '/inventory/items',
-    '/items',
-    // Dự phòng: nếu BE dùng item-categories
-    '/inventory/item-categories',
-    '/inventory/itemCategories',
-    '/inventory/categories',
-    '/item-categories',
-  ];
-
-  let lastErr;
-  for (const path of candidates) {
-    try {
-      const res = await httpClient.post(path, payload);
-      return res;
-    } catch (e) {
-      lastErr = e;
-      if (e?.status !== 404 && e?.status !== 401 && e?.status !== 403) {
-        throw e;
-      }
-    }
-  }
-  throw lastErr || new Error('Không tìm thấy endpoint tạo danh mục hàng hóa');
+  return httpClient.post('/inventory/items', payload);
 }
 
 export async function deleteItemCategory(id) {
@@ -262,7 +144,8 @@ export async function deleteItemCategory(id) {
 }
 
 export async function getItemClassifications() {
-  return httpClient.get('/inventory/item-classifications');
+  const response = await httpClient.get('/inventory/item-classifications');
+  return parseApiResult(response, { checkSuccess: true });
 }
 
 export async function createItemClassification(payload) {
@@ -274,7 +157,8 @@ export async function deleteItemClassification(id) {
 }
 
 export async function getItemUnits() {
-  return httpClient.get('/inventory/item-units');
+  const response = await httpClient.get('/inventory/item-units');
+  return parseApiResult(response, { checkSuccess: true });
 }
 
 export async function createItemUnit(payload) {
@@ -287,25 +171,27 @@ export async function deleteItemUnit(id) {
 
 /**
  * RELIEF REQUESTS (yêu cầu cứu trợ)
+ * Backend: POST/GET /api/relief/requests
  */
 
-// Lấy danh sách yêu cầu cứu trợ
-// Backend: GET /api/relief/requests  (base prefix /api đã được httpClient thêm sẵn)
+// Lấy danh sách yêu cầu cứu trợ (cho Coordinator/Manager)
 export async function listReliefRequests(params = {}) {
-  try {
-    return await httpClient.get('/relief/requests', { params });
-  } catch (e) {
-    // Fallback cho backend chỉ expose namespace manager
-    if ([401, 403, 404].includes(Number(e?.status))) {
-      return httpClient.get('/manager/relief/requests', { params });
-    }
-    throw e;
-  }
+  return httpClient.get('/relief/requests', { params: normalizePagination(params) });
 }
 
 // Lấy chi tiết yêu cầu cứu trợ
 export async function getReliefRequest(id) {
   return httpClient.get(`/relief/requests/${id}`);
+}
+
+// Tạo yêu cầu cứu trợ mới
+export async function createReliefRequest(payload) {
+  return httpClient.post('/relief/requests', payload);
+}
+
+// Cập nhật yêu cầu cứu trợ (lưu ý: BE không có PUT /relief/requests/:id; với citizen dùng updateMyCitizenReliefRequest)
+export async function updateReliefRequest(id, payload) {
+  return httpClient.put(`/relief/requests/${id}`, payload);
 }
 
 // Duyệt yêu cầu cứu trợ
@@ -318,14 +204,19 @@ export async function rejectReliefRequest(id, reason) {
   return httpClient.put(`/relief/requests/${id}/reject`, { reason });
 }
 
-// Tạo yêu cầu cứu trợ mới
-export async function createReliefRequest(payload) {
-  // Backend: POST /api/relief/requests
-  return httpClient.post('/relief/requests', payload);
+// Duyệt và điều phối luôn (có thể custom payload điều phối)
+export async function approveAndDispatchReliefRequest(id, payload) {
+  return httpClient.put(`/relief/requests/${id}/approve-dispatch`, payload);
 }
 
+export async function rejectReliefRequestByManager(id, reason) {
+  return httpClient.put(`/relief/requests/${id}/reject`, { reason });
+}
+
+// CITIZEN (Yêu cầu cứu trợ của cá nhân)
+// Backend: /api/relief/citizen/requests
 export async function getMyCitizenReliefRequests(params = {}) {
-  return httpClient.get('/relief/citizen/requests', { params });
+  return httpClient.get('/relief/citizen/requests', { params: normalizePagination(params) });
 }
 
 export async function updateMyCitizenReliefRequest(id, payload) {
@@ -339,58 +230,37 @@ export async function cancelMyCitizenReliefRequest(id, reason) {
   return httpClient.delete(`/relief/citizen/requests/${id}${query}`);
 }
 
-export async function approveAndDispatchReliefRequest(id, payload) {
-  return httpClient.put(`/relief/requests/${id}/approve-dispatch`, payload);
-}
-
-export async function rejectReliefRequestByManager(id, reason) {
-  return httpClient.put(`/relief/requests/${id}/reject`, { reason });
-}
-
+// RESCUER
 export async function getRescuerReliefRequests(params = {}) {
-  return httpClient.get('/relief/rescuer/requests', { params });
+  return httpClient.get('/relief/rescuer/requests', { params: normalizePagination(params) });
 }
 
 export async function updateRescuerReliefStatus(id, payload) {
   return httpClient.put(`/relief/rescuer/requests/${id}/delivery-status`, payload);
 }
 
-// Lưu nháp yêu cầu cứu trợ
+// Utils
 export async function saveReliefRequestDraft(payload) {
-  // Nếu BE không có endpoint riêng cho draft, ta vẫn POST lên /relief/requests với status = DRAFT
-  const draftPayload = { ...payload, status: 'DRAFT' };
-  return httpClient.post('/relief/requests', draftPayload);
+  // BE không có endpoint riêng, dùng chung với status DRAFT
+  return httpClient.post('/relief/requests', { ...payload, status: 'DRAFT' });
 }
 
-// Tạo mã phiếu tự động
 export async function generateReliefRequestCode() {
   return httpClient.get('/relief/requests/generate-code');
 }
 
-export async function generateInventoryIssueCode() {
-  return httpClient.get('/inventory/issues/generate-code');
+/**
+ * TEAMS (danh sách đội cứu hộ)
+ * Backend: GET /api/admin/teams
+ */
+export async function listTeams(params = {}) {
+  return httpClient.get('/admin/teams', { params: normalizePagination(params) });
 }
 
-// Lấy danh sách khu vực/địa điểm
+/**
+ * AREA / LOCATIONS
+ * Backend: GET /api/areas
+ */
 export async function getAreas() {
-  const candidates = [
-    '/areas',
-    '/locations',
-    '/relief/areas',
-    '/manager/areas',
-  ];
-
-  let lastErr;
-  for (const path of candidates) {
-    try {
-      const res = await httpClient.get(path);
-      return res;
-    } catch (e) {
-      lastErr = e;
-      if (e?.status !== 404 && e?.status !== 401 && e?.status !== 403) {
-        throw e;
-      }
-    }
-  }
-  throw lastErr || new Error('Không tìm thấy endpoint khu vực');
+  return httpClient.get('/areas');
 }

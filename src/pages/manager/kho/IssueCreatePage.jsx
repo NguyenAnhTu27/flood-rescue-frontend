@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Check, FileText, List, BarChart3, Info } from 'lucide-react';
 import { MANAGER_ROUTES } from '../../../app/routes/route.constants.js';
@@ -91,7 +91,7 @@ export default function IssueCreatePage() {
         return R * c;
     };
 
-    const getStockQtyForCategory = (categoryId) => {
+    const getStockQtyForCategory = useCallback((categoryId) => {
         const targetId = Number(categoryId);
         if (!Number.isFinite(targetId)) return 0;
         const stockItem = stockData.find((s) =>
@@ -101,7 +101,7 @@ export default function IssueCreatePage() {
         );
         const qty = Number(stockItem?.totalQty ?? stockItem?.qty ?? stockItem?.quantity ?? stockItem?.balance ?? 0);
         return Number.isFinite(qty) ? qty : 0;
-    };
+    }, [stockData]);
 
     const getCategoryDisplayLabel = (cat) => {
         if (!cat) return '';
@@ -378,7 +378,7 @@ export default function IssueCreatePage() {
 
     const availableItemCategories = useMemo(
         () => itemCategories.filter((cat) => getStockQtyForCategory(cat.id) > 0),
-        [itemCategories, stockData]
+        [itemCategories, getStockQtyForCategory]
     );
 
     const validateForm = () => {

@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { Star, MessageSquare, User, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Star, MessageSquare, User, Clock, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import Card from '../../shared/ui/Card.jsx';
 import Badge from '../../shared/ui/Badge.jsx';
+import { createCitizenSystemFeedback } from '../../features/feedback/api.js';
 
 const MOCK_FEEDBACKS = [
     {
@@ -121,8 +123,38 @@ function formatTimeAgo(dateString) {
 }
 
 export default function FeedbackPage() {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const requestIdFromRescue = location.state?.requestId ?? null;
+
     const [activeTab, setActiveTab] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
+    const [rating, setRating] = useState(0);
+    const [feedbackContent, setFeedbackContent] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const [submitSuccess, setSubmitSuccess] = useState(false);
+
+    const handleSubmitFeedback = async (e) => {
+        e.preventDefault();
+        if (rating < 1 || rating > 5 || submitting) return;
+        setSubmitting(true);
+        try {
+            await createCitizenSystemFeedback({
+                rating,
+                feedbackContent: feedbackContent.trim() || null,
+                rescuedConfirmed: true,
+                reliefConfirmed: false,
+            });
+            setSubmitSuccess(true);
+            setRating(0);
+            setFeedbackContent('');
+            navigate(location.pathname, { replace: true, state: {} });
+        } catch (err) {
+            window.alert(err?.message || 'Gửi đánh giá thất bại. Vui lòng thử lại.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     const filtered = useMemo(() => {
         if (activeTab === 'all') return MOCK_FEEDBACKS;
@@ -154,11 +186,79 @@ export default function FeedbackPage() {
         <div className="space-y-6 pb-10">
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold text-slate-900">Phản hồi từ Công dân</h1>
+                <h1 className="text-2xl font-bold text-slate-900">Đánh giá hệ thống</h1>
                 <p className="mt-1 text-sm text-slate-500">
                     Đánh giá và nhận xét từ người dân về dịch vụ cứu hộ
                 </p>
             </div>
+
+            {/* Form đánh giá sau khi xác nhận đã được cứu */}
+            {requestIdFromRescue && !submitSuccess && (
+                <Card className="border-emerald-200 bg-emerald-50/50 p-6">
+                    <div className="flex items-start gap-3">
+                        <CheckCircle2 className="h-6 w-6 shrink-0 text-emerald-600" />
+                        <div className="flex-1 min-w-0">
+                            <h2 className="text-lg font-semibold text-slate-900">
+                                Bạn đã xác nhận được cứu hộ. Hãy đánh giá trải nghiệm của bạn
+                            </h2>
+                            <p className="mt-1 text-sm text-slate-600">
+                                Đánh giá giúp hệ thống cải thiện chất lượng dịch vụ cứu hộ.
+                            </p>
+                            <form onSubmit={handleSubmitFeedback} className="mt-4 space-y-4">
+                                <div>
+                                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                                        Mức độ hài lòng (1–5 sao)
+                                    </label>
+                                    <div className="flex gap-1">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                            <button
+                                                key={star}
+                                                type="button"
+                                                onClick={() => setRating(star)}
+                                                className="rounded p-1 transition hover:opacity-80"
+                                            >
+                                                <Star
+                                                    className={`h-8 w-8 ${
+                                                        star <= rating ? 'fill-amber-400 text-amber-400' : 'text-slate-300'
+                                                    }`}
+                                                />
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                                        Nhận xét (không bắt buộc)
+                                    </label>
+                                    <textarea
+                                        value={feedbackContent}
+                                        onChange={(e) => setFeedbackContent(e.target.value)}
+                                        placeholder="Chia sẻ trải nghiệm của bạn..."
+                                        rows={3}
+                                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={rating < 1 || submitting}
+                                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {submitting ? 'Đang gửi...' : 'Gửi đánh giá'}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </Card>
+            )}
+
+            {submitSuccess && (
+                <Card className="border-emerald-200 bg-emerald-50/50 p-4">
+                    <div className="flex items-center gap-2 text-emerald-800">
+                        <CheckCircle2 className="h-5 w-5 shrink-0" />
+                        <span className="font-medium">Cảm ơn bạn đã gửi đánh giá.</span>
+                    </div>
+                </Card>
+            )}
 
             {/* Stats header */}
             <div className="grid gap-4 sm:grid-cols-3">

@@ -52,7 +52,7 @@ const STATUS_STEPS = [
 export default function RescueUpdateStatusPage() {
     const navigate = useNavigate();
     const location = useLocation();
-    const state = location.state || {};
+    const state = useMemo(() => location.state || {}, [location.state]);
 
     // Prefer taskGroup code; fallback to rescue request code; then placeholder
     const code = useMemo(() => {
@@ -158,7 +158,7 @@ export default function RescueUpdateStatusPage() {
         const t = Array.isArray(state?.timeline) ? state.timeline : [];
         if (t.length > 0) return t;
         return [];
-    }, [state, gpsText]);
+    }, [state]);
 
     async function handleSendNow() {
         try {

@@ -3,6 +3,8 @@ import { Clock3, MapPin, Navigation, ShieldAlert, Truck, Users } from 'lucide-re
 import { getTeams } from '../../../features/teams/api.js';
 import { getAssets } from '../../../features/assets/api.js';
 import { assignDistributionTask, listDistributionVouchers } from '../../../features/relief/apiDistribution.js';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 function parseList(data) {
     if (Array.isArray(data)) return data;
@@ -23,9 +25,9 @@ function normalizeDistribution(dist, idx = 0) {
     const id = dist?.id ?? dist?.distributionId ?? idx + 1;
     const code = dist?.code || dist?.distributionCode || `PPH-${id}`;
     const requestCode = dist?.reliefRequestCode || dist?.requestCode || '';
-    const receiverName = dist?.receiverName || dist?.contactName || 'Chua cap nhat';
+    const receiverName = dist?.receiverName || dist?.contactName || 'Chưa cập nhật';
     const receiverPhone = dist?.receiverPhone || dist?.contactPhone || 'N/A';
-    const deliveryAddress = dist?.deliveryAddress || dist?.targetAreaName || dist?.targetArea || dist?.area || 'Chua cap nhat dia chi';
+    const deliveryAddress = dist?.deliveryAddress || dist?.targetAreaName || dist?.targetArea || dist?.area || 'Chưa cập nhật địa chỉ';
     const priority = dist?.priority || 'TRUNG_BINH';
     const status = String(dist?.status || 'PLANNED').toUpperCase();
     const eta = dist?.eta || dist?.plannedAt || null;
@@ -55,18 +57,13 @@ function normalizeTeam(team, idx = 0) {
     const name = team?.name || team?.teamName || `Doi ${id}`;
     const members = team?.memberCount ?? team?.members ?? 0;
     const statusRaw = String(team?.status || team?.availability || '').toUpperCase();
-    const isAvailable =
-        statusRaw.includes('AVAILABLE') ||
-        statusRaw.includes('READY') ||
-        statusRaw.includes('IDLE') ||
-        statusRaw.includes('RANH') ||
-        statusRaw === '';
+    const isAvailable = ['AVAILABLE', 'READY', 'IDLE', 'STANDBY', 'RANH', 'ACTIVE', ''].includes(statusRaw);
 
     return {
         id,
         name,
         members,
-        statusLabel: isAvailable ? 'San sang' : 'Dang ban',
+        statusLabel: isAvailable ? 'Sẵn sàng' : 'Đang bận',
         isAvailable,
     };
 }
@@ -76,18 +73,14 @@ function normalizeAsset(asset, idx = 0) {
     const code = asset?.code || asset?.assetCode || `PT-${id}`;
     const name = asset?.name || asset?.type || asset?.assetType || `Phuong tien ${id}`;
     const statusRaw = String(asset?.status || '').toUpperCase();
-    const isAvailable =
-        statusRaw.includes('AVAILABLE') ||
-        statusRaw.includes('READY') ||
-        statusRaw.includes('IDLE') ||
-        statusRaw === '';
+    const isAvailable = ['AVAILABLE', 'READY', 'IDLE', 'STANDBY', 'RANH', 'ACTIVE', ''].includes(statusRaw);
 
     return {
         id,
         code,
         name,
         isAvailable,
-        statusLabel: isAvailable ? 'San sang' : 'Khong kha dung',
+        statusLabel: isAvailable ? 'Sẵn sàng' : 'Không khả dụng',
     };
 }
 
@@ -111,7 +104,7 @@ export default function DistributionPlanPage() {
                 setError('');
 
                 const [distRes, teamRes, assetRes] = await Promise.allSettled([
-                    listDistributionVouchers({ size: 100 }),
+                    listDistributionVouchers({ status: 'PLANNED', size: 100 }),
                     getTeams(),
                     getAssets(),
                 ]);
@@ -141,7 +134,7 @@ export default function DistributionPlanPage() {
                     setSelectedAssetId(first.assetId);
                 }
             } catch (e) {
-                setError(e?.message || 'Khong the tai du lieu dieu phoi');
+                setError(e?.message || 'Không thể tải dữ liệu điều phối');
             } finally {
                 setLoading(false);
             }
@@ -149,6 +142,30 @@ export default function DistributionPlanPage() {
 
         loadData();
     }, []);
+
+    useEffect(() => {
+        if (!selectedDistributionId) return;
+
+        mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
+
+        const map = new mapboxgl.Map({
+            container: 'plan-map-container',
+            style: 'mapbox://styles/mapbox/light-v11',
+            center: [105.8544, 21.0285],
+            zoom: 12,
+            interactive: false
+        });
+
+        new mapboxgl.Marker({ color: '#2563eb' })
+            .setLngLat([105.80, 21.0])
+            .addTo(map);
+
+        new mapboxgl.Marker({ color: '#e11d48' })
+            .setLngLat([105.90, 21.05])
+            .addTo(map);
+
+        return () => map.remove();
+    }, [selectedDistributionId]);
 
     const selectedDistribution = useMemo(
         () => distributions.find((dist) => dist.id === selectedDistributionId) || null,
@@ -166,11 +183,11 @@ export default function DistributionPlanPage() {
 
     const handleAssignTask = async () => {
         if (!selectedDistribution) {
-            setError('Vui long chon phieu dieu phoi.');
+            setError('Vui lòng chọn phiếu điều phối.');
             return;
         }
         if (!selectedTeamId) {
-            setError('Vui long chon doi giao hang.');
+            setError('Vui lòng chọn đội giao hàng.');
             return;
         }
 
@@ -185,7 +202,7 @@ export default function DistributionPlanPage() {
             };
 
             await assignDistributionTask(selectedDistribution.id, payload);
-            window.alert('Da gan nhiem vu thanh cong.');
+            window.alert('Đã gán nhiệm vụ thành công.');
 
             setDistributions((prev) =>
                 prev.map((dist) =>
@@ -200,7 +217,7 @@ export default function DistributionPlanPage() {
                 )
             );
         } catch (e) {
-            setError(e?.message || 'Khong the gan nhiem vu.');
+            setError(e?.message || 'Không thể gán nhiệm vụ.');
         } finally {
             setSubmitting(false);
         }
@@ -208,17 +225,17 @@ export default function DistributionPlanPage() {
 
     const etaDisplay = selectedDistribution?.eta
         ? new Date(selectedDistribution.eta).toLocaleString('vi-VN')
-        : 'Chua co';
+        : 'Chưa có';
 
     return (
         <div className="space-y-4">
             <div className="text-xs text-slate-500">
-                Dieu phoi / <span className="font-semibold text-slate-700">Gan nhiem vu</span>
+                Điều phối / <span className="font-semibold text-slate-700">Gán nhiệm vụ</span>
             </div>
 
             <div>
-                <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Gan Nhiem vu Giao hang Cuu tro</h1>
-                <p className="mt-1 text-sm text-slate-500">Dieu phoi doi ngu va phuong tien van chuyen den diem giao hang</p>
+                <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Gán Nhiệm Vụ Giao Hàng Cứu Trợ</h1>
+                <p className="mt-1 text-sm text-slate-500">Điều phối đội ngũ và phương tiện vận chuyển đến điểm giao hàng</p>
             </div>
 
             {error && (
@@ -231,14 +248,14 @@ export default function DistributionPlanPage() {
                 <div className="space-y-4">
                     <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
                         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-                            <h2 className="text-sm font-semibold text-slate-900">Danh sach phieu dieu phoi</h2>
-                            <span className="text-xs font-semibold text-blue-600">{distributions.length} phieu</span>
+                            <h2 className="text-sm font-semibold text-slate-900">Danh sách phiếu điều phối</h2>
+                            <span className="text-xs font-semibold text-blue-600">{distributions.length} phiếu</span>
                         </div>
                         <div className="max-h-64 space-y-1 overflow-auto p-2">
                             {loading ? (
-                                <p className="px-3 py-2 text-sm text-slate-500">Dang tai...</p>
+                                <p className="px-3 py-2 text-sm text-slate-500">Đang tải...</p>
                             ) : distributions.length === 0 ? (
-                                <p className="px-3 py-2 text-sm text-slate-500">Khong co phieu dieu phoi nao.</p>
+                                <p className="px-3 py-2 text-sm text-slate-500">Không có phiếu điều phối nào.</p>
                             ) : (
                                 distributions.map((dist) => (
                                     <button
@@ -250,7 +267,7 @@ export default function DistributionPlanPage() {
                                         }`}
                                     >
                                         <p className="text-sm font-semibold text-slate-800">{dist.code}</p>
-                                        <p className="mt-1 text-xs text-slate-500">{dist.requestCode || 'Khong co ma yeu cau'}</p>
+                                        <p className="mt-1 text-xs text-slate-500">{dist.requestCode || 'Không có mã yêu cầu'}</p>
                                     </button>
                                 ))
                             )}
@@ -260,21 +277,21 @@ export default function DistributionPlanPage() {
                     <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                         <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900">
                             <MapPin className="h-4 w-4 text-blue-600" />
-                            Thong tin diem giao hang
+                            Thông tin điểm giao hàng
                         </h2>
                         {selectedDistribution ? (
                             <div className="space-y-3 text-sm">
                                 <div>
-                                    <p className="text-[11px] uppercase tracking-wide text-slate-400">Dia diem dich</p>
+                                    <p className="text-[11px] uppercase tracking-wide text-slate-400">Địa điểm đích</p>
                                     <p className="mt-1 font-medium text-slate-800">{selectedDistribution.deliveryAddress}</p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <p className="text-[11px] uppercase tracking-wide text-slate-400">Nguoi nhan</p>
+                                        <p className="text-[11px] uppercase tracking-wide text-slate-400">Người nhận</p>
                                         <p className="mt-1 font-medium text-slate-700">{selectedDistribution.receiverName}</p>
                                     </div>
                                     <div>
-                                        <p className="text-[11px] uppercase tracking-wide text-slate-400">Muc do uu tien</p>
+                                        <p className="text-[11px] uppercase tracking-wide text-slate-400">Mức độ ưu tiên</p>
                                         <p className="mt-1 font-semibold text-rose-600">{selectedDistribution.priority}</p>
                                     </div>
                                 </div>
@@ -284,14 +301,14 @@ export default function DistributionPlanPage() {
                                 </div>
                             </div>
                         ) : (
-                            <p className="text-sm text-slate-500">Chon phieu dieu phoi de xem thong tin.</p>
+                            <p className="text-sm text-slate-500">Chọn phiếu điều phối để xem thông tin.</p>
                         )}
                     </section>
 
                     <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
                         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-                            <h2 className="text-sm font-semibold text-slate-900">Danh sach Rescue Team</h2>
-                            <span className="text-xs font-semibold text-blue-600">{availableTeams.length} doi kha dung</span>
+                            <h2 className="text-sm font-semibold text-slate-900">Danh sách Đội Cứu Hộ</h2>
+                            <span className="text-xs font-semibold text-blue-600">{availableTeams.length} đội khả dụng</span>
                         </div>
                         <div className="space-y-1 p-2">
                             {availableTeams.map((team) => (
@@ -305,7 +322,7 @@ export default function DistributionPlanPage() {
                                 >
                                     <div>
                                         <p className="text-sm font-semibold text-slate-800">{team.name}</p>
-                                        <p className="mt-1 text-xs text-slate-500">{team.members} thanh vien</p>
+                                        <p className="mt-1 text-xs text-slate-500">{team.members} thành viên</p>
                                     </div>
                                     <span className={`text-xs font-semibold ${team.isAvailable ? 'text-emerald-600' : 'text-slate-400'}`}>
                                         {team.statusLabel}
@@ -317,7 +334,7 @@ export default function DistributionPlanPage() {
 
                     <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
                         <div className="border-b border-slate-100 px-4 py-3">
-                            <h2 className="text-sm font-semibold text-slate-900">Phuong tien kha dung</h2>
+                            <h2 className="text-sm font-semibold text-slate-900">Phương tiện khả dụng</h2>
                         </div>
                         <div className="grid grid-cols-2 gap-2 p-3">
                             {availableAssets.map((vehicle) => (
@@ -347,7 +364,7 @@ export default function DistributionPlanPage() {
                         className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         <ShieldAlert className="h-4 w-4" />
-                        {submitting ? 'Dang gan...' : 'Gan nhiem vu giao hang'}
+                        {submitting ? 'Đang gán...' : 'Gán nhiệm vụ giao hàng'}
                     </button>
                 </div>
 
@@ -355,10 +372,10 @@ export default function DistributionPlanPage() {
                     <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
                         <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
                             <Navigation className="h-4 w-4 text-blue-600" />
-                            Ban do lo trinh cuu tro
+                            Bản đồ lộ trình cứu trợ
                         </h2>
                         <div className="flex items-center gap-4 text-xs text-slate-500">
-                            <span>Trang thai: <span className="font-semibold text-slate-700">{selectedDistribution?.status || 'N/A'}</span></span>
+                            <span>Trạng thái: <span className="font-semibold text-slate-700">{selectedDistribution?.status || 'N/A'}</span></span>
                             <span className="flex items-center gap-1">
                                 <Clock3 className="h-3.5 w-3.5" />
                                 ETA: <span className="font-semibold text-slate-700">{etaDisplay}</span>
@@ -366,31 +383,20 @@ export default function DistributionPlanPage() {
                         </div>
                     </div>
 
-                    <div className="relative h-[360px] overflow-hidden rounded-b-xl border-b border-slate-100">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,#dbeafe,transparent_40%),radial-gradient(circle_at_80%_70%,#bfdbfe,transparent_45%),linear-gradient(135deg,#e2e8f0_0%,#cbd5e1_35%,#dbeafe_100%)]" />
-                        <div className="absolute inset-0 opacity-30 [background-size:28px_28px] [background-image:linear-gradient(to_right,#94a3b8_1px,transparent_1px),linear-gradient(to_bottom,#94a3b8_1px,transparent_1px)]" />
-                        <div className="absolute left-[24%] top-[62%] rounded-full bg-blue-600 px-2 py-1 text-[10px] font-semibold text-white shadow">Kho trung tam</div>
-                        <div className="absolute left-[62%] top-[48%] rounded-full bg-rose-500 px-2 py-1 text-[10px] font-semibold text-white shadow">Diem giao</div>
-                        <div className="absolute left-[31%] top-[58%] h-[2px] w-[28%] -rotate-[18deg] bg-blue-600/70" />
-                        <div className="absolute left-[56%] top-[51%] h-2 w-2 rounded-full bg-blue-600 ring-2 ring-white" />
-                        <div className="absolute left-[30%] top-[60%] h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white" />
-                        <div className="absolute bottom-5 left-5 rounded-md bg-red-500 px-3 py-1 text-xs font-semibold text-white shadow">
-                            {selectedDistribution?.priority || 'TRUNG_BINH'}
-                        </div>
-                    </div>
+                    <div id="plan-map-container" className="relative h-[360px] overflow-hidden rounded-b-xl border-b border-slate-100" />
 
                     <div className="p-4">
                         <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900">
                             <Users className="h-4 w-4 text-blue-600" />
-                            Danh sach hang dieu phoi
+                            Danh sách hàng điều phối
                         </h3>
                         <div className="overflow-x-auto">
                             <table className="w-full min-w-[520px] text-sm">
                                 <thead>
                                     <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
                                         <th className="py-2">Item category</th>
-                                        <th className="py-2 text-right">So luong</th>
-                                        <th className="py-2">Don vi</th>
+                                        <th className="py-2 text-right">Số lượng</th>
+                                        <th className="py-2">Đơn vị</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
@@ -404,7 +410,7 @@ export default function DistributionPlanPage() {
                                     {(selectedDistribution?.lines || []).length === 0 && (
                                         <tr>
                                             <td className="py-3 text-slate-500" colSpan={3}>
-                                                Khong co dong hang nao.
+                                                Không có dòng hàng nào.
                                             </td>
                                         </tr>
                                     )}

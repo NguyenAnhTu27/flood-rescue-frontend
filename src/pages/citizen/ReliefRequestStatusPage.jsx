@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle2, Clock, MapPin, Users, AlertTriangle, Info } from 'lucide-react';
 import { CITIZEN_ROUTES } from '../../app/routes/route.constants.js';
-import GoogleMap from '../../features/map/components/GoogleMap.jsx';
+import MapBox from '../../features/map/components/MapBox.jsx';
 import {
     cancelMyCitizenReliefRequest,
     getMyCitizenReliefRequests,
@@ -432,7 +432,7 @@ export default function ReliefRequestStatusPage() {
                                     </span>
                                 </div>
                                 <div className="h-48 overflow-hidden rounded-lg border border-slate-200">
-                                    <GoogleMap
+                                    <MapBox
                                         center={mapCoords || { lat: 10.8231, lng: 106.6297 }}
                                         markerPosition={mapCoords || null}
                                         zoom={mapCoords ? 15 : 11}

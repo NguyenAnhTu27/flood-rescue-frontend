@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
     Crosshair,
     AlertTriangle,
@@ -8,9 +7,8 @@ import {
     Phone,
     CheckCircle2,
 } from 'lucide-react';
-import { CITIZEN_ROUTES } from '../../app/routes/route.constants.js';
-import GoogleMap from '../../features/map/components/GoogleMap.jsx';
-import { createRescueRequest, uploadRescueAttachments } from '../../features/rescue/api.js';
+import MapBox from '../../features/map/components/MapBox.jsx';
+import { useRescueSubmit } from '../../features/rescue/hooks/useRescueSubmit.js';
 import PrioritySelector from '../../features/rescue/components/PrioritySelector.jsx';
 import AttachmentGallery from '../../features/rescue/components/AttachmentGallery.jsx';
 import Button from '../../shared/ui/Button.jsx';
@@ -25,9 +23,9 @@ const STEPS = [
 ];
 
 export default function RescueRequestCreatePage() {
-    const navigate = useNavigate();
     const [currentStep, setCurrentStep] = useState(1);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const { submitRequest, isSubmitting } = useRescueSubmit();
+    const [stepErrors, setStepErrors] = useState({});
     const [form, setForm] = useState({
         address: '',
         locationDescription: '',
@@ -126,6 +124,7 @@ export default function RescueRequestCreatePage() {
                 }
             );
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleUseGps = async () => {
@@ -211,7 +210,38 @@ export default function RescueRequestCreatePage() {
         }
     };
 
+    const validateStep = (step) => {
+        const errors = {};
+        if (step === 1) {
+            if (!form.latitude || !form.longitude)
+                errors.coords = 'Vui lòng chọn vị trí trên bản đồ hoặc dùng GPS.';
+            if (!String(form.locationDescription || '').trim())
+                errors.locationDescription = 'Vui lòng mô tả điểm nhận biết vị trí.';
+        }
+        if (step === 2) {
+            if (!String(form.description || '').trim())
+                errors.description = 'Vui lòng mô tả tình huống khẩn cấp.';
+            const count = parseInt(form.peopleCount, 10);
+            if (!form.peopleCount || isNaN(count) || count < 1)
+                errors.peopleCount = 'Vui lòng nhập số người cần hỗ trợ (tối thiểu 1).';
+        }
+        if (step === 3) {
+            const phone = String(form.phone || '').replace(/\s+/g, '').trim();
+            if (!phone)
+                errors.phone = 'Vui lòng nhập số điện thoại liên hệ.';
+            else if (!/^(0[3-9]\d{8}|\+84[3-9]\d{8})$/.test(phone))
+                errors.phone = 'Số điện thoại không hợp lệ (VD: 0912345678).';
+        }
+        return errors;
+    };
+
     const goNext = () => {
+        const errors = validateStep(currentStep);
+        if (Object.keys(errors).length > 0) {
+            setStepErrors(errors);
+            return;
+        }
+        setStepErrors({});
         if (currentStep < 3) setCurrentStep((s) => s + 1);
     };
 
@@ -221,69 +251,11 @@ export default function RescueRequestCreatePage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (isSubmitting) return;
-
-        // Validate required fields
-        if (!form.address || !form.description || !form.phone || !form.locationDescription) {
-            alert('Vui lòng điền đầy đủ thông tin bắt buộc');
-            return;
-        }
-
-        if (!form.latitude || !form.longitude) {
-            alert('Vui lòng chọn vị trí trên bản đồ hoặc sử dụng GPS');
-            return;
-        }
-
-        setIsSubmitting(true);
-
-        try {
-            // Map FE form data to BE DTO format
-            const addressText = form.address;
-
-            // 1) Upload attachments first (if any)
-            let attachments = [];
-            if (form.images && form.images.length > 0) {
-                const uploadResult = await uploadRescueAttachments(form.images);
-                // uploadResult is expected to be an array of { fileUrl, fileType }
-                attachments = Array.isArray(uploadResult) ? uploadResult : [];
-            }
-
-            // 2) Prepare request data matching BE RescueRequestCreateRequest DTO
-            const requestData = {
-                affectedPeopleCount: parseInt(form.peopleCount) || 1,
-                description: form.description,
-                addressText: addressText,
-                latitude: form.latitude,
-                longitude: form.longitude,
-                locationDescription: form.locationDescription,
-                priority: form.level, // "HIGH" | "MEDIUM" | "LOW"
-                attachments,
-            };
-
-            console.log('[Creating Rescue Request]', requestData);
-
-            // Call API to create rescue request
-            const response = await createRescueRequest(requestData);
-
-            console.log('[Rescue Request Created]', response);
-
-            // Redirect to dashboard - it will automatically refresh and show the new request in the list
-            navigate(CITIZEN_ROUTES.DASHBOARD, {
-                state: {
-                    newlyCreatedRequest: response,
-                    showSuccessMessage: true
-                },
-            });
-        } catch (error) {
-            console.error('[Rescue Request Error]', error);
-            alert(error.message || 'Không thể tạo yêu cầu cứu hộ. Vui lòng thử lại.');
-        } finally {
-            setIsSubmitting(false);
-        }
+        await submitRequest(form);
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-fade-in-up">
             {/* Header */}
             <div className="flex flex-col gap-2">
                 <h1 className="text-2xl font-bold text-slate-900">
@@ -296,7 +268,7 @@ export default function RescueRequestCreatePage() {
             </div>
 
             {/* Step indicator */}
-            <div className="rounded-xl border border-slate-200 bg-white px-6 py-4 flex items-center justify-between">
+            <div className="rounded-md border border-slate-200 bg-white px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-6">
                     {STEPS.map((step, index) => {
                         const isActive = currentStep === step.id;
@@ -343,10 +315,10 @@ export default function RescueRequestCreatePage() {
                 {/* Left column: Map / Preview */}
                 <div className="space-y-4">
                     {/* Google Maps */}
-                    <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                    <div className="relative overflow-hidden rounded-md border border-slate-200 bg-white">
                         <div className="flex h-[340px] flex-col">
                             <div className="relative flex-1">
-                                <GoogleMap
+                                <MapBox
                                     center={mapCenter}
                                     markerPosition={markerPosition}
                                     onLocationSelect={handleLocationSelect}
@@ -359,7 +331,7 @@ export default function RescueRequestCreatePage() {
                 </div>
 
                 {/* Right column: Form steps */}
-                <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="space-y-4 rounded-md border border-slate-200 bg-white p-6 shadow-sm">
                     {currentStep === 1 && (
                         <div className="space-y-5">
                             <h2 className="text-lg font-semibold text-slate-900">Bước 1: Vị trí cứu hộ</h2>
@@ -440,6 +412,16 @@ export default function RescueRequestCreatePage() {
                                         {gpsError}
                                     </div>
                                 )}
+                                {stepErrors.coords && (
+                                    <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs font-medium text-rose-700">
+                                        ⚠ {stepErrors.coords}
+                                    </div>
+                                )}
+                                {stepErrors.locationDescription && (
+                                    <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs font-medium text-rose-700">
+                                        ⚠ {stepErrors.locationDescription}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -483,6 +465,16 @@ export default function RescueRequestCreatePage() {
                                         onChange={handleLevelChange}
                                     />
                                 </div>
+                                {stepErrors.description && (
+                                    <div className="mt-1 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs font-medium text-rose-700">
+                                        ⚠ {stepErrors.description}
+                                    </div>
+                                )}
+                                {stepErrors.peopleCount && (
+                                    <div className="mt-1 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs font-medium text-rose-700">
+                                        ⚠ {stepErrors.peopleCount}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -524,10 +516,13 @@ export default function RescueRequestCreatePage() {
                                             />
                                             <Phone className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                                         </div>
-                                        <p className="mt-1 text-[11px] text-slate-500">
-                                            Đội cứu hộ sẽ liên hệ qua số điện thoại này để xác minh và cập nhật trạng
-                                            thái.
-                                        </p>
+                                        {stepErrors.phone ? (
+                                            <p className="mt-1 text-xs font-medium text-rose-600">⚠ {stepErrors.phone}</p>
+                                        ) : (
+                                            <p className="mt-1 text-[11px] text-slate-500">
+                                                Đội cứu hộ sẽ liên hệ qua số điện thoại này để xác minh và cập nhật trạng thái.
+                                            </p>
+                                        )}
                                     </div>
 
                                     <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-[11px] text-rose-800 flex gap-2">

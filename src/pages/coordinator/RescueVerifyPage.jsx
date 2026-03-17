@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, Clock, MapPin, Users } from 'lucide-react';
-import GoogleMap from '../../features/map/components/GoogleMap.jsx';
+import MapBox from '../../features/map/components/MapBox.jsx';
 import Button from '../../shared/ui/Button.jsx';
 import Card from '../../shared/ui/Card.jsx';
 import Badge from '../../shared/ui/Badge.jsx';
@@ -103,7 +103,7 @@ export default function RescueVerifyPage() {
         setRequest(null);
         setError('');
         setLoading(false);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, [queryId, requestId, stateRequest?.id]);
 
     useEffect(() => {
@@ -426,7 +426,7 @@ export default function RescueVerifyPage() {
                         <h2 className="text-sm font-semibold text-slate-900">Vị trí yêu cầu</h2>
                     </div>
                     <div className="h-[360px]">
-                        <GoogleMap center={mapCenter} zoom={14} />
+                        <MapBox center={mapCenter} zoom={14} />
                     </div>
                 </Card>
 

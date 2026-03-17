@@ -16,6 +16,7 @@ import httpClient from "../shared/lib/http.js";
 import { clearAuth, clearCitizenBlockState, getCitizenBlockState, getRole, getUser, setCitizenBlockState } from "../shared/lib/storage.js";
 import { getMyNotifications, getUnreadNotificationCount, markAllNotificationsRead, markNotificationRead, queueEmergencyNotification } from "../features/notifications/api.js";
 import { getCurrentUser } from "../features/auth/api.js";
+import { useVisibleInterval } from "../shared/hooks/useVisibleInterval.js";
 
 const normalizeExternalUrl = (url) => {
     const value = String(url || "").trim();
@@ -31,6 +32,7 @@ const normalizeExternalUrl = (url) => {
 const resolveFooterLink = (rawUrl, fallbackPath) => {
     const value = String(rawUrl || "").trim();
     if (!value || value === "#") return fallbackPath;
+    if (value === "/dieu-khoan-su-dung") return PUBLIC_ROUTES.TERMS_OF_USE;
     return normalizeExternalUrl(value);
 };
 /**
@@ -58,8 +60,8 @@ export default function RootLayout({ children }) {
     const [footerSettings, setFooterSettings] = useState({
         footerBrandName: "QUẢN LÝ CỨU HỘ",
         footerDescription: "Hệ thống hỗ trợ cộng đồng trong tình huống thiên tai khẩn cấp. Thông tin được bảo mật và điều phối theo quy định của cơ quan chức năng.",
-        footerTermsLabel: "Điều khoản sử dụng",
-        footerTermsUrl: "/dieu-khoan-su-dung",
+        footerTermsLabel: "Tuyên bố miễn trừ trách nhiệm",
+        footerTermsUrl: "/tuyen-bo-mien-tru-trach-nhiem",
         footerPrivacyLabel: "Chính sách bảo mật",
         footerPrivacyUrl: "/chinh-sach-bao-mat",
         footerSupportLabel: "Liên hệ hỗ trợ",
@@ -145,6 +147,28 @@ export default function RootLayout({ children }) {
                 playAttentionSound();
             }
             prevUnreadRef.current = nextUnread;
+
+            // #region agent log
+            fetch('http://127.0.0.1:7760/ingest/0fef38d5-d2ff-44cd-8a64-86cef69f9613', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Debug-Session-Id': '6a69cc',
+                },
+                body: JSON.stringify({
+                    sessionId: '6a69cc',
+                    runId: 'initial',
+                    hypothesisId: 'D',
+                    location: 'layouts/RootLayout.jsx:loadNotifications',
+                    message: 'Notifications loaded',
+                    data: {
+                        unreadCount: nextUnread,
+                        listLength: list.length,
+                    },
+                    timestamp: Date.now(),
+                }),
+            }).catch(() => {});
+            // #endregion agent log
         } catch {
             // ignore
         } finally {
@@ -152,11 +176,7 @@ export default function RootLayout({ children }) {
         }
     };
 
-    useEffect(() => {
-        loadNotifications();
-        const id = window.setInterval(loadNotifications, 15000);
-        return () => window.clearInterval(id);
-    }, []);
+    useVisibleInterval(loadNotifications, 15000);
 
     useEffect(() => {
         if (role !== 'CITIZEN') return undefined;
@@ -179,7 +199,10 @@ export default function RootLayout({ children }) {
             }
         };
         syncFromAuthMe();
-        const id = window.setInterval(syncFromAuthMe, 5000);
+        const id = window.setInterval(() => {
+            if (document.visibilityState !== "visible") return;
+            syncFromAuthMe();
+        }, 5000);
         return () => {
             cancelled = true;
             window.clearInterval(id);
@@ -194,6 +217,27 @@ export default function RootLayout({ children }) {
                     ...prev,
                     ...runtime,
                 }));
+                // #region agent log
+                fetch('http://127.0.0.1:7760/ingest/0fef38d5-d2ff-44cd-8a64-86cef69f9613', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Debug-Session-Id': '6a69cc',
+                    },
+                    body: JSON.stringify({
+                        sessionId: '6a69cc',
+                        runId: 'initial',
+                        hypothesisId: 'D',
+                        location: 'layouts/RootLayout.jsx:loadRuntimeSettings',
+                        message: 'Runtime settings loaded',
+                        data: {
+                            hasRuntime: Boolean(runtime),
+                            keys: Object.keys(runtime || {}).slice(0, 5),
+                        },
+                        timestamp: Date.now(),
+                    }),
+                }).catch(() => {});
+                // #endregion agent log
             } catch (err) {
                 console.error("[RootLayout] load runtime settings error:", err);
             }
@@ -204,13 +248,68 @@ export default function RootLayout({ children }) {
         };
 
         loadRuntimeSettings();
-        const id = window.setInterval(loadRuntimeSettings, 30000);
+        const id = window.setInterval(() => {
+            if (document.visibilityState !== "visible") return;
+            loadRuntimeSettings();
+        }, 30000);
         window.addEventListener("runtime-settings-updated", onSettingsUpdated);
         return () => {
             window.clearInterval(id);
             window.removeEventListener("runtime-settings-updated", onSettingsUpdated);
         };
     }, []);
+
+    useEffect(() => {
+        // #region agent log
+        fetch('http://127.0.0.1:7760/ingest/0fef38d5-d2ff-44cd-8a64-86cef69f9613', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Debug-Session-Id': '6a69cc',
+            },
+            body: JSON.stringify({
+                sessionId: '6a69cc',
+                runId: 'initial',
+                hypothesisId: 'B',
+                location: 'layouts/RootLayout.jsx:mount',
+                message: 'RootLayout render snapshot',
+                data: {
+                    pathname: location.pathname,
+                    role,
+                    hasUser: Boolean(currentUser),
+                    citizenBlocked: Boolean(citizenBlockState?.blocked),
+                },
+                timestamp: Date.now(),
+            }),
+        }).catch(() => {});
+        // #endregion agent log
+    }, [location.pathname, role, currentUser, citizenBlockState?.blocked]);
+
+    useEffect(() => {
+        if (!(role === 'CITIZEN' && Boolean(citizenBlockState?.blocked))) return;
+        // #region agent log
+        fetch('http://127.0.0.1:7760/ingest/0fef38d5-d2ff-44cd-8a64-86cef69f9613', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Debug-Session-Id': '6a69cc',
+            },
+            body: JSON.stringify({
+                sessionId: '6a69cc',
+                runId: 'initial',
+                hypothesisId: 'C',
+                location: 'layouts/RootLayout.jsx:citizen_block_overlay',
+                message: 'Citizen hard blocked overlay visible',
+                data: {
+                    role,
+                    reason: citizenBlockState?.reason || '',
+                    updatedAt: citizenBlockState?.updatedAt || null,
+                },
+                timestamp: Date.now(),
+            }),
+        }).catch(() => {});
+        // #endregion agent log
+    }, [role, citizenBlockState?.blocked, citizenBlockState?.reason, citizenBlockState?.updatedAt]);
 
     const navByRole = {
         CITIZEN: [
@@ -240,11 +339,19 @@ export default function RootLayout({ children }) {
         ADMIN: [
             { label: "Trang chủ", to: ADMIN_ROUTES.DASHBOARD },
             { label: "Đội cứu hộ", to: ADMIN_ROUTES.TEAMS_MANAGEMENT },
+            { label: "Phương tiện", to: ADMIN_ROUTES.ASSETS_MANAGEMENT },
             { label: "Phản hồi hệ thống", to: ADMIN_ROUTES.SYSTEM_FEEDBACKS },
             { label: "Nhật ký", to: ADMIN_ROUTES.AUDIT_LOGS },
         ],
     };
     const navItems = navByRole[role] || [{ label: "Trang chủ", to: PUBLIC_ROUTES.HOME }];
+    const userDisplayName = String(currentUser?.fullName || "Người dùng").trim();
+    const userInitials = userDisplayName
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase() || '')
+        .join('') || 'ND';
 
     const isNavItemActive = (to) => {
         if (!to) return false;
@@ -267,39 +374,45 @@ export default function RootLayout({ children }) {
     const isCitizenHardBlocked = role === 'CITIZEN' && Boolean(citizenBlockState?.blocked);
 
     return (
-        <div className="min-h-screen bg-white flex flex-col">
+        <div className="min-h-screen bg-transparent flex flex-col">
             {/* Topbar */}
-            <header className="sticky top-0 z-50 border-b border-slate-200 bg-white">
-                <div className="mx-auto w-full max-w-[90%] px-2 lg:px-3">
-                    <div className="flex h-14 items-center justify-between">
+            <header className="sticky top-4 z-50 mx-auto w-[calc(100%-2rem)] max-w-7xl rounded-xl border border-white/70 bg-white/85 shadow-sm backdrop-blur-xl transition-all duration-300">
+                <div className="mx-auto w-full px-4 lg:px-6">
+                    <div className="flex h-16 items-center justify-between gap-4">
                         {/* Left: Logo */}
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600">
-                                {/* Logo mark */}
-                                <span className="text-lg font-black text-white">✳</span>
+                        <button
+                            type="button"
+                            onClick={() => navigate(PUBLIC_ROUTES.HOME)}
+                            className="flex items-center gap-3 rounded-[18px] px-1.5 py-1 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescue-500 active:scale-[0.98] transition-all duration-200"
+                            aria-label="Về trang giới thiệu"
+                        >
+                            <div className="flex h-10 w-10 items-center justify-center rounded-[16px] bg-gradient-to-br from-rescue-600 to-cyan-600 shadow-[0_12px_24px_rgba(13,148,136,0.26)]">
+                                <span className="font-display text-lg font-black text-white">✳</span>
                             </div>
 
-                            <div className="leading-tight">
-                                <div className="text-sm font-extrabold tracking-wide text-blue-600">
+                            <div className="leading-tight text-left">
+                                <div className="font-display text-sm font-extrabold tracking-[0.12em] text-rescue-700">
                                     CỨU HỘ KHẨN CẤP
-                                </div>                                <div className="text-[10px] font-semibold tracking-wider text-slate-400">
+                                </div>
+                                <div className="text-[10px] font-semibold tracking-[0.18em] text-slate-400">
                                     EMERGENCY RELIEF SYSTEM
                                 </div>
                             </div>
-                        </div>
+                        </button>
 
                         {/* Center: Nav (desktop) */}
-                        <nav className="hidden md:flex items-center gap-2 overflow-x-auto whitespace-nowrap scrollbar-thin py-1">
+                        <nav aria-label="Main navigation" className="hidden md:flex items-center gap-1 overflow-x-auto whitespace-nowrap py-1">
                             {navItems.map((it) => (
                                 <NavLink
                                     key={it.to}
                                     to={it.to}
                                     className={() =>
                                         [
-                                            "relative rounded-lg px-3 py-2 text-sm font-semibold transition",
+                                            "relative rounded-[14px] px-3 py-2 text-sm font-semibold transition-all duration-150",
                                             isNavItemActive(it.to)
-                                                ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200"
-                                                : "text-slate-500 opacity-45 hover:opacity-80 hover:text-slate-700",
+                                                ? "bg-rescue-50 text-rescue-700 shadow-sm"
+                                                : "text-slate-500 hover:bg-slate-50 hover:text-slate-900",
+                                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescue-500"
                                         ].join(" ")
                                     }
                                 >
@@ -313,11 +426,12 @@ export default function RootLayout({ children }) {
                             {/* Mobile menu toggle */}
                             <button
                                 type="button"
-                                className="md:hidden inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50"
+                                className="md:hidden inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescue-500 active:scale-95 transition-all duration-200"
                                 onClick={() => setMobileOpen((v) => !v)}
-                                aria-label="Toggle menu"
+                                aria-label={mobileOpen ? "Close menu" : "Open menu"}
+                                aria-expanded={mobileOpen}
                             >
-                                {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+                                {mobileOpen ? <X size={20} /> : <Menu size={20} />}
                             </button>
 
                             {/* Notification */}
@@ -328,8 +442,10 @@ export default function RootLayout({ children }) {
                                         setNotifOpen((v) => !v);
                                         if (!notifOpen) loadNotifications();
                                     }}
-                                    className={`relative inline-flex h-9 w-9 items-center justify-center rounded-lg hover:bg-slate-50 ${unreadCount > 0 ? 'animate-pulse' : ''}`}
+                                    className={`relative inline-flex h-9 w-9 items-center justify-center rounded-md bg-white hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescue-500 active:scale-95 transition-all duration-200 ${unreadCount > 0 ? 'animate-pulse' : ''}`}
                                     aria-label="Notifications"
+                                    aria-expanded={notifOpen}
+                                    aria-haspopup="true"
                                 >
                                     <Bell size={18} className={`${unreadCount > 0 ? 'text-rose-600' : 'text-slate-600'}`} />
                                     {unreadCount > 0 && (
@@ -340,12 +456,12 @@ export default function RootLayout({ children }) {
                                 </button>
 
                                 {notifOpen && (
-                                    <div className="absolute right-0 z-50 mt-2 w-96 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+                                    <div className="animate-slide-up-soft absolute right-0 z-50 mt-2 w-96 overflow-hidden rounded-[20px] border border-slate-200/80 bg-white/95 shadow-float backdrop-blur-xl">
                                         <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2">
                                             <div className="text-sm font-semibold text-slate-900">Thông báo</div>
                                             <button
                                                 type="button"
-                                                className="text-xs font-medium text-blue-600 hover:text-blue-700"
+                                                className="text-xs font-medium text-rescue-700 hover:text-rescue-900"
                                                 onClick={async () => {
                                                     await markAllNotificationsRead();
                                                     await loadNotifications();
@@ -417,23 +533,26 @@ export default function RootLayout({ children }) {
                                 <button
                                     type="button"
                                     onClick={() => setUserOpen((v) => !v)}
-                                    className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-50"
+                                    className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescue-500 active:scale-[0.98] transition-all duration-200"
                                     aria-label="User menu"
+                                    aria-expanded={userOpen}
+                                    aria-haspopup="true"
                                 >
                                     <div className="hidden sm:block text-right leading-tight">
                                         <div className="text-xs font-semibold text-slate-900">
-                                            {currentUser?.fullName || "Người dùng"}
+                                            {userDisplayName}
                                         </div>
                                         <div className="text-[11px] text-slate-500">{role || "Guest"}</div>
                                     </div>
 
                                     {/* Avatar */}
                                     <div className="relative">
-                                        <img
-                                            src="https://i.pravatar.cc/80?img=12"
-                                            alt="avatar"
-                                            className="h-9 w-9 rounded-full object-cover"
-                                        />
+                                        <div
+                                            aria-hidden="true"
+                                            className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-rescue-600 to-cyan-600 text-xs font-bold tracking-[0.08em] text-white shadow-[0_10px_20px_rgba(13,148,136,0.22)]"
+                                        >
+                                            {userInitials}
+                                        </div>
                                         {/* online dot */}
                                         <span className="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
                                     </div>
@@ -443,10 +562,10 @@ export default function RootLayout({ children }) {
 
                                 {/* Dropdown */}
                                 {userOpen && (
-                                    <div className="absolute right-0 mt-2 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                                    <div className="animate-slide-up-soft absolute right-0 mt-2 w-52 overflow-hidden rounded-[20px] border border-slate-200/80 bg-white/95 shadow-float backdrop-blur-xl">
                                         <div className="px-4 py-3">
                                             <div className="text-sm font-semibold text-slate-900">
-                                                {currentUser?.fullName || "Người dùng"}
+                                                {userDisplayName}
                                             </div>
                                             <div className="text-xs text-slate-500">{role || "Guest"}</div>
                                         </div>
@@ -485,9 +604,14 @@ export default function RootLayout({ children }) {
                     </div>
 
                     {/* Mobile nav panel */}
-                    {mobileOpen && (
-                        <div className="md:hidden pb-3">
-                            <div className="mt-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
+                    <div
+                        className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
+                            mobileOpen ? "max-h-96 opacity-100 pb-3" : "max-h-0 opacity-0"
+                        }`}
+                        aria-hidden={!mobileOpen}
+                    >
+                        <div className="mt-2 rounded-md border border-slate-200 bg-white/95 p-2 shadow-sm backdrop-blur-xl">
+                            <nav aria-label="Mobile navigation" className="flex flex-col gap-1">
                                 {navItems.map((it) => (
                                     <NavLink
                                         key={it.to}
@@ -495,9 +619,9 @@ export default function RootLayout({ children }) {
                                         onClick={() => setMobileOpen(false)}
                                         className={({ isActive }) =>
                                             [
-                                                "block rounded-lg px-3 py-2 text-sm font-medium",
+                                                "block rounded-[14px] px-3 py-2 text-sm font-medium transition-all duration-150",
                                                 isActive
-                                                    ? "bg-blue-50 text-blue-700"
+                                                    ? "bg-rescue-50 text-rescue-700 shadow-[inset_0_-2px_0_0_#0d9488]"
                                                     : "text-slate-700 hover:bg-slate-50",
                                             ].join(" ")
                                         }
@@ -505,14 +629,14 @@ export default function RootLayout({ children }) {
                                         {it.label}
                                     </NavLink>
                                 ))}
-                            </div>
+                            </nav>
                         </div>
-                    )}
+                    </div>
                 </div>
             </header>
 
             {/* Main content */}
-            <main className="mx-auto w-full max-w-[90%] px-2 lg:px-3 py-4 lg:py-6 flex-1">{children}</main>
+            <main className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 lg:px-8 lg:py-6 flex-1">{children}</main>
 
             {queueTarget && (
                 <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/40 p-4">
@@ -622,7 +746,7 @@ export default function RootLayout({ children }) {
 
             {/* Shared Footer */}
             <footer className="mt-6 lg:mt-8 border-t border-slate-200 bg-white">
-                <div className="mx-auto w-full max-w-[90%] px-2 lg:px-3 py-6 lg:py-8">
+                <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
                     <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
                         {/* Left */}
                         <div className="space-y-3">

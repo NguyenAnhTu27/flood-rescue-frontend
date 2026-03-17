@@ -1,11 +1,12 @@
 import httpClient from '../../shared/lib/http.js';
+import { normalizePagination } from '../../shared/lib/httpUtils.js';
 
 export async function getRescuerDashboard() {
   return httpClient.get('/rescue/rescuer/dashboard');
 }
 
 export async function getRescuerTasks(params = {}) {
-  return httpClient.get('/rescue/rescuer/tasks', { params });
+  return httpClient.get('/rescue/rescuer/tasks', { params: normalizePagination(params) });
 }
 
 export async function getRescuerTaskById(id) {
@@ -24,7 +25,7 @@ export async function addRescuerTaskNote(id, note) {
 }
 
 export async function getRescuerTaskGroups(params = {}) {
-  return httpClient.get('/rescue/rescuer/task-groups', { params });
+  return httpClient.get('/rescue/rescuer/task-groups', { params: normalizePagination(params) });
 }
 
 export async function getRescuerTaskGroupById(id) {

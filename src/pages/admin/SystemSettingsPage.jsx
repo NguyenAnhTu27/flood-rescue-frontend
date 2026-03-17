@@ -14,8 +14,8 @@ const DEFAULT_SETTINGS = {
   footerBrandName: "QUẢN LÝ CỨU HỘ",
   footerDescription:
     "Hệ thống hỗ trợ cộng đồng trong tình huống thiên tai khẩn cấp. Thông tin được bảo mật và điều phối theo quy định của cơ quan chức năng.",
-  footerTermsLabel: "Điều khoản sử dụng",
-  footerTermsUrl: "/dieu-khoan-su-dung",
+  footerTermsLabel: "Tuyên bố miễn trừ trách nhiệm",
+  footerTermsUrl: "/tuyen-bo-mien-tru-trach-nhiem",
   footerPrivacyLabel: "Chính sách bảo mật",
   footerPrivacyUrl: "/chinh-sach-bao-mat",
   footerSupportLabel: "Liên hệ hỗ trợ",
@@ -66,9 +66,11 @@ export default function SystemSettingsPage() {
     }
   };
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     loadSettings();
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const save = async () => {
     setMessage("");

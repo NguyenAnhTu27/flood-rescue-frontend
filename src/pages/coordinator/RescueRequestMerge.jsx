@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, X, Users, GitMerge, UserPlus } from 'lucide-react';
-import GoogleMap from '../../features/map/components/GoogleMap.jsx';
+import MapBox from '../../features/map/components/MapBox.jsx';
 import { COORDINATOR_ROUTES } from '../../app/routes/route.constants.js';
 import { createTaskGroup, getCoordinatorRescueQueue } from '../../features/coordinator/api.js';
 
@@ -285,7 +285,7 @@ export default function RescueRequestMerge() {
 
                 <div className="relative flex-1 min-w-0">
                     <div className="h-full w-full">
-                        <GoogleMap center={areaCenter} zoom={14} markerPosition={areaCenter} />
+                        <MapBox center={areaCenter} zoom={14} markerPosition={areaCenter} />
                     </div>
                 </div>
 

@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prototype - Public Main Restructure</title>
+  <style>
+    :root {
+      --bg: #eef6ff;
+      --surface: #ffffff;
+      --text: #0f172a;
+      --muted: #475569;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --accent: #0891b2;
+      --space-1: 8px;
+      --space-2: 12px;
+      --space-3: 16px;
+      --space-4: 24px;
+      --space-5: 32px;
+      --space-6: 40px;
+      --space-7: 56px;
+      --space-8: 72px;
+      --radius-card: 24px;
+      --radius-btn: 16px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+    }
+    .wrap {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+    main {
+      padding: var(--space-7) 0 var(--space-8);
+      display: grid;
+      gap: var(--space-7);
+    }
+
+    .hero {
+      display: grid;
+      gap: var(--space-5);
+      align-items: start;
+    }
+    .hero-main, .hero-checklist, .cap-card, .resource-card {
+      background: color-mix(in srgb, var(--surface) 88%, #dbeafe 12%);
+      border: 1px solid #e2e8f0;
+      border-radius: var(--radius-card);
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    }
+    .hero-main { padding: var(--space-6); }
+    .eyebrow {
+      display: inline-block;
+      font-size: 12px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: var(--space-3);
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(32px, 5vw, 56px);
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+    }
+    .lead {
+      margin: var(--space-4) 0 0;
+      max-width: 62ch;
+      font-size: clamp(15px, 2.2vw, 18px);
+      line-height: 1.75;
+      color: var(--muted);
+    }
+    .cta-row {
+      margin-top: var(--space-5);
+      display: flex;
+      gap: var(--space-3);
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-1);
+      border-radius: var(--radius-btn);
+      padding: 14px 22px;
+      font-weight: 700;
+      text-decoration: none;
+      border: 1px solid transparent;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 16px 30px rgba(37, 99, 235, 0.28);
+    }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary {
+      background: #fff;
+      color: #1e293b;
+      border-color: #cbd5e1;
+    }
+
+    .hero-checklist {
+      padding: var(--space-5);
+      background: linear-gradient(145deg, rgba(37, 99, 235, 0.94), rgba(8, 145, 178, 0.82));
+      border-color: rgba(255, 255, 255, .28);
+      color: white;
+    }
+    .hero-checklist h2 {
+      margin: var(--space-2) 0 0;
+      font-size: clamp(24px, 3.8vw, 34px);
+      line-height: 1.15;
+      letter-spacing: -.03em;
+    }
+    .step {
+      margin-top: var(--space-3);
+      border: 1px solid rgba(255,255,255,.28);
+      border-radius: 18px;
+      background: rgba(255,255,255,.12);
+      padding: var(--space-3);
+    }
+    .step-id {
+      font-size: 12px;
+      letter-spacing: .16em;
+      font-weight: 700;
+      opacity: .85;
+    }
+    .step h3 {
+      margin: 8px 0 6px;
+      font-size: 18px;
+    }
+    .step p {
+      margin: 0;
+      color: rgba(255,255,255,.88);
+      line-height: 1.7;
+      font-size: 14px;
+    }
+
+    .section-title {
+      margin: 0 0 var(--space-4);
+      font-size: clamp(26px, 3.3vw, 38px);
+      letter-spacing: -.03em;
+    }
+
+    .cap-grid {
+      display: grid;
+      gap: var(--space-4);
+    }
+    .cap-card { padding: var(--space-4); }
+    .cap-card h3 {
+      margin: 0;
+      font-size: 20px;
+    }
+    .cap-card p {
+      margin: var(--space-2) 0 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    details.resource {
+      border: 1px solid #dbeafe;
+      border-radius: var(--radius-card);
+      background: #ffffffdd;
+      padding: var(--space-4);
+    }
+    details.resource > summary {
+      cursor: pointer;
+      font-size: 20px;
+      font-weight: 800;
+      list-style: none;
+    }
+    details.resource > summary::-webkit-details-marker { display: none; }
+    .resource-content {
+      margin-top: var(--space-4);
+      display: grid;
+      gap: var(--space-4);
+    }
+    .resource-card { padding: var(--space-4); }
+    .resource-card h4 {
+      margin: 0;
+      font-size: 18px;
+    }
+    .resource-card p {
+      margin: var(--space-2) 0 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .anno {
+      display: inline-flex;
+      align-items: center;
+      font-size: 11px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: #1d4ed8;
+      background: #dbeafe;
+      border-radius: 999px;
+      padding: 5px 10px;
+      margin-bottom: 10px;
+    }
+
+    @media (min-width: 768px) {
+      .hero { grid-template-columns: 1.15fr .85fr; }
+      .cap-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .resource-content { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+
+    @media (min-width: 1440px) {
+      .wrap { width: min(1240px, calc(100% - 64px)); }
+      main { gap: var(--space-8); }
+      .cap-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <article class="hero-main">
+        <span class="anno">A1 · Primary Message</span>
+        <div class="eyebrow">Ứng phó khẩn cấp mùa mưa lũ</div>
+        <h1>3 bước rõ ràng để nhận hỗ trợ ngay khi cần</h1>
+        <p class="lead">Thiết kế ưu tiên bình tĩnh và hành động nhanh: đọc hướng dẫn, xác định đầu mối hỗ trợ, gửi yêu cầu cứu hộ chính thức.</p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="#">Gửi yêu cầu cứu hộ</a>
+          <a class="btn btn-secondary" href="#">Mở hướng dẫn khẩn cấp</a>
+        </div>
+      </article>
+
+      <aside class="hero-checklist">
+        <span class="anno" style="background:#cffafe;color:#155e75;">A6 · Checklist</span>
+        <h2>Việc cần làm ngay trong 60 giây đầu</h2>
+        <article class="step">
+          <div class="step-id">01</div>
+          <h3>Mở hướng dẫn khẩn cấp</h3>
+          <p>Làm theo checklist để đảm bảo an toàn trước khi di chuyển.</p>
+        </article>
+        <article class="step">
+          <div class="step-id">02</div>
+          <h3>Kiểm tra đầu mối hỗ trợ</h3>
+          <p>Xác định hotline, email và điểm tiếp nhận thông tin phù hợp.</p>
+        </article>
+        <article class="step">
+          <div class="step-id">03</div>
+          <h3>Gửi yêu cầu cứu hộ</h3>
+          <p>Đăng nhập và gửi vị trí, tình trạng, mức độ khẩn cấp.</p>
+        </article>
+      </aside>
+    </section>
+
+    <section>
+      <span class="anno">B · Capabilities</span>
+      <h2 class="section-title">Hệ thống hỗ trợ bạn như thế nào</h2>
+      <div class="cap-grid">
+        <article class="cap-card">
+          <h3>Theo dõi thời gian thực</h3>
+          <p>Nhận cập nhật trạng thái liên tục từ đội điều phối.</p>
+        </article>
+        <article class="cap-card">
+          <h3>Yêu cầu cứu hộ tức thì</h3>
+          <p>Gửi tín hiệu khẩn cấp với ít thao tác nhất.</p>
+        </article>
+        <article class="cap-card">
+          <h3>Điều phối cứu trợ</h3>
+          <p>Phân bổ nguồn lực dựa trên mức độ ưu tiên.</p>
+        </article>
+        <article class="cap-card">
+          <h3>Quy trình rõ ràng</h3>
+          <p>Nội dung và đầu mối được chuẩn hóa, dễ tra cứu.</p>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <span class="anno">C · Expandable Resources</span>
+      <details class="resource">
+        <summary>Xem thêm tài nguyên công khai trước khi đăng nhập</summary>
+        <div class="resource-content">
+          <article class="resource-card">
+            <h4>Xác định vị trí an toàn</h4>
+            <p>Danh sách điểm tập kết và quy tắc di chuyển an toàn.</p>
+          </article>
+          <article class="resource-card">
+            <h4>Liên hệ hỗ trợ nhanh</h4>
+            <p>Tổng hợp đầu mối liên hệ và biểu mẫu thông tin cần chuẩn bị.</p>
+          </article>
+          <article class="resource-card">
+            <h4>Ưu tiên người yếu thế</h4>
+            <p>Checklist riêng cho trẻ em, người cao tuổi và người cần chăm sóc y tế.</p>
+          </article>
+        </div>
+      </details>
+    </section>
+  </main>
+</body>
+</html>

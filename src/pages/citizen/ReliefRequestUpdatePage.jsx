@@ -226,11 +226,14 @@ export default function ReliefRequestUpdatePage() {
         url: URL.createObjectURL(file),
     }));
 
+    // Cleanup preview URLs on unmount
+    /* eslint-disable react-hooks/exhaustive-deps */
     useEffect(() => {
         return () => {
             newImagePreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
         };
     }, [form.newImages]);
+    /* eslint-enable react-hooks/exhaustive-deps */
 
     if (!request && !requestIdFromState) {
         return null;

@@ -1,4 +1,5 @@
 import httpClient from '../../shared/lib/http.js';
+import { normalizePagination } from '../../shared/lib/httpUtils.js';
 
 function normalizePageResponse(data) {
   if (Array.isArray(data)) return data;
@@ -11,10 +12,10 @@ function normalizePageResponse(data) {
 
 export async function getManagerReliefDispatchQueue(params = {}) {
   try {
-    const resp = await httpClient.get('/manager/relief/requests', { params });
+    const resp = await httpClient.get('/manager/relief/requests', { params: normalizePagination(params) });
     return normalizePageResponse(resp);
-  } catch (e) {
-    const resp = await httpClient.get('/relief/requests', { params });
+  } catch {
+    const resp = await httpClient.get('/relief/requests', { params: normalizePagination(params) });
     return normalizePageResponse(resp);
   }
 }
@@ -22,7 +23,7 @@ export async function getManagerReliefDispatchQueue(params = {}) {
 export async function getManagerReliefDispatchDashboard() {
   try {
     return await httpClient.get('/manager/relief/dispatch-dashboard');
-  } catch (e) {
+  } catch {
     return httpClient.get('/relief/dispatch-dashboard');
   }
 }
@@ -30,7 +31,7 @@ export async function getManagerReliefDispatchDashboard() {
 export async function getManagerReliefDispatchRequestById(id) {
   try {
     return await httpClient.get(`/manager/relief/requests/${id}`);
-  } catch (e) {
+  } catch {
     return httpClient.get(`/relief/requests/${id}`);
   }
 }
@@ -38,7 +39,7 @@ export async function getManagerReliefDispatchRequestById(id) {
 export async function approveManagerReliefDispatch(id, payload) {
   try {
     return await httpClient.put(`/manager/relief/requests/${id}/approve-dispatch`, payload);
-  } catch (e) {
+  } catch {
     return httpClient.put(`/relief/requests/${id}/approve-dispatch`, payload);
   }
 }
@@ -47,7 +48,7 @@ export async function rejectManagerReliefDispatch(id, reason) {
   const body = { reason: reason || null };
   try {
     return await httpClient.put(`/manager/relief/requests/${id}/reject`, body);
-  } catch (e) {
+  } catch {
     return httpClient.put(`/relief/requests/${id}/reject`, body);
   }
 }

@@ -1,7 +1,8 @@
 import httpClient from '../../shared/lib/http.js';
+import { normalizePagination } from '../../shared/lib/httpUtils.js';
 
 export async function getMyNotifications(params = {}) {
-  return httpClient.get('/notifications/me', { params });
+  return httpClient.get('/notifications/me', { params: normalizePagination(params) });
 }
 
 export async function getUnreadNotificationCount() {

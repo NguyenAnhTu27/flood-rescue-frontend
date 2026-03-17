@@ -6,7 +6,7 @@ import Button from '../../shared/ui/Button.jsx';
 import Badge from '../../shared/ui/Badge.jsx';
 import { getInventoryIssue, getRescuerReliefRequests, updateRescuerReliefStatus } from '../../features/relief/api.js';
 import { updateAssetStatus } from '../../features/assets/api.js';
-import GoogleMap from '../../features/map/components/GoogleMap.jsx';
+import MapBox from '../../features/map/components/MapBox.jsx';
 import { RESCUER_ROUTES } from '../../app/routes/route.constants.js';
 
 function normalizeList(data) {
@@ -711,7 +711,7 @@ export default function ReliefPrioritizePage() {
                         </div>
                     </div>
                     <div className="h-[540px]">
-                        <GoogleMap
+                        <MapBox
                             center={selectedCoords || { lat: 10.8231, lng: 106.6297 }}
                             markerPosition={selectedCoords || null}
                             zoom={selectedCoords ? 15 : 11}

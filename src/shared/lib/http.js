@@ -7,6 +7,7 @@
  */
 
 import { getToken } from './storage.js';
+import { normalizePagination } from './httpUtils.js';
 
 // Get API base URL from environment or use default
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
@@ -44,7 +45,11 @@ async function httpClient(url, options = {}) {
     }
 
     // Build full URL + query params (axios-like `params` support)
-    const { params, ...fetchOptions } = options || {};
+    let { params, ...fetchOptions } = options || {};
+    if (params && typeof params === 'object' && !Array.isArray(params)) {
+        params = normalizePagination(params);
+    }
+
     let fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
 
     if (params && typeof params === 'object' && !Array.isArray(params)) {
@@ -59,11 +64,41 @@ async function httpClient(url, options = {}) {
         }
     }
 
-    // Log request in development
-    if (import.meta.env.DEV) {
+    // #region agent log
+    if (import.meta.env.VITE_AGENT_LOGGING === 'true') {
+        fetch('http://127.0.0.1:7760/ingest/0fef38d5-d2ff-44cd-8a64-86cef69f9613', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Debug-Session-Id': '6a69cc',
+            },
+            body: JSON.stringify({
+                sessionId: '6a69cc',
+                runId: 'initial',
+                hypothesisId: 'A',
+                location: 'shared/lib/http.js:before_fetch',
+                message: 'httpClient request',
+                data: {
+                    url: fullUrl,
+                    method: fetchOptions.method || options.method || 'GET',
+                    hasToken: Boolean(token),
+                    hasBody: Boolean(options.body),
+                    hasParams: Boolean(params),
+                },
+                timestamp: Date.now(),
+            }),
+        }).catch(() => {});
+    }
+    // #endregion agent log
+
+    // Log request in development (redacted)
+    if (import.meta.env.DEV && import.meta.env.VITE_DEBUG === 'true') {
+        // eslint-disable-next-line no-unused-vars
+        const { Authorization, authorization, ...safeHeaders } = headers || {};
+        const hasBody = Boolean(options.body);
         console.log(`[API Request] ${options.method || 'GET'} ${fullUrl}`, {
-            headers,
-            body: options.body,
+            headers: safeHeaders,
+            hasBody,
         });
     }
 
@@ -90,39 +125,96 @@ async function httpClient(url, options = {}) {
             data = await response.text();
         }
 
-        // Log response in development
-        if (import.meta.env.DEV) {
+        // #region agent log
+        if (import.meta.env.VITE_AGENT_LOGGING === 'true') {
+            fetch('http://127.0.0.1:7760/ingest/0fef38d5-d2ff-44cd-8a64-86cef69f9613', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Debug-Session-Id': '6a69cc',
+                },
+                body: JSON.stringify({
+                    sessionId: '6a69cc',
+                    runId: 'initial',
+                    hypothesisId: 'A',
+                    location: 'shared/lib/http.js:after_fetch',
+                    message: 'httpClient response',
+                    data: {
+                        url: fullUrl,
+                        status: response.status,
+                        ok: response.ok,
+                        contentType,
+                        hasData: data !== undefined && data !== null,
+                    },
+                    timestamp: Date.now(),
+                }),
+            }).catch(() => {});
+        }
+        // #endregion agent log
+
+        // Log response in development (redacted)
+        if (import.meta.env.DEV && import.meta.env.VITE_DEBUG === 'true') {
             console.log(`[API Response] ${options.method || 'GET'} ${url}`, {
                 status: response.status,
                 statusText: response.statusText,
-                data: data,
+                hasData: data !== undefined && data !== null,
             });
         }
 
         // Handle error responses
         if (!response.ok) {
-            // Handle different error response formats
-            // Format 1: { message: "error message" }
-            // Format 2: { error: "error message" }
-            // Format 3: { success: false, message: "error message" }
+            // Backend uses ApiResult: { success, message, data }. Validation errors (400) are in data (field → message map).
             let errorMessage = data?.message || data?.error || data?.msg || `HTTP ${response.status}: ${response.statusText}`;
-            
-            // If it's a string, use it directly
             if (typeof data === 'string') {
                 errorMessage = data;
             }
-            
+            // Normalize validation errors: BE sends them in ApiResult.data; legacy format used root "errors"
+            const validationErrors = (response.status === 400 && data && typeof data === 'object')
+                ? (data.data && typeof data.data === 'object' && !Array.isArray(data.data) ? data.data : data.errors || {})
+                : {};
             const error = {
                 message: errorMessage,
                 status: response.status,
                 data: data,
+                validationErrors,
             };
+
+            // #region agent log
+            if (import.meta.env.VITE_AGENT_LOGGING === 'true') {
+                fetch('http://127.0.0.1:7760/ingest/0fef38d5-d2ff-44cd-8a64-86cef69f9613', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Debug-Session-Id': '6a69cc',
+                    },
+                    body: JSON.stringify({
+                        sessionId: '6a69cc',
+                        runId: 'initial',
+                        hypothesisId: 'A',
+                        location: 'shared/lib/http.js:error_response',
+                        message: 'httpClient non-ok response',
+                        data: {
+                            url: fullUrl,
+                            status: response.status,
+                            errorMessage,
+                        },
+                        timestamp: Date.now(),
+                    }),
+                }).catch(() => {});
+            }
+            // #endregion agent log
 
             switch (response.status) {
                 case 401:
                     // Unauthorized - log error but let caller handle it
                     // Caller can decide whether to logout, retry, or show error message
                     console.error('Unauthorized (401):', error.message);
+                    // Notify app-level auth handler (AuthProvider) to clear session + redirect.
+                    try {
+                        window.dispatchEvent(new Event('auth:unauthorized'));
+                    } catch {
+                        // ignore
+                    }
                     // Note: Token may be invalid/expired, but we don't auto-logout here
                     // Each page/component can handle 401 as needed (e.g., show error, retry, or manual logout)
                     break;
@@ -168,13 +260,40 @@ async function httpClient(url, options = {}) {
             throw error;
         }
 
+        // #region agent log
+        if (import.meta.env.VITE_AGENT_LOGGING === 'true') {
+            fetch('http://127.0.0.1:7760/ingest/0fef38d5-d2ff-44cd-8a64-86cef69f9613', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Debug-Session-Id': '6a69cc',
+                },
+                body: JSON.stringify({
+                    sessionId: '6a69cc',
+                    runId: 'initial',
+                    hypothesisId: 'A',
+                    location: 'shared/lib/http.js:network_error',
+                    message: 'httpClient network error',
+                    data: {
+                        url: typeof fullUrl !== 'undefined' ? fullUrl : url,
+                        apiBaseUrl: API_BASE_URL,
+                        errorMessage: error.message,
+                    },
+                    timestamp: Date.now(),
+                }),
+            }).catch(() => {});
+        }
+        // #endregion agent log
+
         // Network error - provide more details
-        console.error('Network error details:', {
-            message: error.message,
-            url: fullUrl,
-            apiBaseUrl: API_BASE_URL,
-            error: error,
-        });
+        if (import.meta.env.DEV && import.meta.env.VITE_DEBUG === 'true') {
+            console.error('Network error details:', {
+                message: error.message,
+                url: fullUrl,
+                apiBaseUrl: API_BASE_URL,
+                error: error,
+            });
+        }
         
         // More helpful error message
         let errorMessage = 'Network error. Please check your connection.';

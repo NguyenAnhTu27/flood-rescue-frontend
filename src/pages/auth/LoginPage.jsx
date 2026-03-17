@@ -4,27 +4,39 @@ import {
     Home,
     Eye,
     EyeOff,
-    CheckCircle2,
-    Info,
-    ShoppingCart,
-    MapPin,
-    Briefcase,
+    ShieldCheck,
+    Radio,
+    Truck,
+    ArrowRight,
 } from 'lucide-react';
 import { AUTH_ROUTES } from '../../app/routes/route.constants.js';
 import { login } from '../../features/auth/api.js';
-import { setToken, setRole, setUser } from '../../shared/lib/storage.js';
+import { useAuth } from '../../features/auth/hooks.js';
+import Card from '../../shared/ui/Card.jsx';
+import Input from '../../shared/ui/Input.jsx';
+import Button from '../../shared/ui/Button.jsx';
 
-const ROLES = [
-    { value: 'CITIZEN', label: 'Công dân' },
-    { value: 'COORDINATOR', label: 'Điều phối' },
-    { value: 'RESCUER', label: 'Đội cứu hộ' },
-    { value: 'MANAGER', label: 'Quản lý' },
-    { value: 'ADMIN', label: 'Admin' },
+const LOGIN_FEATURES = [
+    {
+        icon: ShieldCheck,
+        title: 'Xác thực tập trung',
+        body: 'Đăng nhập một lần để truy cập đúng luồng theo vai trò được cấp.',
+    },
+    {
+        icon: Radio,
+        title: 'Theo dõi thời gian thực',
+        body: 'Liên tục cập nhật trạng thái xử lý để không bỏ lỡ tác vụ quan trọng.',
+    },
+    {
+        icon: Truck,
+        title: 'Điều phối nhanh',
+        body: 'Đội ngũ phản ứng dựa trên dữ liệu ưu tiên và vị trí hiện trường.',
+    },
 ];
 
 export default function LoginPage() {
     const navigate = useNavigate();
-    const [selectedRole, setSelectedRole] = useState('CITIZEN');
+    const { setSession } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -51,99 +63,65 @@ export default function LoginPage() {
             // Log response for debugging
             console.log('[Login Response]', response);
 
-            // Handle different response formats from backend
-            // Format 1: { token: "...", user: {...} }
-            // Format 2: { data: { token: "...", user: {...} } }
-            // Format 3: { accessToken: "...", user: {...} } (alternative token field name)
-            const token = response.token || response.accessToken || response.data?.token || response.data?.accessToken;
-            const user = response.user || response.data?.user;
-            const roleFromResponse = response.role || response.data?.role || user?.role || null;
+            // Handle LoginResponse from backend
+            // BE returns: { token, tokenType, userId, fullName, role }
+            const token = response.token || response.accessToken;
+            const role = response.role || 'CITIZEN';
+            const userId = response.userId;
+            const fullName = response.fullName;
 
-            if (token) {
-                setToken(token);
-            } else {
+            if (!token) {
                 console.warn('[Login] No token received from backend');
             }
 
-            if (user) {
-                const userRole = roleFromResponse || selectedRole;
-                setRole(userRole);
-                setUser(user);
+            // Build user object from flat response fields
+            const userData = {
+                id: userId,
+                fullName: fullName || '',
+                role: role,
+                email: email,
+            };
+            // Cập nhật session vào AuthProvider + localStorage
+            setSession({
+                token,
+                role,
+                user: userData,
+            });
 
-                // Redirect based on role from user (not selectedRole)
-                const roleRoutes = {
-                    CITIZEN: '/cong-dan',
-                    COORDINATOR: '/dieu-phoi',
-                    RESCUER: '/doi-cuu-ho',
-                    MANAGER: '/quan-ly',
-                    ADMIN: '/admin',
-                };
-                navigate(roleRoutes[userRole] || '/');
-            } else {
-                // If no user object, create a minimal one from the response
-                const userRole = roleFromResponse || selectedRole;
-                const userData = {
-                    email: email,
-                    role: userRole,
-                    ...response,
-                };
-                setRole(userRole);
-                setUser(userData);
-
-                // Redirect based on role from BE response (fallback to selectedRole only if BE doesn't return role)
-                const roleRoutes = {
-                    CITIZEN: '/cong-dan',
-                    COORDINATOR: '/dieu-phoi',
-                    RESCUER: '/doi-cuu-ho',
-                    MANAGER: '/quan-ly',
-                    ADMIN: '/admin',
-                };
-                navigate(roleRoutes[userRole] || '/');
-            }
+            // Redirect based on role
+            const roleRoutes = {
+                CITIZEN: '/cong-dan',
+                COORDINATOR: '/dieu-phoi',
+                RESCUER: '/doi-cuu-ho',
+                MANAGER: '/quan-ly',
+                ADMIN: '/admin',
+            };
+            navigate(roleRoutes[role] || '/');
         } catch (err) {
-            // Handle error - show more helpful messages
             console.error('[Login Error]', err);
-
-            // Log detailed validation errors for debugging
-            if (err.status === 400 && err.data?.errors) {
-                console.error('[Validation Errors]', err.data.errors);
+            // Validation errors: BE ApiResult puts field→message map in data.data; httpClient also sets err.validationErrors
+            const errors = err.validationErrors ?? err.data?.data ?? err.data?.errors ?? {};
+            if (Object.keys(errors).length > 0) {
+                console.error('[Validation Errors]', errors);
             }
 
             let errorMessage = 'Đăng nhập thất bại. Vui lòng thử lại.';
 
-            // Check for validation errors (400 Bad Request)
-            if (err.status === 400 && err.data?.errors) {
-                // Backend returned field-specific validation errors
-                const errors = err.data.errors;
-                const errorFields = Object.keys(errors);
-
-                if (errorFields.length > 0) {
-                    // Combine all validation errors into a readable message
-                    const errorMessages = [];
-
-                    errorFields.forEach(field => {
-                        const fieldErrors = errors[field];
-                        if (Array.isArray(fieldErrors)) {
-                            fieldErrors.forEach(msg => {
-                                errorMessages.push(`${field}: ${msg}`);
-                            });
-                        } else if (typeof fieldErrors === 'string') {
-                            errorMessages.push(`${field}: ${fieldErrors}`);
-                        }
-                    });
-
-                    if (errorMessages.length > 0) {
-                        // Show all errors, or just the first one if too many
-                        if (errorMessages.length === 1) {
-                            errorMessage = errorMessages[0];
-                        } else {
-                            errorMessage = errorMessages[0] + ` (+${errorMessages.length - 1} lỗi khác)`;
-                        }
-                    } else {
-                        errorMessage = err.data.message || 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin đăng nhập.';
+            if (err.status === 400 && Object.keys(errors).length > 0) {
+                const errorMessages = [];
+                Object.entries(errors).forEach(([field, value]) => {
+                    if (Array.isArray(value)) {
+                        value.forEach((msg) => errorMessages.push(`${field}: ${msg}`));
+                    } else if (typeof value === 'string') {
+                        errorMessages.push(`${field}: ${value}`);
                     }
+                });
+                if (errorMessages.length === 1) {
+                    errorMessage = errorMessages[0];
+                } else if (errorMessages.length > 1) {
+                    errorMessage = errorMessages[0] + ` (+${errorMessages.length - 1} lỗi khác)`;
                 } else {
-                    errorMessage = err.data.message || 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin đăng nhập.';
+                    errorMessage = err.data?.message || err.message || 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin đăng nhập.';
                 }
             } else if (err.message) {
                 errorMessage = err.message;
@@ -167,85 +145,49 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center min-h-[calc(100vh-120px)]">
-            {/* Left: Login Form */}
-            <div className="w-full max-w-md mx-auto lg:mx-0">
-                {/* Header */}
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 border-2 border-blue-700">
+        <div className="grid gap-7 lg:grid-cols-[1fr_0.95fr] lg:gap-10 xl:gap-14">
+            <Card className="w-full max-w-xl p-6 sm:p-8">
+                <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-[16px] bg-gradient-to-br from-blue-600 to-cyan-600 shadow-[0_14px_28px_rgba(14,116,144,0.26)]">
                         <Home className="h-5 w-5 text-white" strokeWidth={2.5} />
                     </div>
-                    <span className="text-lg font-bold text-slate-900">Hệ thống Cứu hộ - Cứu trợ</span>
-                </div>
-
-                <h2 className="text-3xl font-bold text-slate-900 mb-2">Đăng nhập</h2>
-                <p className="text-sm text-slate-600 mb-8">
-                    Vui lòng chọn vai trò và nhập thông tin để tiếp tục
-                </p>
-
-                {/* Role Selection */}
-                <div className="flex gap-2 mb-6 overflow-x-auto">
-                    {ROLES.map((role) => (
-                        <button
-                            key={role.value}
-                            type="button"
-                            onClick={() => setSelectedRole(role.value)}
-                            className={`rounded-full px-4 py-2 text-sm font-medium transition-all whitespace-nowrap shrink-0 ${selectedRole === role.value
-                                ? 'bg-blue-600 text-white shadow-md'
-                                : 'bg-white text-slate-700 border border-slate-200 hover:border-blue-300 hover:bg-blue-50'
-                                }`}
-                        >
-                            {role.label}
-                        </button>
-                    ))}
-                </div>
-
-                {/* Login Form */}
-                <form onSubmit={handleSubmit} className="space-y-5">
-                    {/* Email/Phone Input */}
                     <div>
-                        <label className="mb-2 block text-sm font-medium text-slate-700">
-                            Số điện thoại / Email
-                        </label>
-                        <input
-                            type="text"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="Nhập email hoặc số điện thoại"
-                            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Đăng nhập hệ thống</p>
+                        <p className="text-base font-extrabold text-slate-900">Hệ thống Cứu hộ - Cứu trợ</p>
+                    </div>
+                </div>
+
+                <h1 className="ui-heading text-3xl sm:text-4xl mt-6">Xin chào, mời bạn quay lại</h1>
+                <p className="ui-text-secondary mt-3 text-sm leading-7">Nhập thông tin đăng nhập để tiếp tục xử lý công việc.</p>
+
+                <form onSubmit={handleSubmit} className="mt-7 space-y-5">
+                    <Input
+                        label="Số điện thoại / Email"
+                        type="text"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="Nhập email hoặc số điện thoại"
+                        required
+                    />
+
+                    <div className="relative">
+                         <Input
+                            label="Mật khẩu"
+                            type={showPassword ? 'text' : 'password'}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="Nhập mật khẩu"
                             required
                         />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-[2.4rem] -translate-y-1/2 text-slate-400 transition hover:text-slate-600"
+                        >
+                            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                        </button>
                     </div>
 
-                    {/* Password Input */}
-                    <div>
-                        <label className="mb-2 block text-sm font-medium text-slate-700">
-                            Mật khẩu
-                        </label>
-                        <div className="relative">
-                            <input
-                                type={showPassword ? 'text' : 'password'}
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="Nhập mật khẩu"
-                                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 pr-12 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                                required
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                            >
-                                {showPassword ? (
-                                    <EyeOff className="h-5 w-5" />
-                                ) : (
-                                    <Eye className="h-5 w-5" />
-                                )}
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Remember & Forgot */}
                     <div className="flex items-center justify-between">
                         <label className="flex items-center gap-2">
                             <input
@@ -256,124 +198,59 @@ export default function LoginPage() {
                             />
                             <span className="text-sm text-slate-600">Ghi nhớ đăng nhập</span>
                         </label>
-                        <Link
-                            to="#"
-                            className="text-sm font-medium text-blue-600 hover:text-blue-700"
-                        >
+                        <Link to="#" className="text-sm font-semibold text-blue-600 hover:text-blue-700">
                             Quên mật khẩu?
                         </Link>
                     </div>
 
-                    {/* Error Message */}
                     {error && (
-                        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                        <div className="rounded-[14px] border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-700">
                             {error}
                         </div>
                     )}
 
-                    {/* Login Button */}
-                    <button
+                    <Button
                         type="submit"
                         disabled={loading}
-                        className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full justify-center"
+                        size="lg"
                     >
                         {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
-                    </button>
+                        {!loading && <ArrowRight size={14} className="ml-2" />}
+                    </Button>
                 </form>
 
-                {/* Register Link */}
                 <p className="mt-6 text-center text-sm text-slate-600">
                     Chưa có tài khoản?{' '}
-                    <Link
-                        to={AUTH_ROUTES.REGISTER}
-                        className="font-semibold text-blue-600 hover:text-blue-700"
-                    >
+                    <Link to={AUTH_ROUTES.REGISTER} className="font-semibold text-blue-600 hover:text-blue-700">
                         Đăng ký ngay
                     </Link>
                 </p>
-            </div>
+            </Card>
 
-            {/* Right: Features */}
-            <div className="hidden lg:block relative">
-                <div className="space-y-8">
-                    {/* Title */}
-                    <h3 className="text-3xl font-bold text-slate-900 leading-tight">
-                        Hỗ trợ cứu hộ nhanh chóng và hiệu quả
-                    </h3>
+            <section className="ui-surface hidden rounded-[30px] p-6 sm:p-8 lg:block" style={{ animationDelay: '80ms' }}>
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-600">Đăng nhập an toàn</p>
+                <h2 className="ui-heading text-3xl mt-3">Điều phối nhanh, phản hồi đúng ưu tiên</h2>
+                <p className="ui-text-secondary mt-4 text-sm leading-8">
+                    Trang đăng nhập mới tập trung vào tính rõ ràng và tốc độ thao tác, giúp người dùng vào đúng khu vực làm việc ngay từ đầu.
+                </p>
 
-                    {/* Background Graphic */}
-                    <div className="relative">
-                        <div className="absolute inset-0 flex items-center justify-center opacity-10">
-                            <div className="relative">
-                                <div className="h-64 w-64 rounded-full border-4 border-blue-300"></div>
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="h-40 w-40 rounded-full border-2 border-blue-300"></div>
-                                </div>
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <MapPin className="h-8 w-8 text-blue-600" />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Features List */}
-                        <div className="relative space-y-6 pt-4">
-                            {/* Feature 1 */}
+                <div className="mt-8 space-y-4">
+                    {LOGIN_FEATURES.map(({ icon: Icon, title, body }) => (
+                        <article key={title} className="rounded-[22px] border border-white/70 bg-white/[0.45] px-5 py-4 backdrop-blur-xl">
                             <div className="flex items-start gap-4">
-                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-100">
-                                    <CheckCircle2 className="h-6 w-6 text-blue-600" />
+                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] border border-white/80 bg-white/70 text-blue-600">
+                                    <Icon size={20} />
                                 </div>
                                 <div>
-                                    <h4 className="font-semibold text-slate-900 mb-1">
-                                        Tiếp nhận yêu cầu
-                                    </h4>
-                                    <p className="text-sm text-slate-600">
-                                        Xử lý thông tin khẩn cấp từ người dân 24/7
-                                    </p>
+                                    <h3 className="text-base font-bold text-slate-900">{title}</h3>
+                                    <p className="mt-1 text-sm leading-7 text-slate-600">{body}</p>
                                 </div>
                             </div>
-
-                            {/* Feature 2 */}
-                            <div className="flex items-start gap-4">
-                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-100">
-                                    <Info className="h-6 w-6 text-blue-600" />
-                                </div>
-                                <div>
-                                    <h4 className="font-semibold text-slate-900 mb-1">
-                                        Điều phối đội/phương tiện
-                                    </h4>
-                                    <p className="text-sm text-slate-600">
-                                        Tối ưu hóa nguồn lực và thời gian phản ứng
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Feature 3 */}
-                            <div className="flex items-start gap-4">
-                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-100">
-                                    <ShoppingCart className="h-6 w-6 text-blue-600" />
-                                </div>
-                                <div>
-                                    <h4 className="font-semibold text-slate-900 mb-1">
-                                        Quản lý phân phối hàng
-                                    </h4>
-                                    <p className="text-sm text-slate-600">
-                                        Minh bạch hóa quá trình cứu trợ nhu yếu phẩm
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Placeholder Image */}
-                    <div className="mt-8 rounded-xl border border-slate-200 bg-blue-50 p-8">
-                        <div className="flex items-center justify-center">
-                            <div className="flex h-24 w-24 items-center justify-center rounded-xl bg-blue-600">
-                                <Briefcase className="h-12 w-12 text-white" strokeWidth={1.5} />
-                            </div>
-                        </div>
-                    </div>
+                        </article>
+                    ))}
                 </div>
-            </div>
+            </section>
         </div>
     );
 }

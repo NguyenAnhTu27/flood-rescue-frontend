@@ -7,7 +7,7 @@
 export const PUBLIC_ROUTES = {
     HOME: '/',
     EMERGENCY_GUIDE: '/huong-dan-khan-cap',
-    TERMS_OF_USE: '/dieu-khoan-su-dung',
+    TERMS_OF_USE: '/tuyen-bo-mien-tru-trach-nhiem',
     PRIVACY_POLICY: '/chinh-sach-bao-mat',
     SUPPORT_CONTACT: '/lien-he-ho-tro',
     NOT_FOUND: '*',
@@ -101,6 +101,8 @@ export const CITIZEN_ROUTES = {
     AUDIT_LOGS: '/admin/nhat-ky-he-thong',
     SYSTEM_FEEDBACKS: '/admin/phan-hoi-he-thong',
     CONTENT_PAGES: '/admin/noi-dung-trang',
+    ASSETS_MANAGEMENT: '/admin/phuong-tien',
+    CREATE_ASSET: '/admin/tao-phuong-tien',
   };
   
   // -------- ALL PRIVATE ROUTES (OPTIONAL HELPER) --------

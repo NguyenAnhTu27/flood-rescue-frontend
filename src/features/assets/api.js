@@ -1,42 +1,24 @@
 import httpClient from '../../shared/lib/http.js';
+import { normalizePagination } from '../../shared/lib/httpUtils.js';
 
 /**
  * ASSETS MANAGEMENT API
- * Backend base path: /api/assets (không phải /api/admin/assets)
+ * BE AssetController mapped at: /api/assets
  * → FE chỉ cần gọi /assets vì httpClient đã prefix /api
  */
 
-// Lấy danh sách tất cả phương tiện
+// Lấy danh sách tất cả phương tiện (filter theo status nếu cần)
 export async function getAssets(params = {}) {
-  const normalizedParams = { ...(params || {}) };
+  const normalizedParams = normalizePagination(params || {});
   if (typeof normalizedParams.status === 'string') {
     normalizedParams.status = normalizedParams.status.toUpperCase();
   }
+  return httpClient.get('/assets', { params: normalizedParams });
+}
 
-  const candidates = [
-    '/assets',  // Thử endpoint chính trước
-    '/assets/list',
-    '/manager/assets',  // Thử endpoint manager sau (có thể bị 401)
-  ];
-
-  let lastErr;
-  for (const path of candidates) {
-    try {
-      const res = await httpClient.get(path, { params: normalizedParams });
-      return res;
-    } catch (e) {
-      lastErr = e;
-      // Nếu là 401/403, tiếp tục thử endpoint khác
-      // Nếu là 404, tiếp tục thử endpoint khác
-      // Chỉ throw ngay nếu là lỗi khác (500, network error, etc.)
-      if (e?.status !== 404 && e?.status !== 401 && e?.status !== 403) {
-        throw e;
-      }
-    }
-  }
-  
-  // Nếu tất cả đều fail với 401/403/404, throw error cuối cùng
-  throw lastErr || new Error('Không tìm thấy endpoint danh sách phương tiện');
+// Lấy danh sách phương tiện theo bộ lọc nâng cao
+export async function getAssetsFiltered(params = {}) {
+  return httpClient.get('/assets/filter', { params: normalizePagination(params) });
 }
 
 // Lấy chi tiết 1 phương tiện
@@ -44,26 +26,9 @@ export async function getAsset(id) {
   return httpClient.get(`/assets/${id}`);
 }
 
-// Tạo phương tiện mới (Manager tạo, không phải Admin)
+// Tạo phương tiện mới (Manager tạo)
 export async function createAsset(payload) {
-  const candidates = [
-    '/assets',
-    '/manager/assets',
-  ];
-
-  let lastErr;
-  for (const path of candidates) {
-    try {
-      const res = await httpClient.post(path, payload);
-      return res;
-    } catch (e) {
-      lastErr = e;
-      if (e?.status !== 404 && e?.status !== 401 && e?.status !== 403) {
-        throw e;
-      }
-    }
-  }
-  throw lastErr || new Error('Không tìm thấy endpoint tạo phương tiện');
+  return httpClient.post('/assets', payload);
 }
 
 // Cập nhật phương tiện
@@ -77,6 +42,22 @@ export async function deleteAsset(id) {
 }
 
 // Cập nhật trạng thái phương tiện
+// BE dùng @PatchMapping + ChangeAssetStatusRequest { newStatus }
 export async function updateAssetStatus(id, status) {
-  return httpClient.put(`/assets/${id}/status`, { status });
+  return httpClient.patch(`/assets/${id}/status`, { newStatus: status });
+}
+
+// Gán phương tiện cho đội
+export async function assignAssetToTeam(id, teamId) {
+  return httpClient.put(`/assets/${id}/assign-team`, { teamId });
+}
+
+// Hủy gán phương tiện khỏi đội
+export async function unassignAssetFromTeam(id) {
+  return httpClient.put(`/assets/${id}/unassign-team`);
+}
+
+// Lấy danh sách phương tiện theo đội
+export async function getAssetsByTeam(teamId) {
+  return httpClient.get(`/assets/team/${teamId}`);
 }

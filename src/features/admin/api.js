@@ -24,14 +24,14 @@ export async function getTeams() {
 }
 
 // ===== ASSET =====
+// BE AssetController mapped at /api/assets (không phải /api/admin/assets)
 
 /**
  * Tạo phương tiện / thiết bị cứu hộ
  * @param {{ code: string; name: string; assetType: string; capacity?: number | null; assignedTeamId?: number | null; note?: string | null }} data
  */
 export async function createAsset(data) {
-    // httpClient đã unwrap data từ BE, không trả kiểu axios response
-    return await httpClient.post('/admin/assets', data);
+    return await httpClient.post('/assets', data);
 }
 
 /**
@@ -39,8 +39,7 @@ export async function createAsset(data) {
  * @param {string} [status]
  */
 export async function getAssets(status) {
-    // httpClient đã unwrap data từ BE, không trả kiểu axios response
-    return await httpClient.get('/admin/assets', {
+    return await httpClient.get('/assets', {
         params: status ? { status } : undefined,
     });
 }

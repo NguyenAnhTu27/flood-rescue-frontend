@@ -79,9 +79,11 @@ export default function NotificationTemplatesPage() {
     }
   };
 
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     loadTemplates(0, "");
   }, []);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const runSearch = async () => {
     const q = searchInput.trim();

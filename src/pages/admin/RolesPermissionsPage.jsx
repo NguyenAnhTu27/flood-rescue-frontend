@@ -61,15 +61,18 @@ export default function RolesPermissionsPage() {
     }
   };
 
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     loadData();
   }, []);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
     if (!activeRole) return;
     setDraftPermissions([...(permissionMap[activeRole] || [])]);
   }, [activeRole, permissionMap]);
 
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     const loadRoleUsers = async () => {
       if (activeTab !== "users" || !activeRoleItem?.id) return;
@@ -85,6 +88,7 @@ export default function RolesPermissionsPage() {
     };
     loadRoleUsers();
   }, [activeTab, activeRoleItem?.id]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const roleNameMap = useMemo(
     () => ({

@@ -10,7 +10,7 @@ import {
     CheckCircle2,
 } from 'lucide-react';
 import { CITIZEN_ROUTES } from '../../app/routes/route.constants.js';
-import GoogleMap from '../../features/map/components/GoogleMap.jsx';
+import MapBox from '../../features/map/components/MapBox.jsx';
 import { uploadRescueAttachments } from '../../features/rescue/api.js';
 import { createReliefRequest, updateMyCitizenReliefRequest } from '../../features/relief/api.js';
 import PrioritySelector from '../../features/rescue/components/PrioritySelector.jsx';
@@ -43,6 +43,7 @@ export default function ReliefRequestCreatePage({
     const isEditMode = editingRequestId > 0;
     const [currentStep, setCurrentStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [stepErrors, setStepErrors] = useState({});
     const [form, setForm] = useState({
         address: '',
         locationDescription: '',
@@ -182,6 +183,7 @@ export default function ReliefRequestCreatePage({
                 }
             );
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [autoLocateOnMount, isEditMode]);
 
     const handleUseGps = async () => {
@@ -352,7 +354,38 @@ export default function ReliefRequestCreatePage({
         setShowAddressSuggestions(false);
     };
 
+    const validateStep = (step) => {
+        const errors = {};
+        if (step === 1) {
+            if (!form.latitude || !form.longitude)
+                errors.coords = 'Vui lòng chọn vị trí trên bản đồ hoặc dùng GPS.';
+            if (!String(form.locationDescription || '').trim())
+                errors.locationDescription = 'Vui lòng mô tả điểm nhận biết vị trí.';
+        }
+        if (step === 2) {
+            if (!String(form.description || '').trim())
+                errors.description = 'Vui lòng mô tả tình huống cần cứu trợ.';
+            const count = parseInt(form.peopleCount, 10);
+            if (!form.peopleCount || isNaN(count) || count < 1)
+                errors.peopleCount = 'Vui lòng nhập số người cần hỗ trợ (tối thiểu 1).';
+        }
+        if (step === 3) {
+            const phone = String(form.phone || '').replace(/\s+/g, '').trim();
+            if (!phone)
+                errors.phone = 'Vui lòng nhập số điện thoại liên hệ.';
+            else if (!/^(0[3-9]\d{8}|\+84[3-9]\d{8})$/.test(phone))
+                errors.phone = 'Số điện thoại không hợp lệ (VD: 0912345678).';
+        }
+        return errors;
+    };
+
     const goNext = () => {
+        const errors = validateStep(currentStep);
+        if (Object.keys(errors).length > 0) {
+            setStepErrors(errors);
+            return;
+        }
+        setStepErrors({});
         if (currentStep < 3) setCurrentStep((s) => s + 1);
     };
 
@@ -516,7 +549,7 @@ export default function ReliefRequestCreatePage({
                                 </div>
                             </div>
                             <div className="relative flex-1">
-                                <GoogleMap
+                                <MapBox
                                     center={mapCenter}
                                     markerPosition={markerPosition}
                                     onLocationSelect={handleLocationSelect}
@@ -683,6 +716,16 @@ export default function ReliefRequestCreatePage({
                                         {gpsError}
                                     </div>
                                 )}
+                                {stepErrors.coords && (
+                                    <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs font-medium text-rose-700">
+                                        ⚠ {stepErrors.coords}
+                                    </div>
+                                )}
+                                {stepErrors.locationDescription && (
+                                    <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs font-medium text-rose-700">
+                                        ⚠ {stepErrors.locationDescription}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -726,6 +769,16 @@ export default function ReliefRequestCreatePage({
                                         onChange={handleLevelChange}
                                     />
                                 </div>
+                                {stepErrors.description && (
+                                    <div className="mt-1 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs font-medium text-rose-700">
+                                        ⚠ {stepErrors.description}
+                                    </div>
+                                )}
+                                {stepErrors.peopleCount && (
+                                    <div className="mt-1 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs font-medium text-rose-700">
+                                        ⚠ {stepErrors.peopleCount}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -767,10 +820,13 @@ export default function ReliefRequestCreatePage({
                                             />
                                             <Phone className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                                         </div>
-                                        <p className="mt-1 text-[11px] text-slate-500">
-                                            Đội cứu hộ sẽ liên hệ qua số điện thoại này để xác minh và cập nhật trạng
-                                            thái.
-                                        </p>
+                                        {stepErrors.phone ? (
+                                            <p className="mt-1 text-xs font-medium text-rose-600">⚠ {stepErrors.phone}</p>
+                                        ) : (
+                                            <p className="mt-1 text-[11px] text-slate-500">
+                                                Đội cứu trợ sẽ liên hệ qua số điện thoại này để xác minh và cập nhật trạng thái.
+                                            </p>
+                                        )}
                                     </div>
 
                                     <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-[11px] text-rose-800 flex gap-2">

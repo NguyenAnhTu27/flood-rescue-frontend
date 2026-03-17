@@ -1,18 +1,16 @@
-﻿/**
+/**
  * Coordinator API - dashboard (Điều phối)
  */
 
 import httpClient from '../../shared/lib/http.js';
+import { normalizePagination } from '../../shared/lib/httpUtils.js';
 
 /**
  * Lấy hàng đợi yêu cầu cứu hộ cho điều phối viên
  * @param {{status?: string, page?: number, size?: number}} params
  */
 export async function getCoordinatorRescueQueue(params = {}) {
-  const response = await httpClient.get('/rescue/coordinator/requests', {
-    params,
-  });
-  return response;
+  return httpClient.get('/rescue/coordinator/requests', { params: normalizePagination(params) });
 }
 
 /**
@@ -142,10 +140,7 @@ export async function createTaskGroup(data) {
  * @param {{status?: string, page?: number, size?: number}} params
  */
 export async function getTaskGroups(params = {}) {
-  const response = await httpClient.get('/rescue/coordinator/task-groups', {
-    params,
-  });
-  return response;
+    return httpClient.get('/rescue/coordinator/task-groups', { params: normalizePagination(params) });
 }
 
 /**

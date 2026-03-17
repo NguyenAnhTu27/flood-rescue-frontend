@@ -14,13 +14,13 @@ export default function Card({
     children,
     ...props
 }) {
-    const baseStyles = 'bg-white';
+    const baseStyles = 'text-ink-900 transition-[transform,box-shadow,border-color,background-color] duration-200';
 
     const variants = {
-        default: 'rounded-xl border border-slate-200 shadow-sm',
-        outlined: 'rounded-xl border border-slate-200',
-        elevated: 'rounded-xl border border-slate-200 shadow-md',
-        flat: 'rounded-xl',
+        default: 'ui-surface',
+        outlined: 'rounded-[22px] border border-slate-200/80 bg-white/85',
+        elevated: 'glass-card',
+        flat: 'rounded-[20px] bg-transparent',
     };
 
     const variantStyles = variants[variant] || variants.default;

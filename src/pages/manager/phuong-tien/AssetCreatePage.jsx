@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, Save } from 'lucide-react';
-import { MANAGER_ROUTES } from '../../../app/routes/route.constants.js';
-import { createAsset } from '../../../features/assets/api.js';
+import { MANAGER_ROUTES, ADMIN_ROUTES } from '../../../app/routes/route.constants.js';
+import { createAsset, getAsset, updateAsset } from '../../../features/assets/api.js';
+import { getRole } from '../../../shared/lib/storage.js';
 
 const ASSET_TYPES = [
-    { value: 'canoe', label: 'Cano', icon: '🚤' },
+    { value: 'cano', label: 'Cano', icon: '🚤' },
     { value: 'water-vehicle', label: 'Xe lội nước', icon: '🚛' },
     { value: 'generator', label: 'Máy phát điện', icon: '⚡' },
 ];
@@ -16,8 +17,44 @@ const ASSET_STATUSES = [
     { value: 'maintenance', label: 'Bảo trì' },
 ];
 
+function toUiType(rawType) {
+    const value = String(rawType || '').trim().toLowerCase().replace('_', '-');
+    if (value === 'canoe' || value === 'cano' || value === 'boat') return 'cano';
+    if (value === 'water-vehicle' || value === 'water vehicle' || value === 'truck' || value === 'vehicle') return 'water-vehicle';
+    if (value === 'generator') return 'generator';
+    return '';
+}
+
+function toUiStatus(rawStatus) {
+    const value = String(rawStatus || '').trim().toLowerCase().replace('_', '-');
+    if (value === 'in-use' || value === 'in rescue' || value === 'busy') return 'in-use';
+    if (value === 'maintenance') return 'maintenance';
+    return 'available';
+}
+
+function toApiType(uiType) {
+    const normalized = toUiType(uiType);
+    if (normalized === 'cano') return 'CANO';
+    if (normalized === 'water-vehicle') return 'WATER_VEHICLE';
+    if (normalized === 'generator') return 'GENERATOR';
+    return 'CANO';
+}
+
+function toApiStatus(uiStatus) {
+    const normalized = toUiStatus(uiStatus);
+    if (normalized === 'in-use') return 'IN_USE';
+    if (normalized === 'maintenance') return 'MAINTENANCE';
+    return 'AVAILABLE';
+}
+
 export default function AssetCreatePage() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const assetId = searchParams.get('id');
+    const isEdit = !!assetId;
+    const role = getRole();
+    const isAdmin = role === 'ADMIN';
+    const routes = isAdmin ? ADMIN_ROUTES : MANAGER_ROUTES;
     const [formData, setFormData] = useState({
         code: '',
         name: '',
@@ -27,7 +64,33 @@ export default function AssetCreatePage() {
         description: '',
     });
     const [submitting, setSubmitting] = useState(false);
+    const [, setLoading] = useState(false);
     const [error, setError] = useState(null);
+
+    // Load existing asset data if editing
+    useEffect(() => {
+        if (!isEdit || !assetId) return;
+        const loadAsset = async () => {
+            try {
+                setLoading(true);
+                const data = await getAsset(assetId);
+                setFormData({
+                    code: data?.code || data?.assetCode || '',
+                    name: data?.name || data?.assetName || '',
+                    type: toUiType(data?.type || data?.assetType),
+                    status: toUiStatus(data?.status),
+                    location: data?.location || data?.currentLocation || '',
+                    description: data?.description || data?.note || '',
+                });
+            } catch (e) {
+                console.error('[AssetCreatePage] Load asset error:', e);
+                setError(e?.message || 'Không thể tải thông tin phương tiện');
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadAsset();
+    }, [isEdit, assetId]);
 
     const handleChange = (field, value) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
@@ -61,18 +124,21 @@ export default function AssetCreatePage() {
             const payload = {
                 code: formData.code.trim(),
                 name: formData.name.trim(),
-                type: formData.type,
-                status: formData.status,
+                assetType: toApiType(formData.type),
+                status: toApiStatus(formData.status),
                 location: formData.location.trim(),
-                description: formData.description?.trim() || null,
+                note: formData.description?.trim() || null,
             };
 
-            console.log('[AssetCreatePage] Creating asset with payload:', payload);
-            const response = await createAsset(payload);
-            console.log('[AssetCreatePage] Create asset response:', response);
-
-            window.alert('Tạo phương tiện thành công!');
-            navigate(MANAGER_ROUTES.ASSETS_MANAGEMENT);
+            console.log('[AssetCreatePage] Saving asset with payload:', payload);
+            if (isEdit) {
+                await updateAsset(assetId, payload);
+                window.alert('Cập nhật phương tiện thành công!');
+            } else {
+                await createAsset(payload);
+                window.alert('Tạo phương tiện thành công!');
+            }
+            navigate(routes.ASSETS_MANAGEMENT);
         } catch (e) {
             console.error('[AssetCreatePage] Create asset error:', e);
             const errorMessage = e?.data?.message || e?.message || 'Không thể tạo phương tiện';
@@ -89,13 +155,13 @@ export default function AssetCreatePage() {
             <div>
                 <button
                     type="button"
-                    onClick={() => navigate(MANAGER_ROUTES.ASSETS_MANAGEMENT)}
+                    onClick={() => navigate(routes.ASSETS_MANAGEMENT)}
                     className="mb-2 inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700"
                 >
                     <ChevronLeft className="h-3 w-3" />
                     Trở về Danh sách phương tiện
                 </button>
-                <h1 className="text-2xl font-bold text-slate-900">Tạo Phương tiện Mới</h1>
+                <h1 className="text-2xl font-bold text-slate-900">{isEdit ? 'Cập nhật Phương tiện' : 'Tạo Phương tiện Mới'}</h1>
                 <p className="mt-1 text-sm text-slate-500">
                     Thêm phương tiện và thiết bị cứu trợ mới vào hệ thống
                 </p>
@@ -215,7 +281,7 @@ export default function AssetCreatePage() {
                 <div className="mt-6 flex justify-end gap-3">
                     <button
                         type="button"
-                        onClick={() => navigate(MANAGER_ROUTES.ASSETS_MANAGEMENT)}
+                        onClick={() => navigate(routes.ASSETS_MANAGEMENT)}
                         className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                     >
                         Hủy
@@ -226,7 +292,7 @@ export default function AssetCreatePage() {
                         className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-70"
                     >
                         <Save className="h-4 w-4" />
-                        {submitting ? 'Đang tạo...' : 'Tạo phương tiện'}
+                        {submitting ? 'Đang lưu...' : isEdit ? 'Cập nhật' : 'Tạo phương tiện'}
                     </button>
                 </div>
             </form>

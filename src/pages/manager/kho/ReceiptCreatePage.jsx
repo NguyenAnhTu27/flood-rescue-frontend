@@ -1,8 +1,8 @@
-﻿import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Plus, Trash2 } from 'lucide-react';
 import { MANAGER_ROUTES } from '../../../app/routes/route.constants.js';
-import { approveInventoryReceipt, createInventoryReceipt, getItemCategories } from '../../../features/relief/api.js';
+import { createInventoryReceipt, getItemCategories } from '../../../features/relief/api.js';
 
 const INITIAL_ITEMS = [
     {
@@ -225,24 +225,17 @@ export default function ReceiptCreatePage() {
             setError(null);
 
             const createdReceipt = await createInventoryReceipt(payload);
-            console.log('[ReceiptCreatePage] createInventoryReceipt response:', createdReceipt);
-
-            let response = createdReceipt;
-            if (createdReceipt?.id) {
-                response = await approveInventoryReceipt(createdReceipt.id);
-                console.log('[ReceiptCreatePage] approveInventoryReceipt response:', response);
-            }
 
             const receiptCode =
-                response?.code ||
-                response?.documentCode ||
-                response?.receiptCode ||
-                response?.id;
+                createdReceipt?.code ||
+                createdReceipt?.documentCode ||
+                createdReceipt?.receiptCode ||
+                createdReceipt?.id;
 
             window.alert(
                 receiptCode
-                    ? `Tạo và cập nhật kho thành công: ${receiptCode}`
-                    : 'Tạo phiếu nhập kho và cập nhật tồn kho thành công!'
+                    ? `Tạo phiếu nhập kho thành công: ${receiptCode}. Vui lòng duyệt phiếu để cập nhật tồn kho.`
+                    : 'Tạo phiếu nhập kho thành công! Vui lòng duyệt phiếu để cập nhật tồn kho.'
             );
             navigate(MANAGER_ROUTES.INVENTORY_OVERVIEW);
         } catch (e) {
@@ -518,13 +511,7 @@ export default function ReceiptCreatePage() {
                         >
                             Hủy bỏ &amp; Quay lại
                         </button>
-                        <button
-                            type="button"
-                            onClick={() => navigate(MANAGER_ROUTES.RECEIPT_APPROVAL)}
-                            className="inline-flex w-full items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-100"
-                        >
-                            Duyệt phiếu nhập
-                        </button>
+
                     </div>
                 </div>
 

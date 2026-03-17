@@ -46,6 +46,7 @@ export default function RescueRequestList() {
     /**
      * Create new rescue request
      */
+    // eslint-disable-next-line no-unused-vars
     const handleCreate = async (formData) => {
         try {
             setError(null);

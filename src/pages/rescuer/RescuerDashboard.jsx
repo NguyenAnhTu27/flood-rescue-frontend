@@ -5,10 +5,12 @@ import { useNavigate } from 'react-router-dom';
 import Card from '../../shared/ui/Card.jsx';
 import Button from '../../shared/ui/Button.jsx';
 import Badge from '../../shared/ui/Badge.jsx';
+import RescueBeacon from '../../shared/ui/RescueBeacon.jsx';
 import MissionMapView from '../../features/map/components/MissionMapView.jsx';
 import { getRescuerDashboard, getRescuerTaskGroupById, returnRescuerTeamAssets, updateRescuerTeamLocation } from '../../features/rescuer/api.js';
 import { getRescuerReliefRequests } from '../../features/relief/api.js';
 import { RESCUER_ROUTES } from '../../app/routes/route.constants.js';
+import { useVisibleInterval } from '../../shared/hooks/useVisibleInterval.js';
 
 function normalizeTeamStatus(statusRaw) {
     const s = String(statusRaw || '').toUpperCase();
@@ -234,7 +236,9 @@ function normalizeDashboardResponse(raw) {
             tg?.locationName
         );
 
-        const statusInfo = normalizeMissionStatus(pickFirstTruthy(tg?.status, tg?.taskGroupStatus));
+        const missionStatusRaw = pickFirstTruthy(tg?.status, tg?.taskGroupStatus);
+        const normalizedStatus = String(missionStatusRaw || '').toUpperCase();
+        const statusInfo = normalizeMissionStatus(missionStatusRaw);
 
         const danger = Boolean(
             pickFirstTruthy(
@@ -261,9 +265,9 @@ function normalizeDashboardResponse(raw) {
 
         // "type" tag in UI: derive from status
         const type =
-            String(pickFirstTruthy(tg?.status, tg?.taskGroupStatus) || '').toUpperCase() === 'IN_PROGRESS'
+            normalizedStatus === 'IN_PROGRESS'
                 ? 'TẠI HIỆN TRƯỜNG'
-                : String(pickFirstTruthy(tg?.status, tg?.taskGroupStatus) || '').toUpperCase() === 'ASSIGNED'
+                : normalizedStatus === 'ASSIGNED'
                     ? 'ĐANG DI CHUYỂN'
                     : 'MỚI PHÂN CÔNG';
 
@@ -275,11 +279,11 @@ function normalizeDashboardResponse(raw) {
                     : 'bg-slate-100 text-slate-700';
 
         const statusDotColor =
-            String(pickFirstTruthy(tg?.status, tg?.taskGroupStatus) || '').toUpperCase() === 'IN_PROGRESS'
+            normalizedStatus === 'IN_PROGRESS'
                 ? 'bg-emerald-500'
-                : String(pickFirstTruthy(tg?.status, tg?.taskGroupStatus) || '').toUpperCase() === 'ASSIGNED'
+                : normalizedStatus === 'ASSIGNED'
                     ? 'bg-blue-500'
-                    : String(pickFirstTruthy(tg?.status, tg?.taskGroupStatus) || '').toUpperCase() === 'NEW'
+                    : normalizedStatus === 'NEW'
                         ? 'bg-slate-500'
                         : 'bg-emerald-500';
 
@@ -315,6 +319,7 @@ function normalizeDashboardResponse(raw) {
             longitude: toNumberOrNull(lng),
             peopleCount: affectedPeople,
             assetName,
+            normalizedStatus,
             statusDotColor,
             statusLabel: statusInfo.label,
             statusColor: statusInfo.color,
@@ -387,8 +392,11 @@ export default function RescuerDashboard() {
     const [updatingMyLocation, setUpdatingMyLocation] = useState(false);
     const [returningAssets, setReturningAssets] = useState(false);
     const mountedRef = useRef(true);
+    const requestIdRef = useRef(0);
 
     const loadDashboard = useCallback(async () => {
+        const requestId = ++requestIdRef.current;
+
         try {
             if (mountedRef.current) {
                 setLoading(true);
@@ -399,7 +407,7 @@ export default function RescuerDashboard() {
                 getRescuerDashboard(),
                 getRescuerReliefRequests({ page: 0, size: 100 }),
             ]);
-            if (!mountedRef.current) return;
+            if (!mountedRef.current || requestId !== requestIdRef.current) return;
 
             // Enrich: dashboard list often has requests/assignments null -> fetch detail by id
             const taskGroups = Array.isArray(resp?.taskGroups) ? resp.taskGroups : [];
@@ -412,6 +420,8 @@ export default function RescuerDashboard() {
                 const detailResults = await Promise.allSettled(
                     needDetailIds.slice(0, 10).map((id) => getRescuerTaskGroupById(id))
                 );
+                if (!mountedRef.current || requestId !== requestIdRef.current) return;
+
                 const detailById = new Map();
                 for (let i = 0; i < detailResults.length; i++) {
                     const r = detailResults[i];
@@ -442,26 +452,22 @@ export default function RescuerDashboard() {
             setReliefRequests(toList(reliefResp));
             setLastUpdatedAt(new Date());
         } catch (e) {
-            if (!mountedRef.current) return;
+            if (!mountedRef.current || requestId !== requestIdRef.current) return;
             setError(e?.message || 'Không thể tải dữ liệu dashboard. Vui lòng thử lại.');
         } finally {
-            if (mountedRef.current) setLoading(false);
+            if (mountedRef.current && requestId === requestIdRef.current) setLoading(false);
         }
     }, []);
 
     useEffect(() => {
         mountedRef.current = true;
-        let intervalId = null;
-
         loadDashboard();
-        // Poll every 20s for "near real-time" updates
-        intervalId = window.setInterval(loadDashboard, 20000);
-
         return () => {
             mountedRef.current = false;
-            if (intervalId) window.clearInterval(intervalId);
         };
     }, [loadDashboard]);
+
+    useVisibleInterval(loadDashboard, 20000);
 
     const normalized = useMemo(() => normalizeDashboardResponse(rawDashboard), [rawDashboard]);
     const teamName = normalized.team.name;
@@ -471,10 +477,11 @@ export default function RescuerDashboard() {
     const missions = normalized.missions;
     const heldAssets = normalized.heldAssets;
     const activeMissions = useMemo(
-        () => missions.filter((m) => ['NEW', 'ASSIGNED', 'IN_PROGRESS'].includes(String(m?.raw?.status || '').toUpperCase())),
+        () => missions.filter((m) => ['NEW', 'ASSIGNED', 'IN_PROGRESS'].includes(m?.normalizedStatus || '')),
         [missions]
     );
     const canReturnAssets = !loading && activeMissions.length === 0 && heldAssets.length > 0;
+    const criticalCount = activeMissions.filter((m) => m.danger).length;
 
     const updatedTimeText = useMemo(() => {
         if (!lastUpdatedAt) return '--:--:--';
@@ -543,57 +550,52 @@ export default function RescuerDashboard() {
 
 
     return (
-        <div className="flex flex-col gap-4 pb-6">
+        <div className="flex flex-col gap-5 pb-8">
             {/* Header: Team summary */}
-            <Card className="px-5 py-4 flex flex-col gap-4">
+            <Card variant="elevated" className="relative animate-fade-in-up overflow-hidden border-white/70 bg-gradient-to-br from-white via-white to-blue-50/70 px-6 py-6">
+                <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-r from-blue-100/60 via-sky-50/20 to-transparent" />
                 <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
                     <div className="flex items-start gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-[0_10px_24px_rgba(37,99,235,0.24)]">
                             <UsersIcon className="h-6 w-6" />
                         </div>
                         <div>
-                            <div className="flex items-center gap-3">
-                                <h1 className="text-lg font-bold text-slate-900 md:text-xl">{teamName}</h1>
-                                <Badge variant={normalized.team.status.variant} size="sm" className="uppercase">
+                            <div className="flex flex-wrap items-center gap-3">
+                                <h1 className="font-display text-xl font-bold tracking-[-0.02em] text-ink-900 md:text-2xl">{teamName}</h1>
+                                <Badge variant={normalized.team.status.variant} size="sm" className="uppercase shadow-sm">
                                     {normalized.team.status.label}
                                 </Badge>
                             </div>
-                            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
-                                <span>{area}</span>
-                                <span>•</span>
-                                <span>{membersInfo}</span>
-                                <span>•</span>
-                                <span>
-                                    Nhiệm vụ đang theo dõi:{' '}
-                                    <span className="font-semibold">
+                            <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
+                                <div className="rounded-lg border border-white/80 bg-white/80 px-3 py-2 shadow-[0_8px_24px_rgba(15,23,42,0.05)] backdrop-blur-sm">
+                                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-400">Khu vực</div>
+                                    <div className="mt-1 text-sm font-medium text-ink-900">{area.replace('Khu vực hoạt động: ', '')}</div>
+                                </div>
+                                <div className="rounded-lg border border-white/80 bg-white/80 px-3 py-2 shadow-[0_8px_24px_rgba(15,23,42,0.05)] backdrop-blur-sm">
+                                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-400">Quân số</div>
+                                    <div className="mt-1 text-sm font-medium text-ink-900">{membersInfo.replace('Quân số: ', '')}</div>
+                                </div>
+                                <div className="rounded-lg border border-blue-100 bg-blue-50/80 px-3 py-2 shadow-[0_8px_24px_rgba(37,99,235,0.08)]">
+                                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-blue-700">Nhiệm vụ đang theo dõi</div>
+                                    <div className="mt-1 text-sm font-semibold text-ink-900">
                                         {normalized.stats.activeTaskGroups}
-                                    </span>
-                                    {normalized.stats.activeAssignments !== null && (
-                                        <>
-                                            {' '}
-                                            (đang xử lý:{' '}
-                                            <span className="font-semibold">
-                                                {normalized.stats.activeAssignments}
-                                            </span>
-                                            )
-                                        </>
-                                    )}
-                                </span>
-                                <span>•</span>
-                                <span>
-                                    Phương tiện đang giữ:{' '}
-                                    <span className="font-semibold">
-                                        {heldAssets.length}
-                                    </span>
-                                </span>
+                                        {normalized.stats.activeAssignments !== null && ` · đang xử lý ${normalized.stats.activeAssignments}`}
+                                    </div>
+                                </div>
+                                <div className="rounded-lg border border-slate-200/80 bg-white/90 px-3 py-2 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+                                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-400">Phương tiện đang giữ</div>
+                                    <div className="mt-1 text-sm font-semibold text-ink-900">{heldAssets.length}</div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                        <RescueBeacon count={criticalCount} isCritical={criticalCount > 0} />
                         <Button
                             variant="secondary"
                             size="sm"
+                            className="bg-white/85"
                             disabled={loading || updatingMyLocation}
                             onClick={handleUpdateMyGps}
                         >
@@ -603,6 +605,7 @@ export default function RescuerDashboard() {
                         <Button
                             variant="secondary"
                             size="sm"
+                            className="bg-white/85"
                             disabled={loading || activeMissions.length === 0}
                             onClick={() => {
                                 const mission = activeMissions[0] || null;
@@ -616,6 +619,7 @@ export default function RescuerDashboard() {
                         <Button
                             variant="primary"
                             size="sm"
+                            className="shadow-[0_12px_28px_rgba(13,148,136,0.22)]"
                             disabled={loading}
                             onClick={() => {
                                 // Manual refresh (without waiting for interval)
@@ -628,6 +632,7 @@ export default function RescuerDashboard() {
                             <Button
                                 variant="outline"
                                 size="sm"
+                                className="bg-white/80"
                                 disabled={returningAssets}
                                 onClick={handleReturnAssets}
                             >
@@ -637,16 +642,16 @@ export default function RescuerDashboard() {
                     </div>
                 </div>
                 {!!error && (
-                    <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                    <div className="rounded-lg border border-red-200 bg-red-50/90 px-4 py-3 text-xs text-red-700 shadow-[0_8px_20px_rgba(239,68,68,0.08)]">
                         {error}
                     </div>
                 )}
-                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                <div className="rounded-lg border border-slate-200/80 bg-white/80 px-4 py-3 text-xs text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.04)] backdrop-blur-sm">
                     Vị trí đội hiện tại: <span className="font-mono">{teamGpsText}</span>
                     {normalized.team.locationText ? ` • ${normalized.team.locationText}` : ''}
                 </div>
-                <div className="overflow-hidden rounded-lg border border-slate-200">
-                    <div className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
+                <div className="overflow-hidden rounded-lg border border-slate-200/80 bg-white/85 shadow-[0_14px_30px_rgba(15,23,42,0.06)] backdrop-blur-sm">
+                    <div className="border-b border-slate-200/80 bg-gradient-to-r from-white via-blue-50/60 to-white px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-blue-700">
                         Bản đồ vị trí đội cứu hộ
                     </div>
                     <div className="h-48">
@@ -666,18 +671,18 @@ export default function RescuerDashboard() {
                     </div>
                 </div>
 
-                <div className="rounded-lg border border-slate-200 bg-white">
-                    <div className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
+                <div className="rounded-lg border border-slate-200/80 bg-white/90 shadow-[0_14px_30px_rgba(15,23,42,0.05)]">
+                    <div className="border-b border-slate-200/80 bg-gradient-to-r from-white via-slate-50 to-white px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-ink-600">
                         Phương tiện đội đang giữ ({heldAssets.length})
                     </div>
                     {heldAssets.length === 0 ? (
-                        <div className="px-3 py-3 text-xs text-slate-500">
+                        <div className="px-4 py-4 text-xs text-slate-500">
                             Hiện đội chưa giữ phương tiện nào.
                         </div>
                     ) : (
-                        <div className="grid gap-2 p-3 md:grid-cols-2">
+                        <div className="grid gap-3 p-4 md:grid-cols-2">
                             {heldAssets.map((asset) => (
-                                <div key={asset.id} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                                <div key={asset.id} className="rounded-lg border border-slate-200/80 bg-slate-50/80 px-4 py-3 shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
                                     <div className="flex items-center justify-between gap-2">
                                         <div className="min-w-0">
                                             <div className="truncate text-sm font-semibold text-slate-900">
@@ -699,13 +704,13 @@ export default function RescuerDashboard() {
             </Card>
 
             {/* Missions list */}
-            <Card className="px-5 py-4">
+            <Card className="animate-fade-in-up px-6 py-5" style={{ animationDelay: '80ms' }}>
                 <div className="mb-3 flex items-center justify-between gap-2">
                     <div>
-                        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">
                             Nhiệm vụ đang thực hiện
                         </div>
-                        <div className="mt-0.5 text-[11px] text-slate-500">
+                        <div className="mt-1 text-[11px] text-slate-500">
                             Cập nhật liên tục theo thời gian thực, hiển thị các yêu cầu đang được đội xử lý
                         </div>
                     </div>
@@ -720,76 +725,68 @@ export default function RescuerDashboard() {
 
                 <div className="grid gap-3 md:grid-cols-3">
                     {loading ? (
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 md:col-span-3">
+                        <div className="rounded-lg border border-slate-200/80 bg-slate-50 p-5 text-sm text-slate-600 md:col-span-3">
                             Đang tải danh sách nhiệm vụ...
                         </div>
                     ) : activeMissions.length === 0 ? (
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 md:col-span-3">
+                        <div className="rounded-lg border border-slate-200/80 bg-slate-50 p-5 text-sm text-slate-600 md:col-span-3">
                             Hiện tại chưa có nhiệm vụ nào được phân công cho đội.
                         </div>
                     ) : (
-                        activeMissions.map((mission) => (
+                        activeMissions.map((mission, index) => (
                             <div
                                 key={mission.id}
-                                className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-50/60 shadow-sm"
+                                className="animate-fade-in-up flex flex-col overflow-hidden rounded-lg border border-slate-200/80 bg-white/90 shadow-soft transition-all duration-200 hover:-translate-y-0.5 hover:shadow-float"
+                                style={{ animationDelay: `${120 + index * 40}ms` }}
                             >
                                 {/* Map */}
-                                <div className="relative h-32 w-full overflow-hidden">
-                                    <MissionMapView
-                                        center={
-                                            Number.isFinite(mission.latitude) && Number.isFinite(mission.longitude)
-                                                ? { lat: mission.latitude, lng: mission.longitude }
-                                                : { lat: 10.8231, lng: 106.6297 } // Default HCMC
-                                        }
-                                        markerPosition={
-                                            Number.isFinite(mission.latitude) && Number.isFinite(mission.longitude)
-                                                ? { lat: mission.latitude, lng: mission.longitude }
-                                                : undefined
-                                        }
-                                        zoom={Number.isFinite(mission.latitude) && Number.isFinite(mission.longitude) ? 15 : 11}
-                                    />
-                                    {!(Number.isFinite(mission.latitude) && Number.isFinite(mission.longitude)) && (
-                                        <div className="absolute inset-x-0 bottom-0 z-10 bg-white/80 px-2 py-1 text-center text-[10px] text-slate-600 backdrop-blur">
-                                            Chưa có toạ độ chính xác — tạm hiển thị bản đồ mặc định
+                                <div className="relative h-32 w-full overflow-hidden rounded-t-lg bg-gradient-to-br from-blue-900 via-neutral-900 to-slate-900">
+                                    <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top_left,#22c55e_0,transparent_55%),radial-gradient(circle_at_bottom_right,#0ea5e9_0,transparent_55%)]" />
+                                    <div className="relative z-10 flex h-full flex-col justify-between p-3">
+                                        <div className="flex items-center justify-between text-[11px] text-slate-200">
+                                            <span className="inline-flex items-center gap-1">
+                                                <span className={`inline-flex h-1.5 w-1.5 rounded-full ${mission.statusDotColor || 'bg-emerald-500'} ${mission.normalizedStatus === 'IN_PROGRESS' ? 'animate-pulse-urgent' : ''}`} />
+                                                {mission.code || '—'}
+                                            </span>
+                                            <span className="font-mono opacity-80">
+                                                {Number.isFinite(mission.latitude) && Number.isFinite(mission.longitude)
+                                                    ? `${mission.latitude.toFixed(4)}, ${mission.longitude.toFixed(4)}`
+                                                    : 'Chưa có toạ độ'}
+                                            </span>
                                         </div>
-                                    )}
-                                    <div className="absolute left-3 top-3 z-10 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700 shadow-sm">
-                                        <span className={`inline-flex h-1.5 w-1.5 rounded-full ${mission.statusDotColor || 'bg-emerald-500'}`} />
-                                        {mission.code || '—'}
-                                    </div>
-                                    <div
-                                        className={`absolute right-3 top-3 z-10 rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${mission.typeColor} shadow-sm`}
-                                    >
-                                        {mission.type}
+                                        <div className="mt-2 line-clamp-2 text-sm font-medium text-slate-50">
+                                            {mission.address || '—'}
+                                        </div>
                                     </div>
                                 </div>
 
                                 {/* Content */}
-                                <div className="flex flex-1 flex-col gap-2 p-3 bg-white">
+                                <div className="flex flex-1 flex-col gap-3 bg-white p-4">
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="space-y-1">
-                                            <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-700">
+                                            <div className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600">
                                                 {mission.danger && (
-                                                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                                                    <AlertTriangle className="h-3.5 w-3.5 text-urgent-500" />
                                                 )}
                                                 <span>{mission.title}</span>
                                             </div>
-                                            <div className="flex items-center gap-1 text-xs text-slate-600">
-                                                <MapPin className="h-3.5 w-3.5 text-slate-500" />
+                                            <div className="flex items-center gap-1 text-sm font-medium text-ink-900">
+                                                <MapPin className="h-3.5 w-3.5 text-blue-600" />
                                                 <span className="line-clamp-2">{mission.address || '—'}</span>
                                             </div>
                                         </div>
                                         <button
                                             type="button"
-                                            className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                                            className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                                            aria-label="Thêm tuỳ chọn"
                                         >
                                             <MoreHorizontal className="h-4 w-4" />
                                         </button>
                                     </div>
 
-                                    <div className="flex items-center justify-between text-xs text-slate-600">
-                                        <span>
-                                            <span className="font-semibold">
+                                    <div className="flex items-center justify-between gap-3 text-xs text-slate-600">
+                                        <span className="min-w-0">
+                                            <span className="block truncate font-semibold text-ink-900">
                                                 {mission.assetName || '—'}
                                             </span>
                                         </span>
@@ -819,6 +816,7 @@ export default function RescuerDashboard() {
                                         <Button
                                             variant="secondary"
                                             size="sm"
+                                            className="bg-white"
                                             onClick={() => {
                                                 const missionId = mission?.raw?.id || mission?.id;
                                                 if (!missionId) return;
@@ -864,10 +862,10 @@ export default function RescuerDashboard() {
             </Card>
 
             {/* Relief requests assigned to rescuer team */}
-            <Card className="px-5 py-4">
+            <Card className="animate-fade-in-up px-6 py-5" style={{ animationDelay: '120ms' }}>
                 <div className="mb-3 flex items-center justify-between gap-2">
                     <div>
-                        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">
                             Yêu cầu cứu trợ mới
                         </div>
                         <div className="mt-0.5 text-[11px] text-slate-500">
@@ -887,14 +885,14 @@ export default function RescuerDashboard() {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <div className="overflow-x-auto rounded-lg border border-slate-200/80 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
                     {loading ? (
                         <div className="p-4 text-sm text-slate-500">Đang tải yêu cầu mới...</div>
                     ) : newReliefRequests.length === 0 ? (
                         <div className="p-4 text-sm text-slate-500">Không có yêu cầu mới.</div>
                     ) : (
                         <table className="w-full min-w-[760px]">
-                            <thead className="bg-slate-50">
+                            <thead className="bg-gradient-to-r from-slate-50 via-white to-slate-50">
                                 <tr>
                                     <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-slate-500">Mã yêu cầu</th>
                                     <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-slate-500">Khu vực</th>

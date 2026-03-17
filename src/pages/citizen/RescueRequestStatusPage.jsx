@@ -77,10 +77,11 @@ export default function RescueRequestStatusPage() {
     const waitingForTeam = Boolean(data?.waitingForTeam);
     const activeStepIndex = useMemo(() => statusToActiveStepIndex(statusRaw, waitingForTeam), [statusRaw, waitingForTeam]);
     const headerLabel = useMemo(() => statusToHeaderLabel(statusRaw, waitingForTeam), [statusRaw, waitingForTeam]);
+    const confirmationStatus = String(data?.rescueResultConfirmationStatus ?? '').toUpperCase().trim();
+    const completedAndNotYetConfirmed = normalizeStatus(statusRaw) === 'COMPLETED'
+        && ['', 'PENDING', 'NULL', 'UNDEFINED'].includes(confirmationStatus);
     const waitingCitizenConfirmation = Boolean(
-        data?.waitingCitizenRescueConfirmation
-        || (normalizeStatus(statusRaw) === 'COMPLETED'
-            && ['PENDING', '', 'NULL'].includes(String(data?.rescueResultConfirmationStatus || 'PENDING').toUpperCase()))
+        data?.waitingCitizenRescueConfirmation === true || completedAndNotYetConfirmed
     );
     const isCancelled = ['CANCELLED', 'CANCELED'].includes(normalizeStatus(statusRaw));
     const isInProgress = ['IN_PROGRESS', 'WORKING', 'PROCESSING', 'ON_SITE', 'AT_SCENE', 'ARRIVED'].includes(normalizeStatus(statusRaw));
@@ -588,10 +589,15 @@ export default function RescueRequestStatusPage() {
                         </div>
                         <button
                             type="button"
-                            className="mt-2 inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 sm:mt-0"
-                            disabled
+                            onClick={handleConfirmRescued}
+                            className="mt-2 inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 sm:mt-0"
+                            disabled={!waitingCitizenConfirmation || confirmingRescueResult}
                         >
-                            Xác nhận đã được cứu (sắp có)
+                            {confirmingRescueResult
+                                ? 'Đang xác nhận...'
+                                : waitingCitizenConfirmation
+                                    ? 'Xác nhận đã được cứu'
+                                    : 'Chờ đội cập nhật hoàn thành'}
                         </button>
                     </div>
                 </div>

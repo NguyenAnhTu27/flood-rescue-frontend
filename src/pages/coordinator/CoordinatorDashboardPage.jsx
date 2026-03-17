@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     List,
@@ -10,97 +10,34 @@ import {
     ZoomOut,
     Navigation,
 } from 'lucide-react';
-import GoogleMap from '../../features/map/components/GoogleMap.jsx';
+import MapBox from '../../features/map/components/MapBox.jsx';
 import PriorityBadge from '../../features/rescue/components/PriorityBadge.jsx';
 import Button from '../../shared/ui/Button.jsx';
 import Card from '../../shared/ui/Card.jsx';
 import Badge from '../../shared/ui/Badge.jsx';
-import { getCoordinatorDashboard, getCoordinatorRescueRequestById } from '../../features/coordinator/api.js';
+import { useCoordinatorDashboard } from '../../features/coordinator/hooks/useCoordinatorDashboard.js';
 import { COORDINATOR_ROUTES } from '../../app/routes/route.constants.js';
 import { FILE_BASE_URL } from '../../app/config/env.js';
-import httpClient from '../../shared/lib/http.js';
 
 export default function CoordinatorDashboard() {
     const navigate = useNavigate();
-    const [syncTime, setSyncTime] = useState(new Date());
     const [searchQuery] = useState('');
+    const [error, setError] = useState('');
     const [mapCenter, setMapCenter] = useState({ lat: 16.0544, lng: 108.2022 }); // Da Nang
     const [mapZoom, setMapZoom] = useState(12);
     const [mapMarkerPosition, setMapMarkerPosition] = useState(null);
 
-    // Data from BE (map/toạ độ làm sau)
-    const [requests, setRequests] = useState([]);
-    const [teams, setTeams] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const [mapRefreshSeconds, setMapRefreshSeconds] = useState(20);
-    const [selectedRequestId, setSelectedRequestId] = useState(null);
-    const [selectedRequestDetail, setSelectedRequestDetail] = useState(null);
-    const [detailLoading, setDetailLoading] = useState(false);
-    const [detailError, setDetailError] = useState('');
-
-    const parseCoordinatesFromText = (text) => {
-        const raw = String(text || '');
-        const match = raw.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
-        if (!match) return null;
-        const lat = Number(match[1]);
-        const lng = Number(match[2]);
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-        return { lat, lng };
-    };
-
-    const extractCoordinates = (obj) => {
-        if (!obj || typeof obj !== 'object') return null;
-        const directPairs = [
-            [obj.lat, obj.lng],
-            [obj.latitude, obj.longitude],
-            [obj.currentLat, obj.currentLng],
-            [obj.lastLat, obj.lastLng],
-        ];
-        for (const [rawLat, rawLng] of directPairs) {
-            const lat = Number(rawLat);
-            const lng = Number(rawLng);
-            if (Number.isFinite(lat) && Number.isFinite(lng)) {
-                return { lat, lng };
-            }
-        }
-        if (obj.location && typeof obj.location === 'object') {
-            const lat = Number(obj.location.lat ?? obj.location.latitude);
-            const lng = Number(obj.location.lng ?? obj.location.longitude);
-            if (Number.isFinite(lat) && Number.isFinite(lng)) {
-                return { lat, lng };
-            }
-        }
-        return (
-            parseCoordinatesFromText(obj.gps)
-            || parseCoordinatesFromText(obj.locationText)
-            || parseCoordinatesFromText(obj.locationDescription)
-            || parseCoordinatesFromText(obj.addressText)
-            || null
-        );
-    };
-
-    const loadDashboard = async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            const data = await getCoordinatorDashboard();
-            const nextRequests = data?.requests || [];
-            setRequests(nextRequests);
-            setTeams(data?.teams || []);
-            setSyncTime(new Date());
-            if (selectedRequestId && !nextRequests.some((r) => Number(r?.id) === Number(selectedRequestId))) {
-                setSelectedRequestId(null);
-                setSelectedRequestDetail(null);
-                setVerifyNote('');
-            }
-        } catch (err) {
-            console.error('[CoordinatorDashboard] loadDashboard error:', err);
-            setError(err?.message || 'Không thể tải dữ liệu dashboard');
-        } finally {
-            setLoading(false);
-        }
-    };
+    const {
+        syncTime,
+        requests,
+        teams,
+        selectedRequestId,
+        setSelectedRequestId,
+        selectedRequestDetail,
+        detailLoading,
+        detailError,
+        extractCoordinates,
+    } = useCoordinatorDashboard();
 
     const focusMapForRequest = (requestLike) => {
         const coords = extractCoordinates(requestLike);
@@ -109,59 +46,6 @@ export default function CoordinatorDashboard() {
         setMapMarkerPosition(coords);
         setMapZoom(15);
     };
-
-    const loadRequestDetail = async (requestId) => {
-        if (!requestId) return;
-        try {
-            setDetailLoading(true);
-            setDetailError('');
-            const detail = await getCoordinatorRescueRequestById(requestId);
-            setSelectedRequestDetail(detail);
-            focusMapForRequest(detail);
-        } catch (e) {
-            setSelectedRequestDetail(null);
-            setDetailError(e?.message || 'Không thể tải chi tiết yêu cầu.');
-        } finally {
-            setDetailLoading(false);
-        }
-    };
-
-    // Update sync time every second
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setSyncTime(new Date());
-        }, 1000);
-        return () => clearInterval(interval);
-    }, []);
-
-    useEffect(() => {
-        const loadRuntimeSettings = async () => {
-            try {
-                const config = await httpClient.get('/public/runtime-settings');
-                if (config?.mapRefreshSeconds) {
-                    setMapRefreshSeconds(Number(config.mapRefreshSeconds));
-                }
-            } catch (err) {
-                console.error('[CoordinatorDashboard] load runtime settings error:', err);
-            }
-        };
-        loadRuntimeSettings();
-    }, []);
-
-    useEffect(() => {
-        loadDashboard();
-        const interval = setInterval(() => {
-            loadDashboard();
-        }, Math.max(5, Number(mapRefreshSeconds) || 20) * 1000);
-        return () => clearInterval(interval);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [mapRefreshSeconds]);
-
-    useEffect(() => {
-        if (!selectedRequestId) return;
-        loadRequestDetail(selectedRequestId);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedRequestId]);
 
     const formatSyncTime = (date) => {
         return date.toLocaleTimeString('vi-VN', {
@@ -193,8 +77,6 @@ export default function CoordinatorDashboard() {
 
     const handleSelectRequest = (request) => {
         setSelectedRequestId(Number(request?.id) || null);
-        setSelectedRequestDetail(null);
-        setDetailError('');
         focusMapForRequest(request);
     };
 
@@ -249,7 +131,7 @@ export default function CoordinatorDashboard() {
                                 return (
                                     <div
                                         key={request.id}
-                                        className={`group p-3 rounded-lg border transition-all cursor-pointer ${isActive ? 'border-blue-400 bg-blue-50/60 shadow-sm' : 'border-slate-200 hover:border-blue-300 hover:shadow-md bg-white'}`}
+                                        className={`group p-3 rounded-md border transition-all cursor-pointer ${isActive ? 'border-blue-400 bg-blue-50/60 shadow-sm' : 'border-slate-200 hover:border-blue-300 hover:shadow-md bg-white'}`}
                                         onClick={() => handleSelectRequest(request)}
                                     >
                                         <div className="grid grid-cols-12 gap-2 items-start">
@@ -303,7 +185,7 @@ export default function CoordinatorDashboard() {
                 {/* Map Header */}
                 <div className="p-4 border-b border-slate-200 bg-slate-50/60">
                     {error && (
-                        <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                        <div className="mt-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
                             {error}
                         </div>
                     )}
@@ -311,41 +193,45 @@ export default function CoordinatorDashboard() {
 
                 {/* Map Area */}
                 <div className="flex-1 relative">
-                    <GoogleMap
+                    <MapBox
                         center={mapCenter}
                         markerPosition={mapMarkerPosition}
                         zoom={mapZoom}
                     />
 
                     {/* Map Controls */}
-                    <div className="absolute bottom-4 right-4 flex flex-col gap-2 bg-white/95 backdrop-blur rounded-xl shadow-lg border border-slate-200 p-1.5">
+                    <div className="absolute bottom-4 right-4 flex flex-col gap-2 bg-white/95 backdrop-blur rounded-lg shadow-lg border border-slate-200 p-1.5">
                         <button
                             type="button"
-                            className="p-2 hover:bg-slate-50 rounded-lg transition"
+                            className="p-2 hover:bg-slate-50 rounded-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70"
                             title="Layers"
+                            aria-label="Chọn lớp bản đồ"
                         >
                             <Layers className="h-4 w-4 text-slate-600" />
                         </button>
                         <button
                             type="button"
                             onClick={() => setMapZoom(prev => Math.min(prev + 1, 20))}
-                            className="p-2 hover:bg-slate-50 rounded-lg transition"
+                            className="p-2 hover:bg-slate-50 rounded-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70"
                             title="Zoom in"
+                            aria-label="Phóng to bản đồ"
                         >
                             <ZoomIn className="h-4 w-4 text-slate-600" />
                         </button>
                         <button
                             type="button"
                             onClick={() => setMapZoom(prev => Math.max(prev - 1, 1))}
-                            className="p-2 hover:bg-slate-50 rounded-lg transition"
+                            className="p-2 hover:bg-slate-50 rounded-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70"
                             title="Zoom out"
+                            aria-label="Thu nhỏ bản đồ"
                         >
                             <ZoomOut className="h-4 w-4 text-slate-600" />
                         </button>
                         <button
                             type="button"
-                            className="p-2 hover:bg-slate-50 rounded-lg transition"
+                            className="p-2 hover:bg-slate-50 rounded-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70"
                             title="My location"
+                            aria-label="Tâm bản đồ về vị trí đội"
                         >
                             <Navigation className="h-4 w-4 text-slate-600" />
                         </button>
@@ -366,7 +252,7 @@ export default function CoordinatorDashboard() {
                         ) : detailLoading ? (
                             <p className="text-sm text-slate-500">Đang tải chi tiết yêu cầu...</p>
                         ) : detailError ? (
-                            <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{detailError}</div>
+                            <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{detailError}</div>
                         ) : selectedRequestDetail ? (
                             <>
                                 <div>

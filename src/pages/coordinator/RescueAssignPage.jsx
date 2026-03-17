@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle2, MapPin, Users, X } from 'lucide-react';
-import GoogleMap from '../../features/map/components/GoogleMap.jsx';
+import MapBox from '../../features/map/components/MapBox.jsx';
 import Button from '../../shared/ui/Button.jsx';
 import Badge from '../../shared/ui/Badge.jsx';
 import { getTeams } from '../../features/teams/api.js';
@@ -484,7 +484,7 @@ export default function RescueAssignPage() {
                     </div>
 
                     <div className="min-h-[460px] flex-1">
-                        <GoogleMap
+                        <MapBox
                             center={mapCenter}
                             markerPosition={
                                 Number.isFinite(Number(selectedRequest?.latitude || selectedRequest?.lat))
