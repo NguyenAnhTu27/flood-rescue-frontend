@@ -87,6 +87,14 @@ export default function TeamsManagementPage() {
                 <div className="flex flex-wrap gap-2">
                     <button
                         type="button"
+                        onClick={() => navigate(ADMIN_ROUTES.CREATE_TEAM)}
+                        className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
+                    >
+                        <Users className="h-4 w-4" />
+                        Tạo đội
+                    </button>
+                    <button
+                        type="button"
                         onClick={loadTeams}
                         className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                     >

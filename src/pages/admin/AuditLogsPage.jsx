@@ -95,10 +95,10 @@ export default function AuditLogsPage() {
             <thead className="bg-slate-50 text-left text-slate-600">
               <tr>
                 <th className="p-3">Thời gian</th>
-                <th className="p-3">Action</th>
-                <th className="p-3">Actor</th>
-                <th className="p-3">Target</th>
-                <th className="p-3">Mức độ</th>
+                <th className="p-3">Hành động</th>
+                <th className="p-3">Nhận vật</th>
+                <th className="p-3">Đối tượng</th>
+                <th className="p-3">Cảnh báo</th>
               </tr>
             </thead>
             <tbody>
