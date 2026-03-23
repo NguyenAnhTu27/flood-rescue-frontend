@@ -326,7 +326,7 @@ export default function InventoryOverviewPage() {
                         Tạo phiếu nhập
                     </Link>
                     <Link
-                        to={MANAGER_ROUTES.DASHBOARD}
+                        to={MANAGER_ROUTES.RELIEF_REQUESTS}
                         className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
                     >
                         Xử lý yêu cầu cứu trợ

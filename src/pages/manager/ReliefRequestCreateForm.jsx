@@ -31,7 +31,7 @@ const STEPS = [
 ];
 
 export default function ReliefRequestCreateForm({
-    afterCreateNavigateTo = MANAGER_ROUTES.DASHBOARD,
+    afterCreateNavigateTo = MANAGER_ROUTES.RELIEF_REQUESTS,
     autoLocateOnMount = true,
     allowAddressSearch = false,
     showUseGpsButton = true,

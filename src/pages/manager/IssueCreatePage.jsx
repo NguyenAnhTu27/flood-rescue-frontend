@@ -115,6 +115,27 @@ export default function IssueCreatePage() {
             : `${code} - ${name}`;
     };
 
+    const getAssetStatusValue = (asset) => {
+        const raw = asset?.status ?? asset?.assetStatus ?? asset?.asset_status ?? asset?.status?.name;
+        return String(raw || '').trim().toUpperCase();
+    };
+
+    const getAssetStatusLabel = (statusRaw) => {
+        const status = String(statusRaw || '').trim().toUpperCase();
+        if (status === 'AVAILABLE') return 'RẢNH';
+        if (status === 'IN_USE') return 'BẬN';
+        if (status === 'MAINTENANCE') return 'BẢO TRÌ';
+        if (status === 'BROKEN') return 'HỎNG';
+        if (status === 'INACTIVE') return 'NGỪNG';
+        return 'KHÔNG RÕ';
+    };
+
+    const getAssetAssignedTeamId = (asset) => {
+        const raw = asset?.assignedTeamId ?? asset?.assigned_team_id ?? asset?.teamId ?? asset?.currentTeamId;
+        const num = Number(raw);
+        return Number.isFinite(num) ? num : null;
+    };
+
     const filterCategoriesByQuery = (query) => {
         const q = String(query || '').trim().toLowerCase();
         if (!q) return availableItemCategories;
@@ -142,7 +163,7 @@ export default function IssueCreatePage() {
                     getItemCategories(),
                     getInventoryStock(),
                     getTeams(),
-                    getAssets({ status: 'available' }),
+                    getAssets(),
                 ]);
 
                 // Parse item categories
@@ -735,12 +756,26 @@ export default function IssueCreatePage() {
                                     className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                 >
                                     <option value="">Chọn phương tiện</option>
-                                    {assets.map((asset) => (
-                                        <option key={asset.id} value={asset.id}>
-                                            {asset.code || asset.assetCode || `PT-${asset.id}`} - {asset.type || asset.name || 'Phương tiện'}
-                                        </option>
-                                    ))}
+                                    {assets.map((asset) => {
+                                        const statusRaw = getAssetStatusValue(asset);
+                                        const statusLabel = getAssetStatusLabel(statusRaw);
+                                        const assignedTeamId = getAssetAssignedTeamId(asset);
+                                        const selectedTeamId = Number(formData.teamId || 0);
+                                        const isHeldBySelectedTeam = Number.isFinite(selectedTeamId)
+                                            && selectedTeamId > 0
+                                            && Number(assignedTeamId) === selectedTeamId;
+                                        const isAvailable = statusRaw === 'AVAILABLE';
+                                        const isSelectable = isAvailable || isHeldBySelectedTeam;
+                                        return (
+                                            <option key={asset.id} value={asset.id} disabled={!isSelectable}>
+                                                {asset.code || asset.assetCode || `PT-${asset.id}`} - {asset.type || asset.name || 'Phương tiện'} ({statusLabel})
+                                            </option>
+                                        );
+                                    })}
                                 </select>
+                                <p className="mt-1 text-[11px] text-slate-500">
+                                    Phương tiện bận sẽ bị khóa chọn, trừ khi đang do chính đội được chọn giữ.
+                                </p>
                             </div>
 
                             <div>
