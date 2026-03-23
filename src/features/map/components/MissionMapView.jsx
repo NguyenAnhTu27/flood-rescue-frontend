@@ -3,6 +3,8 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { MAPBOX_ACCESS_TOKEN } from '../../../app/config/env.js';
 
+const HAS_MAPBOX_TOKEN = Boolean(String(MAPBOX_ACCESS_TOKEN || '').trim());
+
 const FALLBACK_STYLE = {
     version: 8,
     sources: {
@@ -17,8 +19,32 @@ const FALLBACK_STYLE = {
 };
 
 function getMapStyle() {
-    if (MAPBOX_ACCESS_TOKEN) return 'mapbox://styles/mapbox/streets-v12';
+    if (HAS_MAPBOX_TOKEN) return 'mapbox://styles/mapbox/streets-v12';
     return FALLBACK_STYLE;
+}
+
+function buildStaticMapUrl({ lat, lng }) {
+    const safeLat = Number(lat);
+    const safeLng = Number(lng);
+    const delta = 0.01;
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${safeLng - delta}%2C${safeLat - delta}%2C${safeLng + delta}%2C${safeLat + delta}&layer=mapnik&marker=${safeLat}%2C${safeLng}`;
+}
+
+function StaticMapFallback({ target }) {
+    return (
+        <div className="relative h-full w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+            <iframe
+                title="static-map"
+                src={buildStaticMapUrl(target)}
+                className="h-full w-full border-0"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+            />
+            <div className="absolute left-3 top-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 shadow-sm">
+                Chua cau hinh Mapbox token. Dang hien thi ban do xem tam thoi.
+            </div>
+        </div>
+    );
 }
 
 export default function MissionMapView({
@@ -33,8 +59,9 @@ export default function MissionMapView({
     const target = useMemo(() => markerPosition || center, [center, markerPosition]);
 
     useEffect(() => {
+        if (!HAS_MAPBOX_TOKEN) return;
         if (!containerRef.current || mapRef.current) return;
-        mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN || '';
+        mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
 
         const map = new mapboxgl.Map({
             container: containerRef.current,
@@ -43,21 +70,6 @@ export default function MissionMapView({
             zoom: Number(zoom) || 15,
             interactive: false,
         });
-
-        let didFallbackToRaster = false;
-        const fallbackToRaster = () => {
-            if (didFallbackToRaster) return;
-            didFallbackToRaster = true;
-            try {
-                map.setStyle(FALLBACK_STYLE);
-            } catch (error) {
-                console.warn('[MissionMapView] fallback style error', error);
-            }
-        };
-
-        if (MAPBOX_ACCESS_TOKEN) {
-            map.once('error', () => fallbackToRaster());
-        }
 
         map.on('load', () => setIsLoaded(true));
 
@@ -90,12 +102,16 @@ export default function MissionMapView({
 
     return (
         <div className="relative h-full w-full">
-            <div ref={containerRef} className="h-full w-full" />
-            {!isLoaded && (
+            {!HAS_MAPBOX_TOKEN ? (
+                <StaticMapFallback target={target} />
+            ) : (
+                <div ref={containerRef} className="h-full w-full" />
+            )}
+            {HAS_MAPBOX_TOKEN && !isLoaded && (
                 <div className="absolute inset-0 flex items-center justify-center bg-slate-100">
                     <div className="text-center">
                         <div className="inline-block h-6 w-6 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent" />
-                        <p className="mt-1 text-[10px] text-slate-600">Đang tải...</p>
+                        <p className="mt-1 text-[10px] text-slate-600">Dang tai...</p>
                     </div>
                 </div>
             )}
