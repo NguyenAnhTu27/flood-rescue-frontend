@@ -180,11 +180,25 @@ export default function LoginPage() {
 
                 <h2 className="text-3xl font-bold text-slate-900 mb-2">Đăng nhập</h2>
                 <p className="text-sm text-slate-600 mb-8">
-                    Chào mừng đến với mùa lũ lụt
+                    Vui lòng chọn vai trò và nhập thông tin để tiếp tục
                 </p>
 
                 {/* Role Selection */}
-
+                <div className="flex gap-2 mb-6 overflow-x-auto">
+                    {ROLES.map((role) => (
+                        <button
+                            key={role.value}
+                            type="button"
+                            onClick={() => setSelectedRole(role.value)}
+                            className={`rounded-full px-4 py-2 text-sm font-medium transition-all whitespace-nowrap shrink-0 ${selectedRole === role.value
+                                ? 'bg-blue-600 text-white shadow-md'
+                                : 'bg-white text-slate-700 border border-slate-200 hover:border-blue-300 hover:bg-blue-50'
+                                }`}
+                        >
+                            {role.label}
+                        </button>
+                    ))}
+                </div>
 
                 {/* Login Form */}
                 <form onSubmit={handleSubmit} className="space-y-5">

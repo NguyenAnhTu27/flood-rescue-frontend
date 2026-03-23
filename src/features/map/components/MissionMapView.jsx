@@ -10,7 +10,7 @@ const FALLBACK_STYLE = {
             type: 'raster',
             tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
             tileSize: 256,
-            attribution: '© OpenStreetMap contributors',
+            attribution: '? OpenStreetMap contributors',
         },
     },
     layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
@@ -43,6 +43,21 @@ export default function MissionMapView({
             zoom: Number(zoom) || 15,
             interactive: false,
         });
+
+        let didFallbackToRaster = false;
+        const fallbackToRaster = () => {
+            if (didFallbackToRaster) return;
+            didFallbackToRaster = true;
+            try {
+                map.setStyle(FALLBACK_STYLE);
+            } catch (error) {
+                console.warn('[MissionMapView] fallback style error', error);
+            }
+        };
+
+        if (MAPBOX_ACCESS_TOKEN) {
+            map.once('error', () => fallbackToRaster());
+        }
 
         map.on('load', () => setIsLoaded(true));
 
@@ -80,7 +95,7 @@ export default function MissionMapView({
                 <div className="absolute inset-0 flex items-center justify-center bg-slate-100">
                     <div className="text-center">
                         <div className="inline-block h-6 w-6 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent" />
-                        <p className="mt-1 text-[10px] text-slate-600">Dang tai...</p>
+                        <p className="mt-1 text-[10px] text-slate-600">?ang t?i...</p>
                     </div>
                 </div>
             )}
