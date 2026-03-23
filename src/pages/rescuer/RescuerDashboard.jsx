@@ -390,6 +390,7 @@ export default function RescuerDashboard() {
     const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
     const [updatingMyLocation, setUpdatingMyLocation] = useState(false);
     const [returningAssets, setReturningAssets] = useState(false);
+    const [gpsSyncFeedback, setGpsSyncFeedback] = useState({ type: 'idle', message: '' });
     const mountedRef = useRef(true);
     const locationSyncRef = useRef({
         inFlight: false,
@@ -512,14 +513,29 @@ export default function RescuerDashboard() {
             await updateRescuerTeamLocation({ latitude, longitude, locationText });
             locationSyncRef.current.lastSyncedAt = Date.now();
             locationSyncRef.current.permissionDenied = false;
+            if (mountedRef.current) {
+                setGpsSyncFeedback({
+                    type: 'success',
+                    message: `Đã đồng bộ GPS lúc ${new Date().toLocaleTimeString('vi-VN', { hour12: false })}.`,
+                });
+            }
             await loadDashboard();
             return true;
         } catch (e) {
+            const message = Number(e?.code) === 1
+                ? 'Trình duyệt đang chặn quyền vị trí cho tài khoản cứu hộ này.'
+                : (e?.message || 'Không thể cập nhật vị trí đội cứu hộ.');
             if (Number(e?.code) === 1) {
                 locationSyncRef.current.permissionDenied = true;
             }
+            if (mountedRef.current) {
+                setGpsSyncFeedback({
+                    type: 'error',
+                    message,
+                });
+            }
             if (!silent) {
-                window.alert(e?.message || 'Không thể cập nhật vị trí đội cứu hộ.');
+                window.alert(message);
             }
             return false;
         } finally {
@@ -598,6 +614,19 @@ export default function RescuerDashboard() {
         }
         return `${normalized.team.latitude.toFixed(6)}, ${normalized.team.longitude.toFixed(6)}`;
     }, [normalized.team.latitude, normalized.team.longitude]);
+
+    const gpsStatusTone = gpsSyncFeedback.type === 'error'
+        ? 'border-red-200 bg-red-50 text-red-700'
+        : Number.isFinite(normalized.team.latitude) && Number.isFinite(normalized.team.longitude)
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+            : 'border-amber-200 bg-amber-50 text-amber-700';
+
+    const gpsStatusText = gpsSyncFeedback.message
+        || (
+            Number.isFinite(normalized.team.latitude) && Number.isFinite(normalized.team.longitude)
+                ? `Đội đã có GPS trên hệ thống${normalized.team.locationUpdatedAt ? ` lúc ${fmtDateTime(normalized.team.locationUpdatedAt)}` : ''}.`
+                : 'Đội chưa gửi GPS lên hệ thống. Hãy đăng nhập đúng tài khoản RESCUER của đội này và bấm "Lấy vị trí của tôi".'
+        );
 
     const handleUpdateMyGps = useCallback(() => {
         syncTeamLocation({ silent: false, showBusy: true, force: true });
@@ -731,6 +760,9 @@ export default function RescuerDashboard() {
                 <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
                     Vị trí đội hiện tại: <span className="font-mono">{teamGpsText}</span>
                     {normalized.team.locationText ? ` • ${normalized.team.locationText}` : ''}
+                </div>
+                <div className={`rounded-lg border px-3 py-2 text-xs ${gpsStatusTone}`}>
+                    {gpsStatusText}
                 </div>
                 <div className="overflow-hidden rounded-lg border border-slate-200">
                     <div className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
