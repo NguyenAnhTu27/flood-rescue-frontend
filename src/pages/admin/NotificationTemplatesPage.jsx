@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Bell, CheckCircle2, FileText, Pencil, PlusCircle, Search } from "lucide-react";
+import { ADMIN_API_BASE_URL } from "../../app/config/env.js";
 
 const PAGE_SIZE = 4;
 const CHANNEL_OPTIONS = ["WEB", "EMAIL", "SMS", "PUSH"];
@@ -15,7 +16,7 @@ const DEFAULT_FORM = {
 };
 
 export default function NotificationTemplatesPage() {
-  const API = "http://localhost:8080/api/admin";
+  const API = ADMIN_API_BASE_URL;
   const token = localStorage.getItem("token");
 
   const [items, setItems] = useState([]);

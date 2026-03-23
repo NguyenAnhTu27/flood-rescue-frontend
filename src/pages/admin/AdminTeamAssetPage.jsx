@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
+import { ADMIN_API_BASE_URL } from "../../app/config/env.js";
 
 export default function AdminDashboard() {
 
     const token = localStorage.getItem("token");
 
-    const API = "http://localhost:8080/api/admin";
+    const API = ADMIN_API_BASE_URL;
 
     const [users, setUsers] = useState([]);
     const [message, setMessage] = useState("");

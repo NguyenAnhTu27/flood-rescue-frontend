@@ -10,10 +10,11 @@ import {
   Users,
 } from 'lucide-react';
 import Card from '../../shared/ui/Card.jsx';
+import { ADMIN_API_BASE_URL } from '../../app/config/env.js';
 import { ADMIN_ROUTES } from '../../app/routes/route.constants.js';
 
 export default function AdminDashboard() {
-  const API = 'http://localhost:8080/api/admin';
+  const API = ADMIN_API_BASE_URL;
   const token = localStorage.getItem('token');
 
   const [stats, setStats] = useState({

@@ -6,12 +6,8 @@
  * Then replace this file with axios version (see API_SETUP_GUIDE.md)
  */
 
+import { API_BASE_URL } from "../../app/config/env.js";
 import { getToken } from "./storage.js";
-
-// Get API base URL from environment or use default
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ||
-  "https://flood-rescue-backend-production.up.railway.app";
 
 async function httpClient(url, options = {}) {
   const token = getToken();
@@ -38,7 +34,11 @@ async function httpClient(url, options = {}) {
   }
 
   // Add auth token if available
-  if (token) {
+  const skipAuthHeader =
+    typeof url === "string" &&
+    (url === "/auth/login" || url === "/auth/register");
+
+  if (token && !skipAuthHeader) {
     headers.Authorization = `Bearer ${token}`;
   }
 
