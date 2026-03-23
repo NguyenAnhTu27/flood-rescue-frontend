@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Save } from 'lucide-react';
-import { MANAGER_ROUTES } from '../../app/routes/route.constants.js';
-import { createAsset } from '../../features/assets/api.js';
+import { MANAGER_ROUTES } from '../../../app/routes/route.constants.js';
+import { createAsset } from '../../../features/assets/api.js';
 
 const ASSET_TYPES = [
     { value: 'canoe', label: 'Cano', icon: '🚤' },

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, X, Users, GitMerge, UserPlus } from 'lucide-react';
-import GoogleMap from '../../features/map/components/GoogleMap.jsx';
+import GoogleMap from '../../features/map/components/MapBox.jsx';;
 import { COORDINATOR_ROUTES } from '../../app/routes/route.constants.js';
 import { createTaskGroup, getCoordinatorRescueQueue } from '../../features/coordinator/api.js';
 
@@ -231,9 +231,8 @@ export default function RescueRequestMerge() {
                                     key={id}
                                     onMouseEnter={() => setHighlightId(id)}
                                     onMouseLeave={() => setHighlightId(null)}
-                                    className={`flex cursor-pointer items-start gap-3 border-b border-slate-100 p-4 transition ${
-                                        isHighlight ? 'bg-blue-50 ring-inset ring-2 ring-blue-200' : 'hover:bg-slate-50'
-                                    }`}
+                                    className={`flex cursor-pointer items-start gap-3 border-b border-slate-100 p-4 transition ${isHighlight ? 'bg-blue-50 ring-inset ring-2 ring-blue-200' : 'hover:bg-slate-50'
+                                        }`}
                                     onClick={() => toggleSelect(id)}
                                 >
                                     <input
@@ -270,11 +269,10 @@ export default function RescueRequestMerge() {
                                     key={opt.value}
                                     type="button"
                                     onClick={() => setRadiusIndex(i)}
-                                    className={`flex-1 rounded-lg py-2 text-xs font-medium transition ${
-                                        radiusIndex === i
+                                    className={`flex-1 rounded-lg py-2 text-xs font-medium transition ${radiusIndex === i
                                             ? 'bg-blue-600 text-white'
                                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                    }`}
+                                        }`}
                                 >
                                     {opt.label}
                                 </button>

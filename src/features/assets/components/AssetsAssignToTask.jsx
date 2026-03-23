@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, Check, Filter, Truck, Sailboat, Zap, MapPin, Clock, Navigation } from 'lucide-react';
 import { MANAGER_ROUTES } from '../../../app/routes/route.constants.js';
-import GoogleMap from '../../map/components/GoogleMap.jsx';
+import GoogleMap from '../../map/components/MapBox.jsx';
 import { getAssets } from '../api.js';
 import { getTaskGroupById, assignTaskGroup } from '../../coordinator/api.js';
 import { listReliefRequests, getReliefRequest } from '../../relief/api.js';

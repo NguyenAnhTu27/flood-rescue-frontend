@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, MapPin, Phone, FileText, User, Clock } from 'lucide-react';
 import Card from '../../shared/ui/Card.jsx';
 import Button from '../../shared/ui/Button.jsx';
-import GoogleMap from '../../features/map/components/GoogleMap.jsx';
+import GoogleMap from '../../features/map/components/MapBox.jsx';
 import { getInventoryIssue, getReliefRequest, updateRescuerReliefStatus } from '../../features/relief/api.js';
 import { RESCUER_ROUTES } from '../../app/routes/route.constants.js';
 

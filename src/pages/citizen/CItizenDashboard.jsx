@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { List, MapPin, Navigation, Plus } from 'lucide-react';
 import { CITIZEN_ROUTES } from '../../app/routes/route.constants.js';
 import { useNavigate } from 'react-router-dom';
-import GoogleMap from '../../features/map/components/GoogleMap.jsx';
+import GoogleMap from '../../features/map/components/MapBox.jsx';
 import Button from '../../shared/ui/Button.jsx';
 import { confirmRescueResult, getMyRescueRequests, reopenCancelledRequest } from '../../features/citizen/api.js';
 import { getMyCitizenReliefRequests } from '../../features/relief/api.js';

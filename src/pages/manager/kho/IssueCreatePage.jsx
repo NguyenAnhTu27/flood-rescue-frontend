@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Check, FileText, List, BarChart3, Info } from 'lucide-react';
-import { MANAGER_ROUTES } from '../../app/routes/route.constants.js';
-import GoogleMap from '../../features/map/components/GoogleMap.jsx';
+import { MANAGER_ROUTES } from '../../../app/routes/route.constants.js';
+import MapBox from '../../../features/map/components/MapBox.jsx';
 import {
     createInventoryIssue,
     approveInventoryIssue,
@@ -10,10 +10,10 @@ import {
     getInventoryStock,
     getItemCategories,
     getReliefRequest,
-} from '../../features/relief/api.js';
-import { getTeams } from '../../features/teams/api.js';
-import { getAssets } from '../../features/assets/api.js';
-import { getUser } from '../../shared/lib/storage.js';
+} from '../../../features/relief/api.js';
+import { getTeams } from '../../../features/teams/api.js';
+import { getAssets } from '../../../features/assets/api.js';
+import { getUser } from '../../../shared/lib/storage.js';
 
 const INITIAL_ITEMS = [
     {
@@ -693,7 +693,7 @@ export default function IssueCreatePage() {
                                                 Vị trí yêu cầu cứu trợ
                                             </div>
                                             <div className="h-52 overflow-hidden rounded-md border border-slate-200 bg-white">
-                                                <GoogleMap
+                                                <MapBox
                                                     center={requestCoords || { lat: 10.8231, lng: 106.6297 }}
                                                     markerPosition={requestCoords}
                                                     zoom={requestCoords ? 15 : 11}
@@ -711,7 +711,7 @@ export default function IssueCreatePage() {
                                                 Vị trí đội vận chuyển đã chọn
                                             </div>
                                             <div className="h-52 overflow-hidden rounded-md border border-slate-200 bg-white">
-                                                <GoogleMap
+                                                <MapBox
                                                     center={selectedTeamCoords || requestCoords || { lat: 10.8231, lng: 106.6297 }}
                                                     markerPosition={selectedTeamCoords}
                                                     zoom={selectedTeamCoords ? 15 : 11}

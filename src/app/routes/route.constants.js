@@ -51,7 +51,7 @@ export const RESCUER_ROUTES = {
     UPDATE_RESCUE_STATUS: '/doi-cuu-ho/cap-nhat-trang-thai',
     RELIEF_PRIORITIZE: '/doi-cuu-ho/sap-xep-yeu-cau-cuu-tro',
     RELIEF_PRIORITIZE_DETAIL: '/doi-cuu-ho/sap-xep-yeu-cau-cuu-tro/:id',
-    SAFETY_GUIDE: '/doi-cuu-ho/lich-su',
+    SAFETY_GUIDE: '/doi-cuu-ho/huong-dan-an-toan',
 };
 
 export const MANAGER_ROUTES = {

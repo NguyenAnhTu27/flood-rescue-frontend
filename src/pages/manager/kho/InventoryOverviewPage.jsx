@@ -1,8 +1,8 @@
-import React, { useState, useMemo, useEffect } from 'react';
+﻿import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Info, Tag, RefreshCw } from 'lucide-react';
-import { MANAGER_ROUTES } from '../../app/routes/route.constants.js';
-import { getInventoryStock, listInventoryReceipts, listInventoryIssues, getItemCategories, getTemporaryInventoryIssues } from '../../features/relief/api.js';
+import { MANAGER_ROUTES } from '../../../app/routes/route.constants.js';
+import { getInventoryStock, listInventoryReceipts, listInventoryIssues, getItemCategories, getTemporaryInventoryIssues } from '../../../features/relief/api.js';
 
 const DEFAULT_STATS = [
     { id: 'total-items', label: 'TỔNG MẶT HÀNG', value: '0', color: 'text-slate-800' },
