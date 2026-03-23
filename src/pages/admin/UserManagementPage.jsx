@@ -47,10 +47,10 @@ export default function UserManagementPage() {
   const roleOptions = useMemo(
     () => [
       { id: "", label: "Tất cả" },
-      { id: 1, label: "Citizen" },
-      { id: 2, label: "Coordinator" },
-      { id: 3, label: "Rescue Team" },
-      { id: 4, label: "Manager" },
+      { id: 6, label: "Citizen" },
+      { id: 7, label: "Coordinator" },
+      { id: 8, label: "Rescue Team" },
+      { id: 9, label: "Manager" },
     ],
     []
   );
@@ -433,11 +433,10 @@ export default function UserManagementPage() {
       {message && (
         <div className="fixed inset-x-0 top-3 z-50 flex justify-center px-4">
           <div
-            className={`w-full max-w-3xl rounded-xl border px-4 py-3 shadow-lg ${
-              messageType === "error"
+            className={`w-full max-w-3xl rounded-xl border px-4 py-3 shadow-lg ${messageType === "error"
                 ? "border-rose-200 bg-rose-50 text-rose-700"
                 : "border-emerald-200 bg-emerald-50 text-emerald-700"
-            }`}
+              }`}
           >
             <div className="flex items-start justify-between gap-3">
               <p className="text-sm font-medium">{message}</p>
@@ -481,11 +480,10 @@ export default function UserManagementPage() {
               <button
                 key={String(r.id)}
                 onClick={() => setRoleId(r.id)}
-                className={`rounded-full border px-4 py-2 text-sm font-medium ${
-                  String(roleId) === String(r.id)
+                className={`rounded-full border px-4 py-2 text-sm font-medium ${String(roleId) === String(r.id)
                     ? "border-blue-500 bg-blue-50 text-blue-700"
                     : "border-slate-200 bg-slate-50 text-slate-600"
-                }`}
+                  }`}
               >
                 {r.label}
               </button>
