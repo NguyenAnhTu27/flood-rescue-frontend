@@ -24,28 +24,21 @@ export const CITIZEN_ROUTES = {
     DASHBOARD: '/cong-dan',
     MY_RESCUE_REQUESTS: '/cong-dan/yeu-cau-cuu-ho',
     CREATE_RESCUE_REQUEST: '/cong-dan/tao-yeu-cau-cuu-ho',
-    CREATE_RELIEF_REQUEST: '/cong-dan/tao-yeu-cau-cuu-tro',
     RESCUE_REQUEST_STATUS: '/cong-dan/trang-thai-cuu-ho',
-    RELIEF_REQUEST_STATUS: '/cong-dan/trang-thai-cuu-tro',
-    MY_RELIEF_REQUESTS: '/cong-dan/yeu-cau-cuu-tro',
     UPDATE_RESCUE_REQUEST: '/cong-dan/cap-nhat-yeu-cau',
-    UPDATE_RELIEF_REQUEST: '/cong-dan/cap-nhat-yeu-cau-cuu-tro',
     FEEDBACK: '/cong-dan/phan-hoi',
   };
   
   // -------- RESCUE COORDINATOR ROUTES --------
   export const COORDINATOR_ROUTES = {
     DASHBOARD: '/dieu-phoi',
-    RESCUE_QUEUE: '/dieu-phoi/danh-sach-yeu-cau',
     TASK_MONITOR: '/dieu-phoi/giam-sat-nhiem-vu',
     VERIFY_REQUEST: '/dieu-phoi/xac-minh',
     PRIORITIZE_REQUEST: '/dieu-phoi/phan-loai',
     ASSIGN_RESCUE: '/dieu-phoi/phan-cong',
-    MERGE_REQUESTS: '/dieu-phoi/gop-yeu-cau',
     TEAM_WORKLOAD: '/dieu-phoi/theo-doi-doi-cuu-ho',
     TASK_HISTORY: '/dieu-phoi/lich-su-cuu-ho',
     DUPLICATE_MANAGEMENT: '/dieu-phoi/trung-lap',
-    ESCALATION: '/dieu-phoi/leo-thang',
     BLOCKED_CITIZENS: '/dieu-phoi/da-khoa',
   };
   
@@ -54,7 +47,6 @@ export const CITIZEN_ROUTES = {
     DASHBOARD: '/doi-cuu-ho',
     MY_ASSIGNMENTS: '/doi-cuu-ho/nhiem-vu',
     ASSIGNMENT_DETAIL: '/doi-cuu-ho/nhiem-vu/:id',
-    UPDATE_RESCUE_STATUS: '/doi-cuu-ho/cap-nhat-trang-thai',
     RELIEF_PRIORITIZE: '/doi-cuu-ho/sap-xep-yeu-cau-cuu-tro',
     RELIEF_PRIORITIZE_DETAIL: '/doi-cuu-ho/sap-xep-yeu-cau-cuu-tro/:id',
     SAFETY_GUIDE: '/doi-cuu-ho/lich-su',
@@ -83,10 +75,7 @@ export const CITIZEN_ROUTES = {
     USERS_MANAGEMENT: '/admin/nguoi-dung',
     TEAMS_MANAGEMENT: '/admin/doi-cuu-ho',
     CREATE_TEAM: '/admin/tao-doi-cuu-ho',
-    ROLES_PERMISSIONS: '/admin/phan-quyen',
-    SYSTEM_CATALOG: '/admin/danh-muc-he-thong',
     SYSTEM_SETTINGS: '/admin/cau-hinh-he-thong',
-    NOTIFICATION_TEMPLATES: '/admin/mau-thong-bao',
     AUDIT_LOGS: '/admin/nhat-ky-he-thong',
     SYSTEM_FEEDBACKS: '/admin/phan-hoi-he-thong',
     CONTENT_PAGES: '/admin/noi-dung-trang',

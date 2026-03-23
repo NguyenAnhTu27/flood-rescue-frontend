@@ -11,8 +11,6 @@ import {
     TrendingDown,
     Info,
     ChevronRight,
-    Search,
-    RefreshCw,
     Clock,
 } from 'lucide-react';
 import { MANAGER_ROUTES } from '../../app/routes/route.constants.js';
@@ -56,7 +54,6 @@ function statusColorFromQty(qty) {
 }
 
 export default function ManagerDashboard() {
-    const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
@@ -269,21 +266,9 @@ export default function ManagerDashboard() {
         loadDashboard();
     }, [loadDashboard]);
 
-    const filteredTransactions = useMemo(() => {
-        const q = String(searchQuery || '').trim().toLowerCase();
-        if (!q) return transactions;
-        return transactions.filter((tx) =>
-            [tx.id, tx.type, tx.destination, tx.status].some((v) => String(v || '').toLowerCase().includes(q))
-        );
-    }, [searchQuery, transactions]);
+    const filteredTransactions = useMemo(() => transactions, [transactions]);
 
-    const filteredInventoryItems = useMemo(() => {
-        const q = String(searchQuery || '').trim().toLowerCase();
-        if (!q) return inventoryItemsState;
-        return inventoryItemsState.filter((item) =>
-            [item.code, item.name, item.category, item.status].some((v) => String(v || '').toLowerCase().includes(q))
-        );
-    }, [searchQuery, inventoryItemsState]);
+    const filteredInventoryItems = useMemo(() => inventoryItemsState, [inventoryItemsState]);
 
     return (
         <div className="space-y-6">
@@ -293,27 +278,6 @@ export default function ManagerDashboard() {
                     <p className="mt-1 text-sm text-slate-500">Hệ thống giám sát vận hành và điều phối logistics cứu trợ thiên tai</p>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="Tìm kiếm dữ liệu..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100 sm:w-72"
-                        />
-                    </div>
-                    <button
-                        type="button"
-                        onClick={loadDashboard}
-                        disabled={loading}
-                        className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                    >
-                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                        Làm mới
-                    </button>
-                </div>
             </div>
 
             {error && (
@@ -357,16 +321,6 @@ export default function ManagerDashboard() {
             <div>
                 <div className="mb-4 flex items-center justify-between">
                     <h2 className="text-lg font-semibold text-slate-900">Lối tắt Quản lý</h2>
-                    <div className="flex items-center gap-3">
-                        <Link to={MANAGER_ROUTES.ASSETS_MANAGEMENT} className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700">
-                            Quản lý phương tiện
-                            <ChevronRight className="h-4 w-4" />
-                        </Link>
-                        <Link to={MANAGER_ROUTES.RELIEF_REQUESTS} className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700">
-                            Xem tất cả tính năng
-                            <ChevronRight className="h-4 w-4" />
-                        </Link>
-                    </div>
                 </div>
 
                 <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
@@ -431,11 +385,6 @@ export default function ManagerDashboard() {
                         </table>
                     </div>
 
-                    <div className="border-t border-slate-100 px-5 py-3 text-center">
-                        <Link to={MANAGER_ROUTES.INVENTORY_OVERVIEW} className="text-sm font-medium text-blue-600 hover:text-blue-700">
-                            Xem toàn bộ dữ liệu kho
-                        </Link>
-                    </div>
                 </div>
 
                 <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -484,11 +433,6 @@ export default function ManagerDashboard() {
                         </table>
                     </div>
 
-                    <div className="border-t border-slate-100 px-5 py-3 text-center">
-                        <Link to={MANAGER_ROUTES.INVENTORY_OVERVIEW} className="text-sm font-medium text-blue-600 hover:text-blue-700">
-                            Xem toàn bộ danh sách hàng hóa
-                        </Link>
-                    </div>
                 </div>
             </div>
 

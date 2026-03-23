@@ -5,7 +5,6 @@ import { ADMIN_ROUTES } from "../../app/routes/route.constants.js";
 
 const DEFAULT_SETTINGS = {
   rescueSlaMinutes: 30,
-  maxOpenRequestPerCitizen: 1,
   autoLockAfterFailedLogin: 5,
   failedLoginLockMinutes: 15,
   maintenanceMode: false,
@@ -41,7 +40,6 @@ export default function SystemSettingsPage() {
       const values = data?.values || {};
       setSettings({
         rescueSlaMinutes: Number(values.rescueSlaMinutes ?? DEFAULT_SETTINGS.rescueSlaMinutes),
-        maxOpenRequestPerCitizen: Number(values.maxOpenRequestPerCitizen ?? DEFAULT_SETTINGS.maxOpenRequestPerCitizen),
         autoLockAfterFailedLogin: Number(values.autoLockAfterFailedLogin ?? DEFAULT_SETTINGS.autoLockAfterFailedLogin),
         failedLoginLockMinutes: Number(values.failedLoginLockMinutes ?? DEFAULT_SETTINGS.failedLoginLockMinutes),
         maintenanceMode: String(values.maintenanceMode ?? DEFAULT_SETTINGS.maintenanceMode) === "true",
@@ -111,16 +109,6 @@ export default function SystemSettingsPage() {
                   type="number"
                   value={settings.rescueSlaMinutes}
                   onChange={(e) => update("rescueSlaMinutes", Number(e.target.value))}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                />
-              </label>
-
-              <label className="space-y-1">
-                <span className="text-sm font-medium text-slate-600">Số yêu cầu mở tối đa / công dân</span>
-                <input
-                  type="number"
-                  value={settings.maxOpenRequestPerCitizen}
-                  onChange={(e) => update("maxOpenRequestPerCitizen", Number(e.target.value))}
                   className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 />
               </label>

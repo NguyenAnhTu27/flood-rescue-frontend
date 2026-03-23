@@ -326,16 +326,6 @@ export default function RegisterPage() {
                         </div>
                     )}
 
-                    {/* Warning Box */}
-                    <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
-                        <div className="flex items-start gap-3">
-                            <AlertTriangle className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
-                            <p className="text-sm text-orange-800">
-                                Mỗi công dân chỉ được có 1 yêu cầu cứu hộ đang xử lý. Bạn chỉ có thể tạo yêu cầu mới khi yêu cầu trước đã hoàn tất hoặc bị hủy.
-                            </p>
-                        </div>
-                    </div>
-
                     {/* Register Button */}
                     <button
                         type="submit"

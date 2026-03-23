@@ -23,8 +23,6 @@ export default function AssetCreatePage() {
         name: '',
         type: '',
         status: 'available',
-        location: '',
-        description: '',
     });
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
@@ -49,11 +47,6 @@ export default function AssetCreatePage() {
             setError('Vui lòng chọn loại phương tiện');
             return;
         }
-        if (!formData.location?.trim()) {
-            setError('Vui lòng nhập vị trí');
-            return;
-        }
-
         try {
             setSubmitting(true);
             setError(null);
@@ -63,8 +56,6 @@ export default function AssetCreatePage() {
                 name: formData.name.trim(),
                 type: formData.type,
                 status: formData.status,
-                location: formData.location.trim(),
-                description: formData.description?.trim() || null,
             };
 
             console.log('[AssetCreatePage] Creating asset with payload:', payload);
@@ -163,21 +154,6 @@ export default function AssetCreatePage() {
                         </div>
                     </div>
 
-                    {/* Vị trí */}
-                    <div>
-                        <label className="mb-1 block text-sm font-medium text-slate-700">
-                            Vị trí hiện tại <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            value={formData.location}
-                            onChange={(e) => handleChange('location', e.target.value)}
-                            placeholder="Ví dụ: Bến Chương Dương, Quận 1"
-                            className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                            required
-                        />
-                    </div>
-
                     {/* Trạng thái */}
                     <div>
                         <label className="mb-1 block text-sm font-medium text-slate-700">
@@ -196,19 +172,6 @@ export default function AssetCreatePage() {
                         </select>
                     </div>
 
-                    {/* Mô tả */}
-                    <div>
-                        <label className="mb-1 block text-sm font-medium text-slate-700">
-                            Mô tả (tùy chọn)
-                        </label>
-                        <textarea
-                            value={formData.description}
-                            onChange={(e) => handleChange('description', e.target.value)}
-                            placeholder="Ví dụ: Cano cao tốc, công suất 5KW..."
-                            rows={3}
-                            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                        />
-                    </div>
                 </div>
 
                 {/* Actions */}

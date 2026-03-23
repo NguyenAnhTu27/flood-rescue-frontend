@@ -38,6 +38,7 @@ function toNumberOrNull(value) {
     return Number.isFinite(num) ? num : null;
 }
 
+
 function statusBadge(status) {
     const s = String(status || '').toUpperCase();
     const map = {
@@ -170,7 +171,7 @@ export default function RescueAssignPage() {
                 })
                 .filter(Boolean)
                 .join('\n') || '—',
-            attachmentsCount: allAttachments.length,
+            attachments: allAttachments,
         };
     }, [showMergedDetail, selectedRequests]);
 
@@ -712,12 +713,6 @@ export default function RescueAssignPage() {
                                     <th className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Tọa độ</th>
                                     <td className="whitespace-pre-line px-3 py-2 text-slate-800" colSpan={3}>{mergedDetail.coordinates}</td>
                                 </tr>
-                                <tr>
-                                    <th className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Ảnh đính kèm</th>
-                                    <td className="px-3 py-2 text-slate-800" colSpan={3}>
-                                        {mergedDetail.attachmentsCount > 0 ? `${mergedDetail.attachmentsCount} ảnh đính kèm` : 'Không có ảnh'}
-                                    </td>
-                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -754,14 +749,6 @@ export default function RescueAssignPage() {
                                             && Number.isFinite(Number(detailRequest.longitude || detailRequest.lng))
                                             ? `${Number(detailRequest.latitude || detailRequest.lat).toFixed(6)}, ${Number(detailRequest.longitude || detailRequest.lng).toFixed(6)}`
                                             : '—'}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">Ảnh đính kèm</th>
-                                    <td className="px-3 py-2 text-slate-800" colSpan={3}>
-                                        {!Array.isArray(detailRequest.attachments) || detailRequest.attachments.length === 0
-                                            ? 'Không có ảnh'
-                                            : `${detailRequest.attachments.length} ảnh đính kèm`}
                                     </td>
                                 </tr>
                             </tbody>

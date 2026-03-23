@@ -93,12 +93,11 @@ export default function ReliefPrioritizeDetailPage() {
         // vì createdByPhone có thể là số tài khoản tạo thay mặt.
         return (
             extractPhoneFromNote(request?.note)
-            || request?.contactPhone
             || request?.citizenPhone
             || request?.createdByPhone
             || null
         );
-    }, [request?.note, request?.contactPhone, request?.citizenPhone, request?.createdByPhone]);
+    }, [request?.note, request?.citizenPhone, request?.createdByPhone]);
 
     const statusLabel = useMemo(() => {
         const s = String(request?.deliveryStatus || '').toUpperCase();

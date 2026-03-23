@@ -292,6 +292,9 @@ export default function CoordinatorDashboard() {
                                             </div>
                                             <PriorityBadge level={request.priority || 'MEDIUM'} size="xs" />
                                         </div>
+                                        <div className="mb-2 text-xs text-slate-600">
+                                            SĐT công dân: {request.citizenPhone || '—'}
+                                        </div>
                                         <div className="mb-2 flex items-center justify-between text-xs text-slate-600">
                                             <span className="inline-flex items-center gap-1">
                                                 <Users className="h-3.5 w-3.5" />

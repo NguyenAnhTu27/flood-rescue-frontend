@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 
 import {
     PUBLIC_ROUTES,
@@ -31,10 +31,7 @@ import RescueRequestCreatePage from '../../pages/citizen/RescueRequestCreatePage
 import RescueRequestStatusPage from '../../pages/citizen/RescueRequestStatusPage.jsx';
 import MyRescueRequestsPage from '../../pages/citizen/MyRescueRequestsPage.jsx';
 import RescueRequestUpdatePage from '../../pages/citizen/RescueRequestUpdatePage.jsx';
-import ReliefRequestUpdatePage from '../../pages/citizen/ReliefRequestUpdatePage.jsx';
 import FeedbackPage from '../../pages/citizen/FeedbackPage.jsx';
-import MyReliefRequestsPage from '../../pages/citizen/MyReliefRequestsPage.jsx';
-import ReliefRequestStatusPage from '../../pages/citizen/ReliefRequestStatusPage.jsx';
 
 // Coordinator
 import CoordinatorDashboard from '../../pages/coordinator/CoordinatorDashboardPage.jsx';
@@ -51,7 +48,6 @@ import BlockedCitizensPage from '../../pages/coordinator/BlockedCitizensPage.jsx
 import RescuerDashboard from '../../pages/rescuer/RescuerDashboard.jsx';
 import MyAssignmentsPage from '../../pages/rescuer/MyAssignmentsPage.jsx';
 import AssignmentDetailPage from '../../pages/rescuer/AssignmentDetailPage.jsx';
-import RescueUpdateStatusPage from '../../pages/rescuer/RescueUpdateStatusPage.jsx';
 import ReliefPrioritizeDetailPage from '../../pages/rescuer/ReliefPrioritizeDetailPage.jsx';
 
 // Manager
@@ -181,40 +177,6 @@ export default function AppRoutes() {
                 }
             />
             <Route
-                path={CITIZEN_ROUTES.CREATE_RELIEF_REQUEST}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['CITIZEN']}>
-                            <Navigate to={CITIZEN_ROUTES.DASHBOARD} replace />
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
-                path={CITIZEN_ROUTES.MY_RELIEF_REQUESTS}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['CITIZEN']}>
-                            <RootLayout>
-                                <MyReliefRequestsPage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
-                path={CITIZEN_ROUTES.RELIEF_REQUEST_STATUS}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['CITIZEN']}>
-                            <RootLayout>
-                                <ReliefRequestStatusPage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
                 path={CITIZEN_ROUTES.MY_RESCUE_REQUESTS}
                 element={
                     <RequireAuth>
@@ -233,18 +195,6 @@ export default function AppRoutes() {
                         <RequireRole allow={['CITIZEN']}>
                             <RootLayout>
                                 <RescueRequestUpdatePage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
-                path={CITIZEN_ROUTES.UPDATE_RELIEF_REQUEST}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['CITIZEN']}>
-                            <RootLayout>
-                                <ReliefRequestUpdatePage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -410,31 +360,7 @@ export default function AppRoutes() {
                 }
             />
             <Route
-                path={RESCUER_ROUTES.UPDATE_RESCUE_STATUS}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['RESCUER']}>
-                            <RootLayout>
-                                <RescueUpdateStatusPage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
                 path={RESCUER_ROUTES.SAFETY_GUIDE}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['RESCUER']}>
-                            <RootLayout>
-                                <MyAssignmentsPage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
-                path="/doi-cuu-ho/huong-dan-an-toan"
                 element={
                     <RequireAuth>
                         <RequireRole allow={['RESCUER']}>

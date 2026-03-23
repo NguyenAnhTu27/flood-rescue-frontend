@@ -66,16 +66,6 @@ export async function createAsset(payload) {
   throw lastErr || new Error('Không tìm thấy endpoint tạo phương tiện');
 }
 
-// Cập nhật phương tiện
-export async function updateAsset(id, payload) {
-  return httpClient.put(`/assets/${id}`, payload);
-}
-
-// Xóa phương tiện
-export async function deleteAsset(id) {
-  return httpClient.delete(`/assets/${id}`);
-}
-
 // Cập nhật trạng thái phương tiện
 export async function updateAssetStatus(id, status) {
   return httpClient.put(`/assets/${id}/status`, { status });

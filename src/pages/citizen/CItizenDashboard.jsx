@@ -5,12 +5,10 @@ import { useNavigate } from 'react-router-dom';
 import GoogleMap from '../../features/map/components/GoogleMap.jsx';
 import Button from '../../shared/ui/Button.jsx';
 import { confirmRescueResult, getMyRescueRequests, reopenCancelledRequest } from '../../features/citizen/api.js';
-import { getMyCitizenReliefRequests } from '../../features/relief/api.js';
 import { getCitizenBlockState } from '../../shared/lib/storage.js';
 
 const DEFAULT_CENTER = { lat: 10.8231, lng: 106.6297 };
 const RESCUE_CONFIRM_DISMISSED_KEY = 'citizen_rescue_confirm_dismissed_ids';
-const RELIEF_REJECTED_DISMISSED_KEY = 'citizen_relief_rejected_dismissed_ids';
 
 function readDismissedIds() {
     try {
@@ -31,32 +29,6 @@ function writeDismissedIds(ids) {
     }
 }
 
-function readReliefDismissedIds() {
-    try {
-        const raw = window.localStorage.getItem(RELIEF_REJECTED_DISMISSED_KEY);
-        const arr = JSON.parse(raw || '[]');
-        return Array.isArray(arr) ? arr.map((x) => Number(x)).filter((x) => Number.isFinite(x) && x > 0) : [];
-    } catch {
-        return [];
-    }
-}
-
-function writeReliefDismissedIds(ids) {
-    try {
-        const safe = Array.from(new Set((ids || []).map((x) => Number(x)).filter((x) => Number.isFinite(x) && x > 0)));
-        window.localStorage.setItem(RELIEF_REJECTED_DISMISSED_KEY, JSON.stringify(safe));
-    } catch {
-        // ignore
-    }
-}
-
-function normalizeList(response) {
-    if (Array.isArray(response)) return response;
-    if (Array.isArray(response?.content)) return response.content;
-    if (Array.isArray(response?.data)) return response.data;
-    if (Array.isArray(response?.items)) return response.items;
-    return [];
-}
 
 export default function CitizenDashboard() {
     const navigate = useNavigate();
@@ -68,8 +40,6 @@ export default function CitizenDashboard() {
     const [hideCancelPrompt, setHideCancelPrompt] = useState(false);
     const [handledRescueConfirmRequestId, setHandledRescueConfirmRequestId] = useState(null);
     const [dismissedRescueConfirmIds, setDismissedRescueConfirmIds] = useState(() => readDismissedIds());
-    const [latestRejectedRelief, setLatestRejectedRelief] = useState(null);
-    const [dismissedRejectedReliefIds, setDismissedRejectedReliefIds] = useState(() => readReliefDismissedIds());
     const [citizenBlock, setCitizenBlock] = useState(() => getCitizenBlockState());
 
     useEffect(() => {
@@ -132,43 +102,17 @@ export default function CitizenDashboard() {
         }
     };
 
-    const loadLatestRejectedRelief = async () => {
-        try {
-            const response = await getMyCitizenReliefRequests({ page: 0, size: 100 });
-            const list = normalizeList(response);
-            const sorted = [...list].sort((a, b) => {
-                const ta = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
-                const tb = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
-                return tb - ta;
-            });
-            const rejected = sorted.find((r) => {
-                const status = String(r?.status || '').toUpperCase();
-                const delivery = String(r?.deliveryStatus || '').toUpperCase();
-                const id = Number(r?.id || 0);
-                return id > 0
-                    && (status === 'CANCELLED' || delivery === 'REJECTED')
-                    && !dismissedRejectedReliefIds.includes(id);
-            });
-            setLatestRejectedRelief(rejected || null);
-        } catch {
-            setLatestRejectedRelief(null);
-        }
-    };
-
     useEffect(() => {
         loadLatestRequest();
-        loadLatestRejectedRelief();
         const id = window.setInterval(loadLatestRequest, 15000);
-        const reliefId = window.setInterval(loadLatestRejectedRelief, 15000);
         const blockId = window.setInterval(() => {
             setCitizenBlock(getCitizenBlockState());
         }, 3000);
         return () => {
             window.clearInterval(id);
-            window.clearInterval(reliefId);
             window.clearInterval(blockId);
         };
-    }, [dismissedRejectedReliefIds]);
+    }, []);
 
     const gpsLabel = useMemo(() => {
         if (!mapCenter) return 'Chưa có vị trí';
@@ -189,8 +133,6 @@ export default function CitizenDashboard() {
     ) && latestId !== Number(handledRescueConfirmRequestId || 0)
         && !dismissedRescueConfirmIds.includes(latestId);
     const showCancelledPrompt = statusRaw === 'CANCELLED' && !hideCancelPrompt;
-    const showRejectedReliefPrompt = Boolean(latestRejectedRelief?.id);
-
     const handleConfirmRescued = async () => {
         if (!latestRequest?.id || submitting) return;
         const targetId = latestRequest.id;
@@ -255,14 +197,6 @@ export default function CitizenDashboard() {
         }
     };
 
-    const handleDismissRejectedRelief = () => {
-        const targetId = Number(latestRejectedRelief?.id || 0);
-        if (!targetId) return;
-        const next = Array.from(new Set([...dismissedRejectedReliefIds, targetId]));
-        setDismissedRejectedReliefIds(next);
-        writeReliefDismissedIds(next);
-        setLatestRejectedRelief(null);
-    };
 
     return (
         <div className="space-y-5 pb-8">
@@ -303,26 +237,6 @@ export default function CitizenDashboard() {
                             Gửi lại yêu cầu
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => setHideCancelPrompt(true)} disabled={submitting}>
-                            Đã rõ
-                        </Button>
-                    </div>
-                </section>
-            )}
-
-            {showRejectedReliefPrompt && (
-                <section className="rounded-2xl border border-rose-300 bg-rose-50 p-4">
-                    <h2 className="text-sm font-bold text-rose-900">Yêu cầu cứu trợ bị từ chối</h2>
-                    <p className="mt-1 text-xs text-rose-800">
-                        {latestRejectedRelief?.deliveryNote
-                            ? `Lý do: ${latestRejectedRelief.deliveryNote}`
-                            : 'Yêu cầu cứu trợ của bạn đã bị từ chối.'}
-                    </p>
-                    <div className="mt-2 rounded-xl border border-rose-200 bg-white p-3 text-xs text-slate-700">
-                        <div><span className="font-semibold text-slate-900">Mã yêu cầu:</span> {latestRejectedRelief?.code || `#${latestRejectedRelief?.id || '—'}`}</div>
-                        <div className="mt-1"><span className="font-semibold text-slate-900">Địa chỉ:</span> {latestRejectedRelief?.targetArea || latestRejectedRelief?.citizenAddressText || '—'}</div>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                        <Button variant="outline" size="sm" onClick={handleDismissRejectedRelief} disabled={submitting}>
                             Đã rõ
                         </Button>
                     </div>

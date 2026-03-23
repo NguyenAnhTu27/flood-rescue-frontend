@@ -456,21 +456,6 @@ export default function RootLayout({ children }) {
                                             {role === 'CITIZEN' && (
                                                 <>
                                                     <Link
-                                                        to="/citizen/profile"
-                                                        className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                                                        onClick={() => setUserOpen(false)}
-                                                    >
-                                                        Hồ sơ cá nhân
-                                                    </Link>
-                                                    <Link
-                                                        to="/citizen/settings"
-                                                        className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                                                        onClick={() => setUserOpen(false)}
-                                                    >
-                                                        Cài đặt
-                                                    </Link>
-                                                    <div className="h-px bg-slate-200 my-1" />
-                                                    <Link
                                                         to={CITIZEN_ROUTES.FEEDBACK}
                                                         className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
                                                         onClick={() => setUserOpen(false)}

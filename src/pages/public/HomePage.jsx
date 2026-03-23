@@ -6,8 +6,6 @@ import {
     LogIn,
     BellRing,
     HeartPulse,
-    Mail,
-    Phone,
     Facebook,
     Twitter,
     Youtube,
@@ -84,10 +82,6 @@ export default function HomePage() {
         footerTermsUrl: PUBLIC_ROUTES.TERMS_OF_USE,
         footerPrivacyLabel: "Chính sách bảo mật",
         footerPrivacyUrl: PUBLIC_ROUTES.PRIVACY_POLICY,
-        footerSupportLabel: "Liên hệ hỗ trợ",
-        footerSupportUrl: PUBLIC_ROUTES.SUPPORT_CONTACT,
-        footerSupportEmail: "support@cuuho.gov.vn",
-        hotline: "1900-xxxx",
         footerFacebookUrl: "#",
         footerTwitterUrl: "#",
         footerYoutubeUrl: "#",
@@ -134,9 +128,6 @@ export default function HomePage() {
                             >
                                 Hướng dẫn
                             </Link>
-                            <Link to={PUBLIC_ROUTES.SUPPORT_CONTACT} className="text-sm font-medium text-slate-700 hover:text-blue-600">
-                                Liên hệ
-                            </Link>
                         </nav>
 
                         {/* Login */}
@@ -174,7 +165,6 @@ export default function HomePage() {
 
                                 <div className="mt-6 flex flex-wrap gap-3">
                                     <PrimaryButton to={AUTH_ROUTES.LOGIN}>Gửi yêu cầu cứu hộ</PrimaryButton>
-                                    <SecondaryButton to="#">Theo dõi bản đồ</SecondaryButton>
                                 </div>
                             </div>
 
@@ -249,12 +239,11 @@ export default function HomePage() {
                         <div className="rounded-2xl bg-slate-100 px-5 py-10 text-center sm:px-10">
                             <h3 className="text-xl font-extrabold sm:text-2xl">Bạn đang cần hỗ trợ khẩn cấp?</h3>
                             <p className="mx-auto mt-3 max-w-2xl text-sm text-slate-600 sm:text-base">
-                                Đừng ngần ngại. Hãy đăng nhập để gửi yêu cầu cứu hộ hoặc kiểm tra trên bản đồ cứu hộ ngay bây giờ.
+                                Đừng ngần ngại. Hãy đăng nhập để gửi yêu cầu cứu hộ ngay bây giờ.
                             </p>
 
                             <div className="mt-6 flex flex-wrap justify-center gap-3">
                                 <PrimaryButton to={AUTH_ROUTES.REGISTER}>Đăng ký nhận hỗ trợ</PrimaryButton>
-                                <SecondaryButton to="#">Xem bản đồ cứu hộ</SecondaryButton>
                             </div>
                         </div>
                     </Container>
@@ -292,30 +281,7 @@ export default function HomePage() {
                                                 {footerSettings.footerPrivacyLabel}
                                             </a>
                                         </li>
-                                        <li>
-                                            <a href={resolveFooterLink(footerSettings.footerSupportUrl, PUBLIC_ROUTES.SUPPORT_CONTACT)} target="_blank" rel="noreferrer" className="hover:text-blue-600">
-                                                {footerSettings.footerSupportLabel}
-                                            </a>
-                                        </li>
                                     </ul>
-                                </div>
-
-                                <div>
-                                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Thông tin</h4>
-                                    <div className="mt-3 space-y-2 text-sm text-slate-600">
-                                        <div className="flex items-center gap-2">
-                                            <Mail size={16} className="shrink-0 text-slate-500" />
-                                            <a href={normalizeExternalUrl(`mailto:${footerSettings.footerSupportEmail || ""}`)} className="break-all hover:text-blue-600">
-                                                {footerSettings.footerSupportEmail}
-                                            </a>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Phone size={16} className="shrink-0 text-slate-500" />
-                                            <a href={normalizeExternalUrl(`tel:${footerSettings.hotline || ""}`)} className="hover:text-blue-600">
-                                                {footerSettings.hotline || "1900-xxxx"}
-                                            </a>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
 

@@ -518,13 +518,6 @@ export default function ReceiptCreatePage() {
                         >
                             Hủy bỏ &amp; Quay lại
                         </button>
-                        <button
-                            type="button"
-                            onClick={() => navigate(MANAGER_ROUTES.RECEIPT_APPROVAL)}
-                            className="inline-flex w-full items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-100"
-                        >
-                            Duyệt phiếu nhập
-                        </button>
                     </div>
                 </div>
 

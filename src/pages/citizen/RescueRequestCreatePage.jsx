@@ -224,7 +224,7 @@ export default function RescueRequestCreatePage() {
         if (isSubmitting) return;
 
         // Validate required fields
-        if (!form.address || !form.description || !form.phone || !form.locationDescription) {
+        if (!form.address || !form.description || !form.locationDescription) {
             alert('Vui lòng điền đầy đủ thông tin bắt buộc');
             return;
         }
@@ -249,9 +249,14 @@ export default function RescueRequestCreatePage() {
             }
 
             // 2) Prepare request data matching BE RescueRequestCreateRequest DTO
+            const supplementalPhone = form.phone?.trim() || '';
+            const baseDescription = String(form.description || '').trim();
+            const mergedDescription = supplementalPhone
+                ? `${baseDescription}\nSố điện thoại bổ sung: ${supplementalPhone}`
+                : baseDescription;
             const requestData = {
                 affectedPeopleCount: parseInt(form.peopleCount) || 1,
-                description: form.description,
+                description: mergedDescription,
                 addressText: addressText,
                 latitude: form.latitude,
                 longitude: form.longitude,
@@ -469,7 +474,7 @@ export default function RescueRequestCreatePage() {
                                     </span>
                                     <div>
                                         <label className="mb-2 block text-xs font-medium text-slate-700">
-                                            Số điện thoại liên hệ
+                                            Số điện thoại liên hệ (tuỳ chọn)
                                         </label>
                                         <div className="relative">
                                             <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-xs text-slate-400">
@@ -481,13 +486,12 @@ export default function RescueRequestCreatePage() {
                                                 onChange={handleChange('phone')}
                                                 className="pl-10"
                                                 placeholder="09xx xxx xxx"
-                                                required
                                             />
                                             <Phone className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                                         </div>
                                         <p className="mt-1 text-[11px] text-slate-500">
-                                            Đội cứu hộ sẽ liên hệ qua số điện thoại này để xác minh và cập nhật trạng
-                                            thái.
+                                            Mặc định hệ thống dùng số điện thoại bạn đã đăng ký. Nếu cần số khác, điền tại đây để
+                                            hệ thống ghi vào mô tả yêu cầu như số điện thoại bổ sung.
                                         </p>
                                     </div>
 

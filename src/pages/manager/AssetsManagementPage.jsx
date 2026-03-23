@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sailboat, Truck, Zap, MapPin, FileText, Plus, ChevronLeft, ChevronRight, Users } from 'lucide-react';
+import { Sailboat, Truck, Zap, FileText, Plus, ChevronLeft, ChevronRight, Users } from 'lucide-react';
 import { MANAGER_ROUTES } from '../../app/routes/route.constants.js';
 import { getAssets } from '../../features/assets/api.js';
 
@@ -30,12 +30,12 @@ const TYPE_CONFIG = {
 };
 
 const mockAssets = [
-    { id: '1', code: '#CN-042', name: 'Cano Cứu Hộ #CN-042', desc: 'CANO CAO TỐC', type: 'canoe', status: 'available', location: 'Bến Chương Dương, Quận 1', task: 'Chưa có nhiệm vụ' },
-    { id: '2', code: '#AM-108', name: 'Xe Lội Nước #AM-108', desc: 'PHƯƠNG TIỆN LỘI NƯỚC', type: 'water-vehicle', status: 'in-use', location: 'Huyện Bình Chánh, TPHCM', task: 'Cứu trợ vùng ngập lụt' },
-    { id: '3', code: '#GEN-22', name: 'Máy Phát Điện #GEN-22', desc: 'CÔNG SUẤT 5KW', type: 'generator', status: 'maintenance', location: 'Kho Tổng Thủ Đức', task: 'Đang sửa chữa định kỳ' },
-    { id: '4', code: '#CN-091', name: 'Cano Phao #CN-091', desc: 'CANO PHÃO CAO TỐC', type: 'canoe', status: 'available', location: 'Bến Ninh Kiều, Cần Thơ', task: 'Sẵn sàng điều động' },
-    { id: '5', code: '#AM-202', name: 'Xe Lội Nước #AM-202', desc: 'PHƯƠNG TIỆN LỘI NƯỚC', type: 'water-vehicle', status: 'available', location: 'Kho Tổng Thủ Đức', task: 'Chưa có nhiệm vụ' },
-    { id: '6', code: '#GEN-07', name: 'Máy Phát Điện #GEN-07', desc: 'CÔNG SUẤT 5KW', type: 'generator', status: 'in-use', location: 'Trạm y tế xã Phong Nha', task: 'Cấp điện khẩn cấp' },
+    { id: '1', code: '#CN-042', name: 'Cano Cứu Hộ #CN-042', desc: 'CANO CAO TỐC', type: 'canoe', status: 'available' },
+    { id: '2', code: '#AM-108', name: 'Xe Lội Nước #AM-108', desc: 'PHƯƠNG TIỆN LỘI NƯỚC', type: 'water-vehicle', status: 'in-use' },
+    { id: '3', code: '#GEN-22', name: 'Máy Phát Điện #GEN-22', desc: 'CÔNG SUẤT 5KW', type: 'generator', status: 'maintenance' },
+    { id: '4', code: '#CN-091', name: 'Cano Phao #CN-091', desc: 'CANO PHÃO CAO TỐC', type: 'canoe', status: 'available' },
+    { id: '5', code: '#AM-202', name: 'Xe Lội Nước #AM-202', desc: 'PHƯƠNG TIỆN LỘI NƯỚC', type: 'water-vehicle', status: 'available' },
+    { id: '6', code: '#GEN-07', name: 'Máy Phát Điện #GEN-07', desc: 'CÔNG SUẤT 5KW', type: 'generator', status: 'in-use' },
 ];
 
 const ITEMS_PER_PAGE = 6;
@@ -93,15 +93,16 @@ export default function AssetsManagementPage() {
                         || (asset?.assignedTeamId ? `Đội #${asset.assignedTeamId}` : null)
                         || (asset?.teamId ? `Đội #${asset.teamId}` : null)
                         || 'Chưa có đội giữ';
+                    const descriptionText =
+                        asset?.assetType
+                        || normalizedType.toUpperCase();
                     return {
                         ...asset,
                         code,
                         type: normalizedType,
                         status: normalizeStatus(asset?.status),
                         name: asset?.name || asset?.assetName || code,
-                        desc: asset?.desc || asset?.assetType || normalizedType.toUpperCase(),
-                        location: asset?.location || asset?.currentLocation || 'Chưa cập nhật vị trí',
-                        task: asset?.task || asset?.taskName || asset?.currentTaskName || 'Chưa có nhiệm vụ',
+                        desc: descriptionText,
                         teamHolder,
                     };
                 });
@@ -158,13 +159,6 @@ export default function AssetsManagementPage() {
             {/* ===== FILTER & ACTION BAR ===== */}
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-wrap items-center gap-2">
-                    <button
-                        onClick={() => navigate(MANAGER_ROUTES.ASSIGN_ASSET_TO_TASK)}
-                        className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
-                    >
-                        <Plus className="h-4 w-4" />
-                        Gán Phương Tiện
-                    </button>
                     {/* Status filters */}
                     {STATUS_FILTERS.map((f) => (
                         <button
@@ -243,22 +237,6 @@ export default function AssetsManagementPage() {
                                         <Users className="h-4 w-4 shrink-0 text-slate-400" />
                                         <span className="line-clamp-1">Đội đang giữ: {asset.teamHolder || 'Chưa có đội giữ'}</span>
                                     </div>
-                                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                                        <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
-                                        <span className="line-clamp-1">{asset.location}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                                        <FileText className="h-4 w-4 shrink-0 text-slate-400" />
-                                        <span className="line-clamp-1">{asset.task}</span>
-                                    </div>
-                                </div>
-                                <div className="mt-4 flex gap-2">
-                                    <button
-                                        onClick={() => handleViewDetail(asset)}
-                                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                                    >
-                                        Xem chi tiết
-                                    </button>
                                 </div>
                             </div>
                         );
