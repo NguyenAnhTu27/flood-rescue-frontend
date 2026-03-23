@@ -348,10 +348,14 @@ function normalizeDashboardResponse(raw) {
             area: area ? String(area) : null,
             memberCount: memberCount !== null ? Number(memberCount) : null,
             status: teamStatus,
-            latitude: toNumberOrNull(pickFirstTruthy(team?.currentLatitude, data.teamLatitude)),
-            longitude: toNumberOrNull(pickFirstTruthy(team?.currentLongitude, data.teamLongitude)),
-            locationText: pickFirstTruthy(team?.currentLocationText, data.teamLocationText) || null,
-            locationUpdatedAt: pickFirstTruthy(team?.currentLocationUpdatedAt, data.teamLocationUpdatedAt) || null,
+            latitude: toNumberOrNull(
+                pickFirstTruthy(team?.currentLatitude, team?.latitude, team?.lat, data.teamLatitude, data.teamLat)
+            ),
+            longitude: toNumberOrNull(
+                pickFirstTruthy(team?.currentLongitude, team?.longitude, team?.lng, data.teamLongitude, data.teamLng)
+            ),
+            locationText: pickFirstTruthy(team?.currentLocationText, team?.locationText, data.teamLocationText) || null,
+            locationUpdatedAt: pickFirstTruthy(team?.currentLocationUpdatedAt, team?.locationUpdatedAt, data.teamLocationUpdatedAt) || null,
         },
         stats: {
             activeTaskGroups: Number.isFinite(activeTaskGroups) ? activeTaskGroups : missions.length,
@@ -386,7 +390,13 @@ export default function RescuerDashboard() {
     const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
     const [updatingMyLocation, setUpdatingMyLocation] = useState(false);
     const [returningAssets, setReturningAssets] = useState(false);
+    const [gpsSyncFeedback, setGpsSyncFeedback] = useState({ type: 'idle', message: '' });
     const mountedRef = useRef(true);
+    const locationSyncRef = useRef({
+        inFlight: false,
+        lastSyncedAt: 0,
+        permissionDenied: false,
+    });
 
     const loadDashboard = useCallback(async () => {
         try {
@@ -463,6 +473,123 @@ export default function RescuerDashboard() {
         };
     }, [loadDashboard]);
 
+    const syncTeamLocation = useCallback(async ({ silent = false, showBusy = false, force = false } = {}) => {
+        if (typeof navigator === 'undefined' || !navigator.geolocation) {
+            if (!silent) {
+                window.alert('Trình duyệt không hỗ trợ GPS.');
+            }
+            return false;
+        }
+        if (locationSyncRef.current.permissionDenied && silent && !force) {
+            return false;
+        }
+        if (locationSyncRef.current.inFlight) {
+            return false;
+        }
+
+        const now = Date.now();
+        if (!force && now - locationSyncRef.current.lastSyncedAt < 45000) {
+            return false;
+        }
+
+        locationSyncRef.current.inFlight = true;
+        if (showBusy && mountedRef.current) {
+            setUpdatingMyLocation(true);
+        }
+
+        try {
+            const position = await new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(
+                    resolve,
+                    reject,
+                    { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
+                );
+            });
+
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+            const locationText = `GPS ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+
+            await updateRescuerTeamLocation({ latitude, longitude, locationText });
+            locationSyncRef.current.lastSyncedAt = Date.now();
+            locationSyncRef.current.permissionDenied = false;
+            if (mountedRef.current) {
+                setGpsSyncFeedback({
+                    type: 'success',
+                    message: `Đã đồng bộ GPS lúc ${new Date().toLocaleTimeString('vi-VN', { hour12: false })}.`,
+                });
+            }
+            await loadDashboard();
+            return true;
+        } catch (e) {
+            const message = Number(e?.code) === 1
+                ? 'Trình duyệt đang chặn quyền vị trí cho tài khoản cứu hộ này.'
+                : (e?.message || 'Không thể cập nhật vị trí đội cứu hộ.');
+            if (Number(e?.code) === 1) {
+                locationSyncRef.current.permissionDenied = true;
+            }
+            if (mountedRef.current) {
+                setGpsSyncFeedback({
+                    type: 'error',
+                    message,
+                });
+            }
+            if (!silent) {
+                window.alert(message);
+            }
+            return false;
+        } finally {
+            locationSyncRef.current.inFlight = false;
+            if (showBusy && mountedRef.current) {
+                setUpdatingMyLocation(false);
+            }
+        }
+    }, [loadDashboard]);
+
+    useEffect(() => {
+        let cancelled = false;
+        let intervalId = null;
+
+        const attemptAutoSync = async () => {
+            if (cancelled || locationSyncRef.current.permissionDenied) {
+                return;
+            }
+
+            if (document?.visibilityState && document.visibilityState !== 'visible') {
+                return;
+            }
+
+            if (navigator.permissions?.query) {
+                try {
+                    const status = await navigator.permissions.query({ name: 'geolocation' });
+                    if (cancelled) return;
+                    if (status.state === 'denied') {
+                        locationSyncRef.current.permissionDenied = true;
+                        return;
+                    }
+                } catch {
+                    // Ignore browsers that do not fully support the permissions API.
+                }
+            }
+
+            await syncTeamLocation({ silent: true });
+        };
+
+        window.setTimeout(() => {
+            if (!cancelled) {
+                attemptAutoSync();
+            }
+        }, 1500);
+        intervalId = window.setInterval(attemptAutoSync, 60000);
+
+        return () => {
+            cancelled = true;
+            if (intervalId) {
+                window.clearInterval(intervalId);
+            }
+        };
+    }, [syncTeamLocation]);
+
     const normalized = useMemo(() => normalizeDashboardResponse(rawDashboard), [rawDashboard]);
     const teamName = normalized.team.name;
     const area = normalized.team.area ? `Khu vực hoạt động: ${normalized.team.area}` : 'Khu vực hoạt động: —';
@@ -488,33 +615,22 @@ export default function RescuerDashboard() {
         return `${normalized.team.latitude.toFixed(6)}, ${normalized.team.longitude.toFixed(6)}`;
     }, [normalized.team.latitude, normalized.team.longitude]);
 
-    const handleUpdateMyGps = useCallback(() => {
-        if (!navigator.geolocation) {
-            window.alert('Trình duyệt không hỗ trợ GPS.');
-            return;
-        }
-        setUpdatingMyLocation(true);
-        navigator.geolocation.getCurrentPosition(
-            async (pos) => {
-                try {
-                    const latitude = pos.coords.latitude;
-                    const longitude = pos.coords.longitude;
-                    const locationText = `GPS ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-                    await updateRescuerTeamLocation({ latitude, longitude, locationText });
-                    await loadDashboard();
-                } catch (e) {
-                    window.alert(e?.message || 'Không thể cập nhật vị trí đội cứu hộ.');
-                } finally {
-                    setUpdatingMyLocation(false);
-                }
-            },
-            (error) => {
-                setUpdatingMyLocation(false);
-                window.alert(error?.message || 'Không lấy được vị trí GPS.');
-            },
-            { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+    const gpsStatusTone = gpsSyncFeedback.type === 'error'
+        ? 'border-red-200 bg-red-50 text-red-700'
+        : Number.isFinite(normalized.team.latitude) && Number.isFinite(normalized.team.longitude)
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+            : 'border-amber-200 bg-amber-50 text-amber-700';
+
+    const gpsStatusText = gpsSyncFeedback.message
+        || (
+            Number.isFinite(normalized.team.latitude) && Number.isFinite(normalized.team.longitude)
+                ? `Đội đã có GPS trên hệ thống${normalized.team.locationUpdatedAt ? ` lúc ${fmtDateTime(normalized.team.locationUpdatedAt)}` : ''}.`
+                : 'Đội chưa gửi GPS lên hệ thống. Hãy đăng nhập đúng tài khoản RESCUER của đội này và bấm "Lấy vị trí của tôi".'
         );
-    }, [loadDashboard]);
+
+    const handleUpdateMyGps = useCallback(() => {
+        syncTeamLocation({ silent: false, showBusy: true, force: true });
+    }, [syncTeamLocation]);
 
     const handleReturnAssets = useCallback(async () => {
         if (!canReturnAssets || returningAssets) return;
@@ -644,6 +760,9 @@ export default function RescuerDashboard() {
                 <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
                     Vị trí đội hiện tại: <span className="font-mono">{teamGpsText}</span>
                     {normalized.team.locationText ? ` • ${normalized.team.locationText}` : ''}
+                </div>
+                <div className={`rounded-lg border px-3 py-2 text-xs ${gpsStatusTone}`}>
+                    {gpsStatusText}
                 </div>
                 <div className="overflow-hidden rounded-lg border border-slate-200">
                     <div className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">

@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { ADMIN_API_BASE_URL } from "../../app/config/env.js";
 
 export default function UserManagementPage() {
-  const API = "http://localhost:8080/api/admin";
+  const API = ADMIN_API_BASE_URL;
   const token = localStorage.getItem("token");
 
   const [users, setUsers] = useState([]);

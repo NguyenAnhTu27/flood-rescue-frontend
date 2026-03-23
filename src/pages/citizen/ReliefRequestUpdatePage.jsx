@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FileText, Camera, Info, Save, X } from 'lucide-react';
+import { API_BASE_URL } from '../../app/config/env.js';
 import { CITIZEN_ROUTES } from '../../app/routes/route.constants.js';
 import { uploadRescueAttachments } from '../../features/rescue/api.js';
 import { getReliefRequest, updateMyCitizenReliefRequest } from '../../features/relief/api.js';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
 const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '');
 
 function resolveAttachmentUrl(fileUrl) {

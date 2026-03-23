@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { ADMIN_API_BASE_URL } from "../../app/config/env.js";
 
 const META_CODE = "__GROUP__";
 
@@ -24,7 +25,7 @@ function slugifyCategory(name) {
 }
 
 export default function SystemCatalogPage() {
-  const API = "http://localhost:8080/api/admin";
+  const API = ADMIN_API_BASE_URL;
   const token = localStorage.getItem("token");
 
   const [allItems, setAllItems] = useState([]);

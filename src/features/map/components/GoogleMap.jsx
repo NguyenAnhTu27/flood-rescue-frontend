@@ -4,6 +4,8 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { MAPBOX_ACCESS_TOKEN } from '../../../app/config/env.js';
 import { reverseGeocodeAddress } from '../lib/geocoding.js';
 
+const HAS_MAPBOX_TOKEN = Boolean(String(MAPBOX_ACCESS_TOKEN || '').trim());
+
 const FALLBACK_STYLE = {
     version: 8,
     sources: {
@@ -18,10 +20,34 @@ const FALLBACK_STYLE = {
 };
 
 function getMapStyle() {
-    if (MAPBOX_ACCESS_TOKEN) {
+    if (HAS_MAPBOX_TOKEN) {
         return 'mapbox://styles/mapbox/streets-v12';
     }
     return FALLBACK_STYLE;
+}
+
+function buildStaticMapUrl({ lat, lng }) {
+    const safeLat = Number(lat);
+    const safeLng = Number(lng);
+    const delta = 0.01;
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${safeLng - delta}%2C${safeLat - delta}%2C${safeLng + delta}%2C${safeLat + delta}&layer=mapnik&marker=${safeLat}%2C${safeLng}`;
+}
+
+function StaticMapFallback({ target }) {
+    return (
+        <div className="relative h-full w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+            <iframe
+                title="static-map"
+                src={buildStaticMapUrl(target)}
+                className="h-full w-full border-0"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+            />
+            <div className="absolute left-3 top-3 max-w-xs rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 shadow-sm">
+                Chua cau hinh Mapbox token tren frontend production. Ban do tam thoi chi o che do xem.
+            </div>
+        </div>
+    );
 }
 
 export default function GoogleMap({
@@ -40,8 +66,9 @@ export default function GoogleMap({
     const initialCenter = useMemo(() => markerPosition || center, [center, markerPosition]);
 
     useEffect(() => {
+        if (!HAS_MAPBOX_TOKEN) return;
         if (!containerRef.current || mapRef.current) return;
-        mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN || '';
+        mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
 
         const map = new mapboxgl.Map({
             container: containerRef.current,
@@ -50,21 +77,6 @@ export default function GoogleMap({
             zoom: Number(zoom) || 15,
             attributionControl: true,
         });
-
-        let didFallbackToRaster = false;
-        const fallbackToRaster = () => {
-            if (didFallbackToRaster) return;
-            didFallbackToRaster = true;
-            try {
-                map.setStyle(FALLBACK_STYLE);
-            } catch (error) {
-                console.warn('[GoogleMap] fallback style error', error);
-            }
-        };
-
-        if (MAPBOX_ACCESS_TOKEN) {
-            map.once('error', () => fallbackToRaster());
-        }
 
         map.addControl(new mapboxgl.NavigationControl(), 'top-right');
         map.on('load', () => setIsLoaded(true));
@@ -141,12 +153,16 @@ export default function GoogleMap({
 
     return (
         <div className="relative h-full w-full">
-            <div ref={containerRef} className="h-full w-full rounded-xl" />
-            {!isLoaded && (
+            {!HAS_MAPBOX_TOKEN ? (
+                <StaticMapFallback target={initialCenter} />
+            ) : (
+                <div ref={containerRef} className="h-full w-full rounded-xl" />
+            )}
+            {HAS_MAPBOX_TOKEN && !isLoaded && (
                 <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-slate-100">
                     <div className="text-center">
                         <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent" />
-                        <p className="mt-2 text-sm text-slate-600">?ang t?i b?n ??...</p>
+                        <p className="mt-2 text-sm text-slate-600">Dang tai ban do...</p>
                     </div>
                 </div>
             )}
