@@ -23,7 +23,7 @@ export default function UserManagementPage() {
     fullName: "",
     email: "",
     phone: "",
-    roleId: 1,
+    roleId: 6,
     status: "ACTIVE",
   });
 
@@ -38,7 +38,7 @@ export default function UserManagementPage() {
     email: "",
     phone: "",
     password: "",
-    roleId: 1,
+    roleId: 6,
     teamId: null,
   });
 
@@ -47,21 +47,22 @@ export default function UserManagementPage() {
   const roleOptions = useMemo(
     () => [
       { id: "", label: "Tất cả" },
-      { id: 1, label: "Citizen" },
-      { id: 2, label: "Coordinator" },
-      { id: 3, label: "Rescue Team" },
-      { id: 4, label: "Manager" },
+      { id: 6, label: "Citizen" },
+      { id: 7, label: "Coordinator" },
+      { id: 8, label: "Rescue Team" },
+      { id: 9, label: "Manager" },
+      { id: 10, label: "Admin" },
     ],
     []
   );
 
   const roleCodeById = useMemo(
     () => ({
-      1: "CITIZEN",
-      2: "COORDINATOR",
-      3: "RESCUER",
-      4: "MANAGER",
-      5: "ADMIN",
+      6: "CITIZEN",
+      7: "COORDINATOR",
+      8: "RESCUER",
+      9: "MANAGER",
+      10: "ADMIN",
     }),
     []
   );
@@ -139,11 +140,11 @@ export default function UserManagementPage() {
     setMessageType(type);
   };
 
-  const getUsers = async (nextPage = page) => {
+  const getUsers = async (nextPage = page, nextRoleId = roleId, nextKeyword = keyword) => {
     try {
       let url = `${API}/users?page=${nextPage}`;
-      if (keyword.trim()) url += `&keyword=${encodeURIComponent(keyword.trim())}`;
-      if (roleId !== "") url += `&roleId=${roleId}`;
+      if (nextKeyword.trim()) url += `&keyword=${encodeURIComponent(nextKeyword.trim())}`;
+      if (nextRoleId !== "") url += `&roleId=${nextRoleId}`;
 
       const res = await fetch(url, { headers: authHeaders });
       const data = await parseResponse(res);
@@ -207,7 +208,7 @@ export default function UserManagementPage() {
       setShowCreate(false);
       setShowCreatePassword(false);
       setCreateErrors({});
-      setForm({ fullName: "", email: "", phone: "", password: "", roleId: 1, teamId: null });
+      setForm({ fullName: "", email: "", phone: "", password: "", roleId: 6, teamId: null });
 
       const createdUser = {
         id: Date.now(), // temporary client id for instant UI update
@@ -389,7 +390,7 @@ export default function UserManagementPage() {
 
   const handleSearch = async () => {
     setPage(0);
-    await getUsers(0);
+    await getUsers(0, roleId, keyword);
   };
 
   const statusClass = (status) =>
@@ -480,7 +481,11 @@ export default function UserManagementPage() {
             {roleOptions.map((r) => (
               <button
                 key={String(r.id)}
-                onClick={() => setRoleId(r.id)}
+                onClick={async () => {
+                  setRoleId(r.id);
+                  setPage(0);
+                  await getUsers(0, r.id, keyword);
+                }}
                 className={`rounded-full border px-4 py-2 text-sm font-medium ${
                   String(roleId) === String(r.id)
                     ? "border-blue-500 bg-blue-50 text-blue-700"

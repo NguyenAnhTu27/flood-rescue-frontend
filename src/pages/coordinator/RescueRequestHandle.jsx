@@ -46,9 +46,6 @@ function badgeClass(status) {
         ASSIGNED: 'bg-indigo-100 text-indigo-800',
         IN_PROGRESS: 'bg-cyan-100 text-cyan-800',
         DONE: 'bg-emerald-100 text-emerald-800',
-        COMPLETED: 'bg-emerald-100 text-emerald-800',
-        RESCUED: 'bg-emerald-100 text-emerald-800',
-        FINISHED: 'bg-emerald-100 text-emerald-800',
         CANCELLED: 'bg-rose-100 text-rose-800',
     };
     return map[normalized] || 'bg-slate-100 text-slate-700';

@@ -417,7 +417,9 @@ export default function MyAssignmentsPage() {
                                             .map((k) => (
                                                 <div key={`summary-${k}`} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                                                     <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{prettifyKey(k)}</div>
-                                                    <div className="mt-1 text-sm font-medium text-slate-900">{formatDetailValue(k, detailModal.data[k])}</div>
+                                                    <div className="mt-1 text-sm font-medium text-slate-900">
+                                                        {formatDetailValue(k, detailModal.data[k])}
+                                                    </div>
                                                 </div>
                                             ))}
                                     </div>

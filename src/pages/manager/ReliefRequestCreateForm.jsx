@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
     MapPin,
     Crosshair,
@@ -8,10 +8,10 @@ import {
     ChevronLeft,
     Phone,
 } from 'lucide-react';
-import { CITIZEN_ROUTES } from '../../app/routes/route.constants.js';
-import GoogleMap from '../../features/map/components/MapBox.jsx';
+import { MANAGER_ROUTES } from '../../app/routes/route.constants.js';
+import GoogleMap from '../../features/map/components/GoogleMap.jsx';
 import { uploadRescueAttachments } from '../../features/rescue/api.js';
-import { createReliefRequest, updateMyCitizenReliefRequest } from '../../features/relief/api.js';
+import { createReliefRequest } from '../../features/relief/api.js';
 import PrioritySelector from '../../features/rescue/components/PrioritySelector.jsx';
 import AttachmentGallery from '../../features/rescue/components/AttachmentGallery.jsx';
 import CitizenRequestHeader from '../../features/citizen/components/CitizenRequestHeader.jsx';
@@ -30,17 +30,13 @@ const STEPS = [
     { id: 3, label: 'Hoàn tất yêu cầu' },
 ];
 
-export default function ReliefRequestCreatePage({
-    afterCreateNavigateTo = CITIZEN_ROUTES.MY_RELIEF_REQUESTS,
+export default function ReliefRequestCreateForm({
+    afterCreateNavigateTo = MANAGER_ROUTES.RELIEF_REQUESTS,
     autoLocateOnMount = true,
     allowAddressSearch = false,
     showUseGpsButton = true,
 }) {
-    const location = useLocation();
     const navigate = useNavigate();
-    const editingRequest = location.state?.request || null;
-    const editingRequestId = Number(location.state?.requestId || editingRequest?.id || 0) || 0;
-    const isEditMode = editingRequestId > 0;
     const [currentStep, setCurrentStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [form, setForm] = useState({
@@ -66,40 +62,7 @@ export default function ReliefRequestCreatePage({
     const formatGpsFallbackAddress = (lat, lng) =>
         `Vị trí GPS: ${Number(lat).toFixed(6)}, ${Number(lng).toFixed(6)}`;
 
-    const parseNoteField = (note, label) => {
-        const lines = String(note || '').split('\n');
-        const line = lines.find((ln) => ln.trim().startsWith(`${label}:`));
-        if (!line) return '';
-        return line.replace(`${label}:`, '').trim();
-    };
-
-    useEffect(() => {
-        if (!isEditMode || !editingRequest) return;
-
-        const lat = Number(editingRequest.citizenLatitude ?? editingRequest.latitude);
-        const lng = Number(editingRequest.citizenLongitude ?? editingRequest.longitude);
-        const hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
-        const note = editingRequest.note || '';
-        const peopleCountRaw = parseNoteField(note, 'Số người cần hỗ trợ');
-        const levelRaw = parseNoteField(note, 'Mức độ ưu tiên');
-
-        setForm((prev) => ({
-            ...prev,
-            address: editingRequest.citizenAddressText || editingRequest.targetArea || prev.address,
-            locationDescription: parseNoteField(note, 'Mô tả vị trí') || editingRequest.citizenLocationDescription || prev.locationDescription,
-            description: parseNoteField(note, 'Mô tả') || prev.description,
-            peopleCount: String(parseInt(peopleCountRaw, 10) || prev.peopleCount || ''),
-            level: ['LOW', 'MEDIUM', 'HIGH'].includes(levelRaw) ? levelRaw : prev.level,
-            phone: parseNoteField(note, 'SĐT liên hệ') || prev.phone,
-            latitude: hasCoords ? lat : prev.latitude,
-            longitude: hasCoords ? lng : prev.longitude,
-        }));
-
-        if (hasCoords) {
-            setMapCenter({ lat, lng });
-            setMarkerPosition({ lat, lng });
-        }
-    }, [isEditMode, editingRequest]);
+    // Manager create flow only; no edit mode for citizen requests.
 
     const handleChange = (field) => (e) => {
         setForm((prev) => ({
@@ -146,7 +109,6 @@ export default function ReliefRequestCreatePage({
     // Get user's current location on mount
     useEffect(() => {
         if (!autoLocateOnMount) return;
-        if (isEditMode) return;
         if (navigator.geolocation) {
             setIsLoadingGps(true);
             setGpsError('');
@@ -182,7 +144,7 @@ export default function ReliefRequestCreatePage({
                 }
             );
         }
-    }, [autoLocateOnMount, isEditMode]);
+    }, [autoLocateOnMount]);
 
     const handleUseGps = async () => {
         if (!navigator.geolocation) {
@@ -308,7 +270,7 @@ export default function ReliefRequestCreatePage({
     };
 
     useEffect(() => {
-        if (!allowAddressSearch || isEditMode) return;
+        if (!allowAddressSearch) return;
         const keyword = String(form.address || '').trim();
         if (keyword.length < 3) {
             setAddressSuggestions([]);
@@ -338,7 +300,7 @@ export default function ReliefRequestCreatePage({
             cancelled = true;
             window.clearTimeout(timer);
         };
-    }, [allowAddressSearch, form.address, isEditMode]);
+    }, [allowAddressSearch, form.address]);
 
     const handleAddressInputChange = (e) => {
         handleChange('address')(e);
@@ -410,27 +372,11 @@ export default function ReliefRequestCreatePage({
                 lines: [],
             };
 
-            const response = isEditMode
-                ? await updateMyCitizenReliefRequest(editingRequestId, payload)
-                : await createReliefRequest(payload);
-
-            const nextRequestId = Number(response?.id || editingRequestId || 0) || undefined;
-            if (isEditMode && nextRequestId) {
-                navigate(CITIZEN_ROUTES.RELIEF_REQUEST_STATUS, {
-                    state: {
-                        requestId: nextRequestId,
-                        request: response || editingRequest,
-                        successMessage: 'Đã cập nhật thêm thông tin yêu cầu cứu trợ.',
-                    },
-                });
-            } else {
-                navigate(afterCreateNavigateTo);
-            }
+            await createReliefRequest(payload);
+            navigate(afterCreateNavigateTo);
         } catch (error) {
             console.error('[Relief Request Error]', error);
-            alert(error.message || (isEditMode
-                ? 'Không thể cập nhật yêu cầu cứu trợ. Vui lòng thử lại.'
-                : 'Không thể tạo yêu cầu cứu trợ. Vui lòng thử lại.'));
+            alert(error.message || 'Không thể tạo yêu cầu cứu trợ. Vui lòng thử lại.');
         } finally {
             setIsSubmitting(false);
         }
@@ -442,15 +388,12 @@ export default function ReliefRequestCreatePage({
         <div className="space-y-6">
             <CitizenRequestHeader
                 requestType="RELIEF"
-                isEditMode={isEditMode}
                 currentStep={currentStep}
                 steps={STEPS}
                 hasGps={hasGps}
                 priority={form.level}
-                title={isEditMode ? 'Cập nhật yêu cầu cứu trợ' : 'Tạo yêu cầu cứu trợ khẩn cấp'}
-                subtitle={isEditMode
-                    ? 'Chỉnh sửa thông tin mới nhất để đội cứu trợ nhận đúng tình trạng thực tế.'
-                    : 'Vui lòng cung cấp chính xác vị trí, tình huống và thông tin liên lạc để lực lượng cứu trợ có thể hỗ trợ nhanh nhất.'}
+                title="Tạo yêu cầu cứu trợ khẩn cấp"
+                subtitle="Vui lòng cung cấp chính xác vị trí, tình huống và thông tin liên lạc để lực lượng cứu trợ có thể hỗ trợ nhanh nhất."
                 helperNote="Thời gian xử lý ưu tiên cho yêu cầu có vị trí và thông tin rõ ràng."
             />
 
@@ -777,8 +720,8 @@ export default function ReliefRequestCreatePage({
                                     disabled={isSubmitting}
                                 >
                                     {isSubmitting
-                                        ? (isEditMode ? 'Đang cập nhật...' : 'Đang gửi yêu cầu...')
-                                        : (isEditMode ? 'Cập nhật thông tin cứu trợ' : 'Gửi yêu cầu cứu trợ')}
+                                        ? 'Đang gửi yêu cầu...'
+                                        : 'Gửi yêu cầu cứu trợ'}
                                 </Button>
                             )}
                         </div>

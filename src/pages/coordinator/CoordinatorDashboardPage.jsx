@@ -10,7 +10,7 @@ import {
     ZoomOut,
     Navigation,
 } from 'lucide-react';
-import GoogleMap from '../../features/map/components/MapBox.jsx';
+import GoogleMap from '../../features/map/components/GoogleMap.jsx';
 import PriorityBadge from '../../features/rescue/components/PriorityBadge.jsx';
 import Button from '../../shared/ui/Button.jsx';
 import Card from '../../shared/ui/Card.jsx';
@@ -291,6 +291,9 @@ export default function CoordinatorDashboard() {
                                                 <p className="mt-1 text-xs text-slate-500">Nhấn để mở trang xác minh</p>
                                             </div>
                                             <PriorityBadge level={request.priority || 'MEDIUM'} size="xs" />
+                                        </div>
+                                        <div className="mb-2 text-xs text-slate-600">
+                                            SĐT công dân: {request.citizenPhone || '—'}
                                         </div>
                                         <div className="mb-2 flex items-center justify-between text-xs text-slate-600">
                                             <span className="inline-flex items-center gap-1">

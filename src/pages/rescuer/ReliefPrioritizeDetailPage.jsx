@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, MapPin, Phone, FileText, User, Clock } from 'lucide-react';
 import Card from '../../shared/ui/Card.jsx';
 import Button from '../../shared/ui/Button.jsx';
-import GoogleMap from '../../features/map/components/MapBox.jsx';
+import GoogleMap from '../../features/map/components/GoogleMap.jsx';
 import { getInventoryIssue, getReliefRequest, updateRescuerReliefStatus } from '../../features/relief/api.js';
 import { RESCUER_ROUTES } from '../../app/routes/route.constants.js';
 
@@ -93,12 +93,11 @@ export default function ReliefPrioritizeDetailPage() {
         // vì createdByPhone có thể là số tài khoản tạo thay mặt.
         return (
             extractPhoneFromNote(request?.note)
-            || request?.contactPhone
             || request?.citizenPhone
             || request?.createdByPhone
             || null
         );
-    }, [request?.note, request?.contactPhone, request?.citizenPhone, request?.createdByPhone]);
+    }, [request?.note, request?.citizenPhone, request?.createdByPhone]);
 
     const statusLabel = useMemo(() => {
         const s = String(request?.deliveryStatus || '').toUpperCase();

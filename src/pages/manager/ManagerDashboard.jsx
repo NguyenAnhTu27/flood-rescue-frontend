@@ -1,26 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-    Warehouse,
     Truck,
     FileInput,
     FileOutput,
     Package,
     ArrowRight,
-    TrendingUp,
-    TrendingDown,
     Info,
-    ChevronRight,
-    Search,
-    RefreshCw,
     Clock,
 } from 'lucide-react';
 import { MANAGER_ROUTES } from '../../app/routes/route.constants.js';
 import {
-    getManagerDashboard,
     listInventoryReceipts,
     listInventoryIssues,
-    getInventoryStock,
     listReliefRequests,
 } from '../../features/relief/api.js';
 import { getAssets } from '../../features/assets/api.js';
@@ -31,11 +23,6 @@ function parseArrayResponse(payload) {
     if (Array.isArray(payload?.data)) return payload.data;
     if (Array.isArray(payload?.items)) return payload.items;
     return [];
-}
-
-function toNumber(value, fallback = 0) {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : fallback;
 }
 
 function toUpper(value) {
@@ -49,21 +36,12 @@ function formatTime(value) {
     return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 }
 
-function statusColorFromQty(qty) {
-    if (qty <= 0) return 'red';
-    if (qty < 20) return 'yellow';
-    return 'green';
-}
-
 export default function ManagerDashboard() {
-    const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
     const [stats, setStats] = useState([]);
     const [transactions, setTransactions] = useState([]);
-    const [inventorySummaryState, setInventorySummaryState] = useState([]);
-    const [inventoryItemsState, setInventoryItemsState] = useState([]);
 
     const now = new Date();
     const timeStr = now.toLocaleTimeString('vi-VN', {
@@ -104,48 +82,26 @@ export default function ManagerDashboard() {
             setError(null);
 
             const [
-                dashboardRes,
                 receiptsRes,
                 issuesRes,
-                stockRes,
                 assetsRes,
                 reliefRes,
             ] = await Promise.allSettled([
-                getManagerDashboard(),
                 listInventoryReceipts({ page: 0, size: 50 }),
                 listInventoryIssues({ page: 0, size: 50 }),
-                getInventoryStock({ page: 0, size: 200 }),
                 getAssets({ page: 0, size: 200 }),
                 listReliefRequests({ page: 0, size: 200 }),
             ]);
 
-            const dashboardData = dashboardRes.status === 'fulfilled' ? (dashboardRes.value?.data || dashboardRes.value || {}) : {};
             const receipts = receiptsRes.status === 'fulfilled' ? parseArrayResponse(receiptsRes.value) : [];
             const issues = issuesRes.status === 'fulfilled' ? parseArrayResponse(issuesRes.value) : [];
-            const stockItems = stockRes.status === 'fulfilled' ? parseArrayResponse(stockRes.value) : [];
             const assets = assetsRes.status === 'fulfilled' ? parseArrayResponse(assetsRes.value) : [];
             const reliefRequests = reliefRes.status === 'fulfilled' ? parseArrayResponse(reliefRes.value) : [];
-
-            const warehouseCount = toNumber(
-                dashboardData?.warehouseCount
-                ?? dashboardData?.centralWarehouseCount
-                ?? dashboardData?.summary?.warehouseCount,
-                0
-            );
 
             const processingStatuses = new Set(['DRAFT', 'PLANNED', 'ASSIGNED', 'IN_TRANSIT', 'MANAGER_APPROVED', 'RESCUER_RECEIVED', 'ARRIVED_WAREHOUSE']);
             const processingDistributionCount = reliefRequests.filter((r) => processingStatuses.has(toUpper(r?.deliveryStatus || r?.status))).length;
 
             setStats([
-                {
-                    id: 'central-warehouse',
-                    label: 'Kho Trung tâm',
-                    value: String(warehouseCount),
-                    unit: 'Kho',
-                    sub: warehouseCount > 0 ? 'Dữ liệu theo hệ thống' : 'Chưa có dữ liệu',
-                    icon: Warehouse,
-                    highlighted: false,
-                },
                 {
                     id: 'vehicles',
                     label: 'Tổng phương tiện',
@@ -218,48 +174,11 @@ export default function ManagerDashboard() {
                 .slice(0, 12)
                 .map((x) => ({ ...x, time: formatTime(x.timeRaw) }));
             setTransactions(txRows);
-
-            const totalCurrentStock = stockItems.reduce((sum, item) => {
-                const qty = toNumber(item?.totalQty ?? item?.qty ?? item?.quantity ?? item?.balance, 0);
-                return sum + qty;
-            }, 0);
-
-            const todayStart = new Date();
-            todayStart.setHours(0, 0, 0, 0);
-            const importedToday = receipts.filter((r) => new Date(r?.createdAt || r?.updatedAt || 0) >= todayStart).length;
-            const exportedToday = issues.filter((r) => new Date(r?.createdAt || r?.updatedAt || 0) >= todayStart).length;
-
-            setInventorySummaryState([
-                { id: 'central-warehouse', label: 'Kho Trung tâm', value: String(warehouseCount) },
-                { id: 'current', label: 'Tồn kho hiện tại', value: totalCurrentStock.toLocaleString('vi-VN') },
-                { id: 'imports', label: 'Nhập trong ngày', value: `+${importedToday}`, color: 'text-blue-600', icon: TrendingUp },
-                { id: 'exports', label: 'Xuất trong ngày', value: `-${exportedToday}`, color: 'text-red-500', icon: TrendingDown },
-            ]);
-
-            const mappedInventory = stockItems
-                .map((item) => {
-                    const qty = toNumber(item?.totalQty ?? item?.qty ?? item?.quantity ?? item?.balance, 0);
-                    const color = statusColorFromQty(qty);
-                    return {
-                        code: item?.itemCode || item?.code || `#ITEM-${item?.itemCategoryId || item?.id || ''}`,
-                        name: item?.itemName || item?.name || 'Mặt hàng',
-                        category: item?.classificationName || item?.categoryName || item?.category || 'Khác',
-                        unit: item?.unit || 'Đơn vị',
-                        qty,
-                        status: qty <= 0 ? 'Hết hàng' : qty < 20 ? 'Sắp hết' : 'Còn hàng',
-                        statusColor: color,
-                    };
-                })
-                .sort((a, b) => b.qty - a.qty)
-                .slice(0, 20);
-            setInventoryItemsState(mappedInventory);
         } catch (err) {
             console.error('[ManagerDashboard] loadDashboard error:', err);
             setError(err?.message || 'Không thể tải dữ liệu dashboard cứu trợ');
             setStats([]);
             setTransactions([]);
-            setInventorySummaryState([]);
-            setInventoryItemsState([]);
         } finally {
             setLoading(false);
         }
@@ -269,21 +188,7 @@ export default function ManagerDashboard() {
         loadDashboard();
     }, [loadDashboard]);
 
-    const filteredTransactions = useMemo(() => {
-        const q = String(searchQuery || '').trim().toLowerCase();
-        if (!q) return transactions;
-        return transactions.filter((tx) =>
-            [tx.id, tx.type, tx.destination, tx.status].some((v) => String(v || '').toLowerCase().includes(q))
-        );
-    }, [searchQuery, transactions]);
-
-    const filteredInventoryItems = useMemo(() => {
-        const q = String(searchQuery || '').trim().toLowerCase();
-        if (!q) return inventoryItemsState;
-        return inventoryItemsState.filter((item) =>
-            [item.code, item.name, item.category, item.status].some((v) => String(v || '').toLowerCase().includes(q))
-        );
-    }, [searchQuery, inventoryItemsState]);
+    const filteredTransactions = useMemo(() => transactions, [transactions]);
 
     return (
         <div className="space-y-6">
@@ -293,34 +198,13 @@ export default function ManagerDashboard() {
                     <p className="mt-1 text-sm text-slate-500">Hệ thống giám sát vận hành và điều phối logistics cứu trợ thiên tai</p>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="Tìm kiếm dữ liệu..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100 sm:w-72"
-                        />
-                    </div>
-                    <button
-                        type="button"
-                        onClick={loadDashboard}
-                        disabled={loading}
-                        className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                    >
-                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                        Làm mới
-                    </button>
-                </div>
             </div>
 
             {error && (
                 <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700">{error}</div>
             )}
 
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 {stats.map((stat) => {
                     const Icon = stat.icon;
                     const isHighlighted = Boolean(stat.highlighted);
@@ -357,16 +241,6 @@ export default function ManagerDashboard() {
             <div>
                 <div className="mb-4 flex items-center justify-between">
                     <h2 className="text-lg font-semibold text-slate-900">Lối tắt Quản lý</h2>
-                    <div className="flex items-center gap-3">
-                        <Link to={MANAGER_ROUTES.ASSETS_MANAGEMENT} className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700">
-                            Quản lý phương tiện
-                            <ChevronRight className="h-4 w-4" />
-                        </Link>
-                        <Link to={MANAGER_ROUTES.RELIEF_REQUESTS} className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700">
-                            Xem tất cả tính năng
-                            <ChevronRight className="h-4 w-4" />
-                        </Link>
-                    </div>
                 </div>
 
                 <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
@@ -431,65 +305,8 @@ export default function ManagerDashboard() {
                         </table>
                     </div>
 
-                    <div className="border-t border-slate-100 px-5 py-3 text-center">
-                        <Link to={MANAGER_ROUTES.INVENTORY_OVERVIEW} className="text-sm font-medium text-blue-600 hover:text-blue-700">
-                            Xem toàn bộ dữ liệu kho
-                        </Link>
-                    </div>
                 </div>
 
-                <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-                    <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-                        <h2 className="text-base font-semibold text-slate-900">Bảng tồn kho hiện có</h2>
-                    </div>
-
-                    <div className="grid grid-cols-4 divide-x divide-slate-100 border-b border-slate-100">
-                        {inventorySummaryState.map((item) => (
-                            <div key={item.id} className="px-4 py-3 text-center">
-                                <p className="text-[11px] text-slate-500">{item.label}</p>
-                                <p className={`mt-0.5 text-lg font-bold ${item.color || 'text-slate-900'}`}>{item.value}</p>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
-                            <thead>
-                                <tr className="border-b border-slate-100 bg-slate-50/60 text-xs font-medium uppercase tracking-wider text-slate-500">
-                                    <th className="px-4 py-2.5">Mã hàng</th>
-                                    <th className="px-4 py-2.5">Tên mặt hàng</th>
-                                    <th className="px-4 py-2.5">Phân loại</th>
-                                    <th className="px-4 py-2.5">Đơn vị</th>
-                                    <th className="px-4 py-2.5 text-right">SL tồn</th>
-                                    <th className="px-4 py-2.5">Trạng thái</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {filteredInventoryItems.map((item) => (
-                                    <tr key={item.code} className="transition hover:bg-slate-50">
-                                        <td className="whitespace-nowrap px-4 py-2.5 text-xs font-medium text-slate-700">{item.code}</td>
-                                        <td className="px-4 py-2.5 text-slate-700">{item.name}</td>
-                                        <td className="px-4 py-2.5 text-slate-500">{item.category}</td>
-                                        <td className="px-4 py-2.5 text-slate-500">{item.unit}</td>
-                                        <td className="px-4 py-2.5 text-right font-semibold text-slate-800">{Number(item.qty || 0).toLocaleString('vi-VN')}</td>
-                                        <td className="px-4 py-2.5"><StatusBadge color={item.statusColor} label={item.status} /></td>
-                                    </tr>
-                                ))}
-                                {!loading && filteredInventoryItems.length === 0 && (
-                                    <tr>
-                                        <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">Chưa có dữ liệu tồn kho.</td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div className="border-t border-slate-100 px-5 py-3 text-center">
-                        <Link to={MANAGER_ROUTES.INVENTORY_OVERVIEW} className="text-sm font-medium text-blue-600 hover:text-blue-700">
-                            Xem toàn bộ danh sách hàng hóa
-                        </Link>
-                    </div>
-                </div>
             </div>
 
             <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 px-5 py-4">

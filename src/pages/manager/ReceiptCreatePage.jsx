@@ -1,8 +1,8 @@
-﻿import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Plus, Trash2 } from 'lucide-react';
-import { MANAGER_ROUTES } from '../../../app/routes/route.constants.js';
-import { approveInventoryReceipt, createInventoryReceipt, getItemCategories } from '../../../features/relief/api.js';
+import { MANAGER_ROUTES } from '../../app/routes/route.constants.js';
+import { approveInventoryReceipt, createInventoryReceipt, getItemCategories } from '../../features/relief/api.js';
 
 const INITIAL_ITEMS = [
     {

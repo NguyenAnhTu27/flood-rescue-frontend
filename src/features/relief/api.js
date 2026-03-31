@@ -1,14 +1,5 @@
 import httpClient from '../../shared/lib/http.js';
 
-const DISTRIBUTION_BASE_PATHS = ['/distribution', '/manager/distribution', '/relief'];
-const DISTRIBUTION_RESOURCE_PATHS = ['/vouchers', '/orders', '/distributions', '/distribution-vouchers'];
-
-function buildDistributionCollectionCandidates() {
-  return DISTRIBUTION_BASE_PATHS.flatMap((basePath) =>
-    DISTRIBUTION_RESOURCE_PATHS.map((resourcePath) => `${basePath}${resourcePath}`)
-  );
-}
-
 /**
  * Manager (cứu trợ) dashboard
  * Thử nhiều endpoint khác nhau để tương thích với BE.
@@ -52,19 +43,9 @@ export async function createInventoryReceipt(payload) {
   return httpClient.post('/inventory/receipts', payload);
 }
 
-// Lấy chi tiết 1 phiếu nhập kho
-export async function getInventoryReceipt(id) {
-  return httpClient.get(`/inventory/receipts/${id}`);
-}
-
 // Duyệt phiếu nhập kho
 export async function approveInventoryReceipt(id) {
   return httpClient.put(`/inventory/receipts/${id}/approve`);
-}
-
-// Hủy phiếu nhập kho
-export async function cancelInventoryReceipt(id) {
-  return httpClient.put(`/inventory/receipts/${id}/cancel`);
 }
 
 // Danh sách phiếu nhập kho (có thể filter theo status, page, size)
@@ -93,11 +74,6 @@ export async function approveInventoryIssue(id) {
   return httpClient.put(`/inventory/issues/${id}/approve`);
 }
 
-// Hủy phiếu xuất kho
-export async function cancelInventoryIssue(id) {
-  return httpClient.put(`/inventory/issues/${id}/cancel`);
-}
-
 // Danh sách phiếu xuất kho (có thể filter theo status, page, size)
 export async function listInventoryIssues(params = {}) {
   const candidates = [
@@ -123,49 +99,6 @@ export async function listInventoryIssues(params = {}) {
 
 export async function getTemporaryInventoryIssues() {
   return httpClient.get('/inventory/issues/temporary');
-}
-
-/**
- * DISTRIBUTION VOUCHERS (phiếu điều phối giao hàng)
- * Backend tách riêng khỏi nghiệp vụ kho.
- */
-
-// Tạo phiếu điều phối giao hàng
-export async function createDistributionVoucher(payload) {
-  const candidates = buildDistributionCollectionCandidates();
-
-  let lastErr;
-  for (const path of candidates) {
-    try {
-      return await httpClient.post(path, payload);
-    } catch (e) {
-      lastErr = e;
-      if (e?.status !== 404 && e?.status !== 401 && e?.status !== 403) {
-        throw e;
-      }
-    }
-  }
-
-  throw lastErr || new Error('Không tìm thấy endpoint phiếu điều phối');
-}
-
-// Danh sách phiếu điều phối
-export async function listDistributionVouchers(params = {}) {
-  const candidates = buildDistributionCollectionCandidates();
-
-  let lastErr;
-  for (const path of candidates) {
-    try {
-      return await httpClient.get(path, { params });
-    } catch (e) {
-      lastErr = e;
-      if (e?.status !== 404 && e?.status !== 401 && e?.status !== 403) {
-        throw e;
-      }
-    }
-  }
-
-  throw lastErr || new Error('Không tìm thấy endpoint danh sách phiếu điều phối');
 }
 
 /**
@@ -308,35 +241,10 @@ export async function getReliefRequest(id) {
   return httpClient.get(`/relief/requests/${id}`);
 }
 
-// Duyệt yêu cầu cứu trợ
-export async function approveReliefRequest(id) {
-  return httpClient.put(`/relief/requests/${id}/approve`);
-}
-
-// Từ chối yêu cầu cứu trợ
-export async function rejectReliefRequest(id, reason) {
-  return httpClient.put(`/relief/requests/${id}/reject`, { reason });
-}
-
 // Tạo yêu cầu cứu trợ mới
 export async function createReliefRequest(payload) {
   // Backend: POST /api/relief/requests
   return httpClient.post('/relief/requests', payload);
-}
-
-export async function getMyCitizenReliefRequests(params = {}) {
-  return httpClient.get('/relief/citizen/requests', { params });
-}
-
-export async function updateMyCitizenReliefRequest(id, payload) {
-  return httpClient.put(`/relief/citizen/requests/${id}`, payload);
-}
-
-export async function cancelMyCitizenReliefRequest(id, reason) {
-  const query = reason && String(reason).trim()
-    ? `?reason=${encodeURIComponent(String(reason).trim())}`
-    : '';
-  return httpClient.delete(`/relief/citizen/requests/${id}${query}`);
 }
 
 export async function approveAndDispatchReliefRequest(id, payload) {
@@ -356,12 +264,6 @@ export async function updateRescuerReliefStatus(id, payload) {
 }
 
 // Lưu nháp yêu cầu cứu trợ
-export async function saveReliefRequestDraft(payload) {
-  // Nếu BE không có endpoint riêng cho draft, ta vẫn POST lên /relief/requests với status = DRAFT
-  const draftPayload = { ...payload, status: 'DRAFT' };
-  return httpClient.post('/relief/requests', draftPayload);
-}
-
 // Tạo mã phiếu tự động
 export async function generateReliefRequestCode() {
   return httpClient.get('/relief/requests/generate-code');
@@ -369,28 +271,4 @@ export async function generateReliefRequestCode() {
 
 export async function generateInventoryIssueCode() {
   return httpClient.get('/inventory/issues/generate-code');
-}
-
-// Lấy danh sách khu vực/địa điểm
-export async function getAreas() {
-  const candidates = [
-    '/areas',
-    '/locations',
-    '/relief/areas',
-    '/manager/areas',
-  ];
-
-  let lastErr;
-  for (const path of candidates) {
-    try {
-      const res = await httpClient.get(path);
-      return res;
-    } catch (e) {
-      lastErr = e;
-      if (e?.status !== 404 && e?.status !== 401 && e?.status !== 403) {
-        throw e;
-      }
-    }
-  }
-  throw lastErr || new Error('Không tìm thấy endpoint khu vực');
 }

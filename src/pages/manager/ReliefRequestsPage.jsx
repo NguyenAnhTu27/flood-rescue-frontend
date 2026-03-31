@@ -13,7 +13,7 @@ import {
     Navigation,
     Trash2,
 } from 'lucide-react';
-import GoogleMap from '../../features/map/components/MapBox.jsx';
+import GoogleMap from '../../features/map/components/GoogleMap.jsx';
 import PriorityBadge from '../../features/rescue/components/PriorityBadge.jsx';
 import Button from '../../shared/ui/Button.jsx';
 import Card from '../../shared/ui/Card.jsx';

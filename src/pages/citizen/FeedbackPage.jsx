@@ -1,308 +1,198 @@
-import React, { useState, useMemo } from 'react';
-import { Star, MessageSquare, User, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
-import Card from '../../shared/ui/Card.jsx';
-import Badge from '../../shared/ui/Badge.jsx';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { CheckCircle2, Square, Star, Heart } from 'lucide-react';
+import { CITIZEN_ROUTES } from '../../app/routes/route.constants.js';
+import { createCitizenSystemFeedback } from '../../features/feedback/api.js';
+import Button from '../../shared/ui/Button.jsx';
+import Textarea from '../../shared/ui/Textarea.jsx';
 
-const MOCK_FEEDBACKS = [
-    {
-        id: 1,
-        name: 'Nguyễn Thị Lan',
-        rating: 5,
-        comment: 'Đội cứu hộ đến rất nhanh, chỉ 20 phút sau khi gửi yêu cầu. Cảm ơn các anh rất nhiều!',
-        createdAt: '2026-03-08T10:30:00',
-        requestCode: 'RQ-881',
-    },
-    {
-        id: 2,
-        name: 'Trần Văn Bình',
-        rating: 5,
-        comment: 'Rất chuyên nghiệp và tận tâm. Đã giúp gia đình tôi an toàn di chuyển đến nơi trú ẩn.',
-        createdAt: '2026-03-08T09:15:00',
-        requestCode: 'RQ-876',
-    },
-    {
-        id: 3,
-        name: 'Lê Minh Hải',
-        rating: 4,
-        comment: 'Dịch vụ tốt, tuy nhiên thời gian chờ đợi hơi lâu do lượng yêu cầu quá nhiều.',
-        createdAt: '2026-03-07T16:45:00',
-        requestCode: 'RQ-860',
-    },
-    {
-        id: 4,
-        name: 'Phạm Thị Mai',
-        rating: 5,
-        comment: 'Cứu hộ đã mang theo đầy đủ nhu yếu phẩm. Thái độ nhân viên rất thân thiện.',
-        createdAt: '2026-03-07T14:00:00',
-        requestCode: 'RQ-855',
-    },
-    {
-        id: 5,
-        name: 'Hoàng Đức Anh',
-        rating: 3,
-        comment: 'Đội đến muộn hơn dự kiến, nhưng sau khi đến thì xử lý rất nhanh chóng.',
-        createdAt: '2026-03-07T11:20:00',
-        requestCode: 'RQ-848',
-    },
-    {
-        id: 6,
-        name: 'Võ Thị Hương',
-        rating: 5,
-        comment: 'Tuyệt vời! Đã giúp cả xóm di dời an toàn. Cảm ơn hệ thống cứu hộ!',
-        createdAt: '2026-03-06T08:30:00',
-        requestCode: 'RQ-830',
-    },
-    {
-        id: 7,
-        name: 'Đặng Quốc Tuấn',
-        rating: 4,
-        comment: 'Hệ thống tracking rất tiện, biết được đội cứu hộ đang ở đâu.',
-        createdAt: '2026-03-06T07:00:00',
-        requestCode: 'RQ-822',
-    },
-    {
-        id: 8,
-        name: 'Bùi Thanh Tâm',
-        rating: 2,
-        comment: 'Phải gọi nhiều lần mới có người tiếp nhận. Cần cải thiện quy trình.',
-        createdAt: '2026-03-05T20:00:00',
-        requestCode: 'RQ-810',
-    },
+const STATUS_OPTIONS = [
+    { id: 'rescued', label: 'Tôi đã được cứu an toàn', value: 'rescued' },
+    { id: 'relief', label: 'Tôi đã nhận đầy đủ hàng cứu trợ', value: 'relief' },
 ];
 
-const FILTER_TABS = [
-    { key: 'all', label: 'Tất cả' },
-    { key: '5', label: '5 sao' },
-    { key: '4', label: '4 sao' },
-    { key: '3', label: '3 sao' },
-    { key: 'low', label: 'Dưới 3 sao' },
-];
-
-const PAGE_SIZE = 5;
-
-function StarRating({ rating, size = 'sm' }) {
-    const sizeClass = size === 'lg' ? 'h-5 w-5' : 'h-3.5 w-3.5';
-    return (
-        <div className="flex items-center gap-0.5">
-            {[1, 2, 3, 4, 5].map((star) => (
-                <Star
-                    key={star}
-                    className={`${sizeClass} ${
-                        star <= rating ? 'fill-amber-400 text-amber-400' : 'text-slate-300'
-                    }`}
-                />
-            ))}
-        </div>
-    );
-}
-
-function getInitials(name) {
-    return name
-        .split(' ')
-        .map((w) => w[0])
-        .slice(-2)
-        .join('')
-        .toUpperCase();
-}
-
-function formatTimeAgo(dateString) {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'Vừa xong';
-    if (diffMins < 60) return `${diffMins} phút trước`;
-    if (diffHours < 24) return `${diffHours} giờ trước`;
-    if (diffDays < 7) return `${diffDays} ngày trước`;
-    return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
+const RATING_LABELS = {
+    1: 'Rất không hài lòng',
+    2: 'Không hài lòng',
+    3: 'Bình thường',
+    4: 'Rất hài lòng',
+    5: 'Cực kỳ hài lòng',
+};
 
 export default function FeedbackPage() {
-    const [activeTab, setActiveTab] = useState('all');
-    const [currentPage, setCurrentPage] = useState(1);
+    const navigate = useNavigate();
+    const [confirmedStatus, setConfirmedStatus] = useState({
+        rescued: true,
+        relief: true,
+    });
+    const [rating, setRating] = useState(4);
+    const [hoverRating, setHoverRating] = useState(0);
+    const [message, setMessage] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState('');
 
-    const filtered = useMemo(() => {
-        if (activeTab === 'all') return MOCK_FEEDBACKS;
-        if (activeTab === 'low') return MOCK_FEEDBACKS.filter((f) => f.rating < 3);
-        return MOCK_FEEDBACKS.filter((f) => f.rating === Number(activeTab));
-    }, [activeTab]);
+    const displayRating = hoverRating || rating;
 
-    const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-    const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-
-    // Stats
-    const totalCount = MOCK_FEEDBACKS.length;
-    const avgRating = totalCount > 0
-        ? (MOCK_FEEDBACKS.reduce((sum, f) => sum + f.rating, 0) / totalCount).toFixed(1)
-        : '0.0';
-
-    const distribution = useMemo(() => {
-        const dist = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-        MOCK_FEEDBACKS.forEach((f) => { dist[f.rating] = (dist[f.rating] || 0) + 1; });
-        return dist;
-    }, []);
-
-    const handleTabChange = (key) => {
-        setActiveTab(key);
-        setCurrentPage(1);
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        setSubmitError('');
+        try {
+            await createCitizenSystemFeedback({
+                rating,
+                feedbackContent: message?.trim() || null,
+                rescuedConfirmed: Boolean(confirmedStatus.rescued),
+                reliefConfirmed: Boolean(confirmedStatus.relief),
+            });
+            navigate(CITIZEN_ROUTES.DASHBOARD);
+        } catch (err) {
+            setSubmitError(err?.message || 'Không thể gửi phản hồi. Vui lòng thử lại.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
-        <div className="space-y-6 pb-10">
-            {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold text-slate-900">Phản hồi từ Công dân</h1>
-                <p className="mt-1 text-sm text-slate-500">
-                    Đánh giá và nhận xét từ người dân về dịch vụ cứu hộ
-                </p>
-            </div>
-
-            {/* Stats header */}
-            <div className="grid gap-4 sm:grid-cols-3">
-                {/* Average rating */}
-                <Card className="flex items-center gap-4 px-5 py-4">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50">
-                        <Star className="h-7 w-7 fill-amber-400 text-amber-400" />
+        <div className="min-h-[calc(100vh-120px)] bg-slate-50/80 py-8">
+            <div className="mx-auto max-w-lg px-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+                    {/* Header */}
+                    <div className="text-center">
+                        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
+                            <CheckCircle2 className="h-8 w-8 text-green-600" />
+                        </div>
+                        <h1 className="mt-4 text-xl font-bold text-slate-900">
+                            Đánh giá hệ thống & Gửi phản hồi
+                        </h1>
+                        <p className="mt-2 text-sm text-slate-600">
+                            Chia sẻ mức độ hài lòng của bạn với hệ thống cứu hộ/cứu trợ để đội
+                            quản trị cải thiện trải nghiệm phục vụ.
+                        </p>
                     </div>
-                    <div>
-                        <div className="text-3xl font-bold text-slate-900">{avgRating}</div>
-                        <div className="text-xs text-slate-500">Đánh giá trung bình</div>
-                    </div>
-                </Card>
 
-                {/* Total feedbacks */}
-                <Card className="flex items-center gap-4 px-5 py-4">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50">
-                        <MessageSquare className="h-7 w-7 text-blue-600" />
-                    </div>
-                    <div>
-                        <div className="text-3xl font-bold text-slate-900">{totalCount}</div>
-                        <div className="text-xs text-slate-500">Tổng phản hồi</div>
-                    </div>
-                </Card>
-
-                {/* Star distribution */}
-                <Card className="px-5 py-4">
-                    <div className="space-y-1.5">
-                        {[5, 4, 3, 2, 1].map((star) => {
-                            const count = distribution[star] || 0;
-                            const pct = totalCount > 0 ? (count / totalCount) * 100 : 0;
-                            return (
-                                <div key={star} className="flex items-center gap-2 text-xs">
-                                    <span className="w-6 text-right font-medium text-slate-600">{star}</span>
-                                    <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                                    <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                                        <div
-                                            className="h-full rounded-full bg-amber-400"
-                                            style={{ width: `${pct}%` }}
-                                        />
-                                    </div>
-                                    <span className="w-6 text-right text-slate-500">{count}</span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </Card>
-            </div>
-
-            {/* Filter tabs */}
-            <div className="flex flex-wrap gap-2">
-                {FILTER_TABS.map((tab) => (
-                    <button
-                        key={tab.key}
-                        onClick={() => handleTabChange(tab.key)}
-                        className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-                            activeTab === tab.key
-                                ? 'bg-blue-600 text-white shadow-sm'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
-
-            {/* Feedback list */}
-            {paginated.length === 0 ? (
-                <Card className="px-6 py-12 text-center">
-                    <MessageSquare className="mx-auto h-10 w-10 text-slate-300" />
-                    <p className="mt-3 text-sm text-slate-500">Không có phản hồi nào trong danh mục này</p>
-                </Card>
-            ) : (
-                <div className="space-y-3">
-                    {paginated.map((feedback) => (
-                        <Card key={feedback.id} className="px-5 py-4">
-                            <div className="flex items-start gap-3">
-                                {/* Avatar */}
-                                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
-                                    {getInitials(feedback.name)}
-                                </div>
-
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm font-semibold text-slate-900">
-                                                {feedback.name}
-                                            </span>
-                                            <StarRating rating={feedback.rating} />
-                                        </div>
-                                        <span className="flex items-center gap-1 text-xs text-slate-400 whitespace-nowrap">
-                                            <Clock className="h-3 w-3" />
-                                            {formatTimeAgo(feedback.createdAt)}
-                                        </span>
-                                    </div>
-
-                                    <p className="mt-1.5 text-sm text-slate-700 leading-relaxed">
-                                        {feedback.comment}
-                                    </p>
-
-                                    <div className="mt-2">
-                                        <Badge size="sm" variant="default">
-                                            Yêu cầu: {feedback.requestCode}
-                                        </Badge>
-                                    </div>
-                                </div>
+                    <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+                        {/* Xác nhận tình trạng */}
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <Square className="h-4 w-4 fill-green-500 text-green-500" />
+                                <h2 className="font-semibold text-slate-900">
+                                    Xác nhận tình trạng
+                                </h2>
                             </div>
-                        </Card>
-                    ))}
-                </div>
-            )}
+                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                {STATUS_OPTIONS.map((opt) => {
+                                    const isChecked = confirmedStatus[opt.id];
+                                    return (
+                                        <button
+                                            key={opt.id}
+                                            type="button"
+                                            onClick={() =>
+                                                setConfirmedStatus((prev) => ({
+                                                    ...prev,
+                                                    [opt.id]: !prev[opt.id],
+                                                }))
+                                            }
+                                            className={`flex items-center gap-3 rounded-xl border-2 bg-white p-4 text-left transition ${
+                                                isChecked
+                                                    ? 'border-green-500 text-green-700'
+                                                    : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                                            }`}
+                                        >
+                                            {isChecked ? (
+                                                <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" />
+                                            ) : (
+                                                <div className="h-5 w-5 shrink-0 rounded-full border-2 border-slate-300" />
+                                            )}
+                                            <span className="text-sm font-medium">{opt.label}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2">
-                    <button
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                        <ChevronLeft className="h-4 w-4" />
-                    </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                        <button
-                            key={page}
-                            onClick={() => setCurrentPage(page)}
-                            className={`flex h-8 w-8 items-center justify-center rounded-lg text-sm font-medium transition ${
-                                page === currentPage
-                                    ? 'bg-blue-600 text-white shadow-sm'
-                                    : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
-                            }`}
-                        >
-                            {page}
-                        </button>
-                    ))}
-                    <button
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={currentPage === totalPages}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                        <ChevronRight className="h-4 w-4" />
-                    </button>
+                        {/* Đánh giá dịch vụ */}
+                        <div>
+                            <h2 className="font-semibold text-slate-900">
+                                Đánh giá dịch vụ cứu hộ
+                            </h2>
+                            <div className="mt-3 flex gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <button
+                                        key={star}
+                                        type="button"
+                                        onClick={() => setRating(star)}
+                                        onMouseEnter={() => setHoverRating(star)}
+                                        onMouseLeave={() => setHoverRating(0)}
+                                        className="p-1 transition hover:scale-110"
+                                    >
+                                        <Star
+                                            className={`h-8 w-8 ${
+                                                star <= displayRating
+                                                    ? 'fill-green-500 text-green-500'
+                                                    : 'text-slate-200'
+                                            }`}
+                                        />
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="mt-2 text-sm font-medium text-green-700">
+                                {RATING_LABELS[displayRating]}
+                            </p>
+                        </div>
+
+                        {/* Lời nhắn / Phản hồi */}
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <Square className="h-4 w-4 fill-green-500 text-green-500" />
+                                <h2 className="font-semibold text-slate-900">
+                                    Lời nhắn / Phản hồi
+                                </h2>
+                            </div>
+                            <Textarea
+                                value={message}
+                                onChange={(e) => setMessage(e.target.value)}
+                                placeholder="Ví dụ: hệ thống dễ dùng, phản hồi nhanh/chậm, đề xuất cải thiện..."
+                                rows={4}
+                                className="mt-3"
+                            />
+                        </div>
+
+                        {/* Block đồng hành */}
+                        <div className="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50/50 p-4">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100">
+                                <Heart className="h-5 w-5 text-green-600" />
+                            </div>
+                            <span className="font-medium text-slate-800">Đồng hành cùng bạn</span>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="space-y-3 pt-2">
+                            {submitError && (
+                                <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                                    {submitError}
+                                </div>
+                            )}
+                            <Button
+                                type="submit"
+                                variant="success"
+                                size="lg"
+                                fullWidth
+                                disabled={isSubmitting}
+                            >
+                                {isSubmitting ? 'Đang gửi...' : 'Gửi phản hồi'}
+                            </Button>
+                            <p className="text-center">
+                                <Link
+                                    to={CITIZEN_ROUTES.DASHBOARD}
+                                    className="text-sm text-slate-500 hover:text-slate-700 underline"
+                                >
+                                    Trở về trang chủ
+                                </Link>
+                            </p>
+                        </div>
+                    </form>
                 </div>
-            )}
+            </div>
         </div>
     );
 }

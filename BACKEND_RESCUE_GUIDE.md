@@ -93,7 +93,7 @@ CREATE TABLE rescue_assignments (
     description: "Mô tả chi tiết tình huống...",
     peopleCount: 4,
     urgency: "HIGH", // HIGH | MEDIUM | LOW
-    contactPhone: "0912345678",
+    // contact phone is appended into description if provided
     attachments: [File, File, ...] // Array of image files
 }
 ```
@@ -112,7 +112,7 @@ CREATE TABLE rescue_assignments (
         "peopleCount": 4,
         "urgency": "HIGH",
         "status": "PENDING",
-        "contactPhone": "0912345678",
+        // contact phone is appended into description if provided
         "attachments": [
             {
                 "id": 1,
@@ -131,7 +131,7 @@ CREATE TABLE rescue_assignments (
 - `description`: Required, min 10 chars
 - `peopleCount`: Required, min 1, max 1000
 - `urgency`: Required, must be HIGH/MEDIUM/LOW
-- `contactPhone`: Required, valid Vietnamese phone format
+- `contactPhone`: Not used (append to description instead)
 - `attachments`: Optional, max 10 files, max 10MB each, only images
 
 ### 2.2. Lấy danh sách yêu cầu (Citizen)
@@ -185,7 +185,7 @@ CREATE TABLE rescue_assignments (
         "peopleCount": 4,
         "urgency": "HIGH",
         "status": "PENDING",
-        "contactPhone": "0912345678",
+        // contact phone is appended into description if provided
         "attachments": [...],
         "assignments": [...],
         "createdAt": "2024-01-15T10:30:00Z",
