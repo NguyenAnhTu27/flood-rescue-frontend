@@ -89,12 +89,8 @@ async function httpClient(url, options = {}) {
 
     if (contentType && contentType.includes("application/json")) {
       data = await response.json();
-      if (data && typeof data === "object") {
-        data = normalizeObjectStrings(data);
-      }
     } else {
-      const textData = await response.text();
-      data = normalizeObjectStrings(textData);
+      data = await response.text();
     }
 
     // Log response in development
