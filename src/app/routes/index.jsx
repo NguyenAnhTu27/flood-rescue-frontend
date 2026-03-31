@@ -9,7 +9,6 @@ import {
     RESCUER_ROUTES,
     MANAGER_ROUTES,
     ADMIN_ROUTES,
-    ACCOUNT_ROUTES,
 } from './route.constants.js';
 import RootLayout from '../../layouts/RootLayout.jsx';
 import AuthLayout from '../../layouts/AuthLayout.jsx';
@@ -26,7 +25,6 @@ import StaticContentPage from '../../pages/public/StaticContentPage.jsx';
 // Auth
 import LoginPage from '../../pages/auth/LoginPage.jsx';
 import RegisterPage from '../../pages/auth/RegisterPage.jsx';
-import ProfilePage from '../../pages/account/ProfilePage.jsx';
 
 // Citizen
 import CitizenDashboard from '../../pages/citizen/CItizenDashboard.jsx';
@@ -42,16 +40,13 @@ import ReliefRequestStatusPage from '../../pages/citizen/ReliefRequestStatusPage
 
 // Coordinator
 import CoordinatorDashboard from '../../pages/coordinator/CoordinatorDashboardPage.jsx';
-import RescueQueuePage from '../../pages/coordinator/RescueQueuePage.jsx';
 import RescueVerifyPage from '../../pages/coordinator/RescueVerifyPage.jsx';
 import RescueAssignPage from '../../pages/coordinator/RescueAssignPage.jsx';
 import RescueRequestHandle from '../../pages/coordinator/RescueRequestHandle.jsx';
 import RescueHistoryPage from '../../pages/coordinator/RescueHistoryPage.jsx';
 import TeamWorkloadPage from '../../pages/coordinator/TeamWorkloadPage.jsx';
-import RescueRequestMerge from '../../pages/coordinator/RescueRequestMerge.jsx';
 import RescuePrioritizePage from '../../pages/coordinator/RescuePrioritizePage.jsx';
 import DuplicateManagementPage from '../../pages/coordinator/DuplicateManagementPage.jsx';
-import EscalationPage from '../../pages/coordinator/EscalationPage.jsx';
 import BlockedCitizensPage from '../../pages/coordinator/BlockedCitizensPage.jsx';
 
 // Rescuer
@@ -91,9 +86,6 @@ import ReportsPage from '../../pages/manager/ReportsPage.jsx';
 
 // Admin
 import AdminDashboard from '../../pages/admin/AdminDashboard.jsx';
-import RolesPermissionsPage from '../../pages/admin/RolesPermissionsPage.jsx';
-import SystemCatalogPage from '../../pages/admin/SystemCatalogPage.jsx';
-import NotificationTemplatesPage from '../../pages/admin/NotificationTemplatesPage.jsx';
 import UserManagementPage from '../../pages/admin/UserManagementPage.jsx';
 import SystemSettingsPage from '../../pages/admin/SystemSettingsPage.jsx';
 import AuditLogsPage from '../../pages/admin/AuditLogsPage.jsx';
@@ -157,18 +149,6 @@ export default function AppRoutes() {
                     <AuthLayout>
                         <RegisterPage />
                     </AuthLayout>
-                }
-            />
-
-
-            <Route
-                path={ACCOUNT_ROUTES.PROFILE}
-                element={
-                    <RequireAuth>
-                        <RootLayout>
-                            <ProfilePage />
-                        </RootLayout>
-                    </RequireAuth>
                 }
             />
 
@@ -307,31 +287,6 @@ export default function AppRoutes() {
                     </RequireAuth>
                 }
             />
-
-            <Route
-                path={COORDINATOR_ROUTES.RESCUE_QUEUE}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['COORDINATOR']}>
-                            <RootLayout>
-                                <RescueQueuePage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
-                path={COORDINATOR_ROUTES.RESCUE_QUEUE}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['COORDINATOR']}>
-                            <RootLayout>
-                                <RescueQueuePage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
             <Route
                 path={COORDINATOR_ROUTES.VERIFY_REQUEST}
                 element={
@@ -393,18 +348,6 @@ export default function AppRoutes() {
                 }
             />
             <Route
-                path={COORDINATOR_ROUTES.MERGE_REQUESTS}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['COORDINATOR']}>
-                            <RootLayout>
-                                <RescueRequestMerge />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-            <Route
                 path={COORDINATOR_ROUTES.PRIORITIZE_REQUEST}
                 element={
                     <RequireAuth>
@@ -423,20 +366,6 @@ export default function AppRoutes() {
                         <RequireRole allow={['COORDINATOR']}>
                             <RootLayout>
                                 <DuplicateManagementPage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-
-
-            <Route
-                path={COORDINATOR_ROUTES.ESCALATION}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['COORDINATOR']}>
-                            <RootLayout>
-                                <EscalationPage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>
@@ -863,45 +792,6 @@ export default function AppRoutes() {
                         <RequireRole allow={['ADMIN']}>
                             <RootLayout>
                                 <TeamCreatePage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-
-            <Route
-                path={ADMIN_ROUTES.ROLES_PERMISSIONS}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['ADMIN']}>
-                            <RootLayout>
-                                <RolesPermissionsPage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-
-            <Route
-                path={ADMIN_ROUTES.SYSTEM_CATALOG}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['ADMIN']}>
-                            <RootLayout>
-                                <SystemCatalogPage />
-                            </RootLayout>
-                        </RequireRole>
-                    </RequireAuth>
-                }
-            />
-
-            <Route
-                path={ADMIN_ROUTES.NOTIFICATION_TEMPLATES}
-                element={
-                    <RequireAuth>
-                        <RequireRole allow={['ADMIN']}>
-                            <RootLayout>
-                                <NotificationTemplatesPage />
                             </RootLayout>
                         </RequireRole>
                     </RequireAuth>

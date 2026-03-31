@@ -32,9 +32,9 @@ export const MAPBOX_STYLE_URL =
 // Tuỳ chọn: endpoint BE dùng Mapbox để reverse geocode, nếu có
 export const MAPBOX_REVERSE_GEOCODE_URL =
   import.meta.env.VITE_MAPBOX_REVERSE_GEOCODE_URL || '';
-
 export const IS_DEV = import.meta.env.DEV;
 export const IS_PROD = import.meta.env.PROD;
 
+// Base URL cho file/ảnh upload (không có /api)
 export const FILE_BASE_URL =
   normalizeBaseUrl(import.meta.env.VITE_FILE_BASE_URL) || backendOriginFromApi;

@@ -1,3 +1,9 @@
+// ===============================
+// ROUTE CONSTANTS
+// Flood Rescue & Relief System
+// ===============================
+
+// -------- PUBLIC ROUTES --------
 export const PUBLIC_ROUTES = {
     HOME: '/',
     EMERGENCY_GUIDE: '/huong-dan-khan-cap',
@@ -5,17 +11,15 @@ export const PUBLIC_ROUTES = {
     PRIVACY_POLICY: '/chinh-sach-bao-mat',
     SUPPORT_CONTACT: '/lien-he-ho-tro',
     NOT_FOUND: '*',
-};
-
-export const AUTH_ROUTES = {
+  };
+  
+  // -------- AUTH ROUTES --------
+  export const AUTH_ROUTES = {
     LOGIN: '/dang-nhap',
-    REGISTER: '/dang-ky',
-};
-
-export const ACCOUNT_ROUTES = {
-    PROFILE: '/ho-so-ca-nhan',
-};
-
+    REGISTER: '/dang-ky', // chỉ Citizen dùng
+  };
+  
+  // -------- CITIZEN ROUTES --------
 export const CITIZEN_ROUTES = {
     DASHBOARD: '/cong-dan',
     MY_RESCUE_REQUESTS: '/cong-dan/yeu-cau-cuu-ho',
@@ -27,9 +31,10 @@ export const CITIZEN_ROUTES = {
     UPDATE_RESCUE_REQUEST: '/cong-dan/cap-nhat-yeu-cau',
     UPDATE_RELIEF_REQUEST: '/cong-dan/cap-nhat-yeu-cau-cuu-tro',
     FEEDBACK: '/cong-dan/phan-hoi',
-};
-
-export const COORDINATOR_ROUTES = {
+  };
+  
+  // -------- RESCUE COORDINATOR ROUTES --------
+  export const COORDINATOR_ROUTES = {
     DASHBOARD: '/dieu-phoi',
     RESCUE_QUEUE: '/dieu-phoi/danh-sach-yeu-cau',
     TASK_MONITOR: '/dieu-phoi/giam-sat-nhiem-vu',
@@ -42,8 +47,9 @@ export const COORDINATOR_ROUTES = {
     DUPLICATE_MANAGEMENT: '/dieu-phoi/trung-lap',
     ESCALATION: '/dieu-phoi/leo-thang',
     BLOCKED_CITIZENS: '/dieu-phoi/da-khoa',
-};
-
+  };
+  
+  // -------- RESCUE TEAM ROUTES --------
 export const RESCUER_ROUTES = {
     DASHBOARD: '/doi-cuu-ho',
     MY_ASSIGNMENTS: '/doi-cuu-ho/nhiem-vu',
@@ -68,9 +74,10 @@ export const MANAGER_ROUTES = {
     RELIEF_REQUEST_CREATE: '/quan-ly/tao-yeu-cau-cuu-tro',
     ASSETS_MANAGEMENT: '/quan-ly/phuong-tien',
     CREATE_ASSET: '/quan-ly/tao-phuong-tien',
-};
-
-export const ADMIN_ROUTES = {
+  };
+  
+  // -------- ADMIN ROUTES --------
+  export const ADMIN_ROUTES = {
     DASHBOARD: '/admin',
     USERS_MANAGEMENT: '/admin/nguoi-dung',
     TEAMS_MANAGEMENT: '/admin/doi-cuu-ho',
@@ -82,13 +89,13 @@ export const ADMIN_ROUTES = {
     AUDIT_LOGS: '/admin/nhat-ky-he-thong',
     SYSTEM_FEEDBACKS: '/admin/phan-hoi-he-thong',
     CONTENT_PAGES: '/admin/noi-dung-trang',
-};
-
-export const PRIVATE_ROUTES = {
-    ...ACCOUNT_ROUTES,
+  };
+  
+  // -------- ALL PRIVATE ROUTES (OPTIONAL HELPER) --------
+  export const PRIVATE_ROUTES = {
     ...CITIZEN_ROUTES,
     ...COORDINATOR_ROUTES,
     ...RESCUER_ROUTES,
     ...MANAGER_ROUTES,
     ...ADMIN_ROUTES,
-};
+  };

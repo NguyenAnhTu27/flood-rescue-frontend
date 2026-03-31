@@ -458,94 +458,95 @@ export default function RescueAssignPage() {
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
                 <div className="grid min-h-0 grid-cols-1 xl:grid-cols-[22rem_minmax(0,1fr)_22rem]">
                     <div className="flex max-h-[320px] flex-col border-b border-slate-200 xl:max-h-none xl:border-b-0 xl:border-r">
-                        <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
-                            <h2 className="text-sm font-bold text-slate-900">Đội cứu hộ</h2>
-                            <p className="mt-0.5 text-xs text-slate-600">Chọn 1 đội để nhận nhiệm vụ</p>
-                        </div>
-                        <div className="flex-1 overflow-y-auto">
-                            {loadingResources ? (
-                                <div className="p-4 text-xs text-slate-500">?ang t?i Đội cứu hộ...</div>
-                            ) : teams.length === 0 ? (
-                                <div className="p-4 text-xs text-slate-500">Ch?a c? Đội cứu hộ n?o.</div>
-                            ) : (
-                                teams.map((team) => {
-                                    const checked = String(team.id) === String(selectedTeamId);
-                                    const badge = statusBadge(team.workloadStatus || team.status || team.teamStatus || 'ACTIVE');
-                                    return (
-                                        <label key={team.id} className={`flex cursor-pointer items-start gap-3 border-b border-slate-100 px-4 py-3 ${checked ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
-                                            <input
-                                                type="radio"
-                                                name="selectedTeam"
-                                                checked={checked}
-                                                onChange={() => setSelectedTeamId(String(team.id))}
-                                                className="mt-1 h-4 w-4"
-                                            />
-                                            <div className="min-w-0 flex-1">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <p className="truncate text-xs font-semibold text-slate-900">{team.name || `Team #${team.id}`}</p>
-                                                    <Badge variant={badge.variant} size="sm">{badge.label}</Badge>
-                                                </div>
-                                                <p className="mt-0.5 text-[11px] text-slate-500">{team.memberCount || team.members?.length || 0} thành viên</p>
-                                                <p className="mt-0.5 text-[11px] font-semibold text-indigo-700">
-                                                    Task đang có: {Number(team.activeTaskCount || 0)}
-                                                </p>
-                                                {Number.isFinite(Number(team.currentLatitude)) && Number.isFinite(Number(team.currentLongitude)) && (
-                                                    <p className="mt-0.5 text-[11px] text-blue-700">
-                                                        GPS: {Number(team.currentLatitude).toFixed(6)}, {Number(team.currentLongitude).toFixed(6)}
-                                                    </p>
-                                                )}
+                    <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                        <h2 className="text-sm font-bold text-slate-900">Đội cứu hộ</h2>
+                        <p className="mt-0.5 text-xs text-slate-600">Chọn 1 đội để nhận nhiệm vụ</p>
+                    </div>
+                    <div className="flex-1 overflow-y-auto">
+                        {loadingResources ? (
+                            <div className="p-4 text-xs text-slate-500">Đang tải đội cứu hộ...</div>
+                        ) : teams.length === 0 ? (
+                            <div className="p-4 text-xs text-slate-500">Chưa có đội cứu hộ nào.</div>
+                        ) : (
+                            teams.map((team) => {
+                                const checked = String(team.id) === String(selectedTeamId);
+                                const badge = statusBadge(team.workloadStatus || team.status || team.teamStatus || 'ACTIVE');
+                                return (
+                                    <label key={team.id} className={`flex cursor-pointer items-start gap-3 border-b border-slate-100 px-4 py-3 ${checked ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
+                                        <input
+                                            type="radio"
+                                            name="selectedTeam"
+                                            checked={checked}
+                                            onChange={() => setSelectedTeamId(String(team.id))}
+                                            className="mt-1 h-4 w-4"
+                                        />
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <p className="truncate text-xs font-semibold text-slate-900">{team.name || `Team #${team.id}`}</p>
+                                                <Badge variant={badge.variant} size="sm">{badge.label}</Badge>
                                             </div>
-                                        </label>
-                                    );
-                                })
-                            )}
+                                            <p className="mt-0.5 text-[11px] text-slate-500">{team.memberCount || team.members?.length || 0} thành viên</p>
+                                            <p className="mt-0.5 text-[11px] font-semibold text-indigo-700">
+                                                Task đang có: {Number(team.activeTaskCount || 0)}
+                                            </p>
+                                            {Number.isFinite(Number(team.currentLatitude)) && Number.isFinite(Number(team.currentLongitude)) && (
+                                                <p className="mt-0.5 text-[11px] text-blue-700">
+                                                    GPS: {Number(team.currentLatitude).toFixed(6)}, {Number(team.currentLongitude).toFixed(6)}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </label>
+                                );
+                            })
+                        )}
+                    </div>
+                </div>
+
+                <div className="flex min-w-0 flex-1 flex-col bg-slate-100 xl:border-x xl:border-slate-200">
+                    <div className="z-10 border-b border-slate-200 bg-white px-4 py-3">
+                        <div className="grid gap-3">
+                            <div>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Điều phối / Phân công</p>
+                                <h3 className="text-sm font-bold text-slate-900">Phân công yêu cầu đã xác minh cho đội cứu hộ</h3>
+                                <p className="mt-0.5 text-xs text-slate-600">
+                                    Chỉ hiển thị yêu cầu trạng thái VERIFIED để phân công.
+                                </p>
+                                {selectedRequest?.emergency && (
+                                    <p className="mt-1 text-xs font-semibold text-amber-700">
+                                        Trạng thái hàng đợi: {emergencyActionLabel(selectedRequest?.emergencyActionStatus) || 'CHỜ XỬ LÝ'}
+                                    </p>
+                                )}
+                                {Number.isFinite(Number(selectedTeam?.currentLatitude)) && Number.isFinite(Number(selectedTeam?.currentLongitude)) && (
+                                    <p className="mt-1 text-xs font-semibold text-blue-700">
+                                        Vị trí đội được chọn: {Number(selectedTeam.currentLatitude).toFixed(6)}, {Number(selectedTeam.currentLongitude).toFixed(6)}
+                                    </p>
+                                )}
+                                <p className="mt-1 text-xs text-slate-600">
+                                    Tài sản khả dụng cho đội (phương tiện + thiết bị): {availableAssetsForTeam.length}
+                                </p>
+                                {blockedTeamId && (
+                                    <p className="mt-1 text-xs font-semibold text-rose-700">
+                                        Yêu cầu khẩn cấp: không thể phân công lại cho đội #{blockedTeamId} (đội đã gửi khẩn cấp).
+                                    </p>
+                                )}
+                            </div>
                         </div>
                     </div>
 
-                    <div className="flex min-w-0 flex-1 flex-col bg-slate-100 xl:border-x xl:border-slate-200">
-                        <div className="z-10 border-b border-slate-200 bg-white px-4 py-3">
-                            <div className="grid gap-3">
-                                <div>
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Điều phối / Phân công</p>
-                                    <h3 className="text-sm font-bold text-slate-900">Ph?n c?ng y?u c?u ?? x?c minh cho Đội cứu hộ</h3>
-                                    <p className="mt-0.5 text-xs text-slate-600">
-                                        Chỉ hiển thị yêu cầu trạng thái VERIFIED để phân công.
-                                    </p>
-                                    {selectedRequest?.emergency && (
-                                        <p className="mt-1 text-xs font-semibold text-amber-700">
-                                            Trạng thái hàng đợi: {emergencyActionLabel(selectedRequest?.emergencyActionStatus) || 'CHỜ XỬ LÝ'}
-                                        </p>
-                                    )}
-                                    {Number.isFinite(Number(selectedTeam?.currentLatitude)) && Number.isFinite(Number(selectedTeam?.currentLongitude)) && (
-                                        <p className="mt-1 text-xs font-semibold text-blue-700">
-                                            Vị trí đội được chọn: {Number(selectedTeam.currentLatitude).toFixed(6)}, {Number(selectedTeam.currentLongitude).toFixed(6)}
-                                        </p>
-                                    )}
-                                    <p className="mt-1 text-xs text-slate-600">
-                                        Tài sản khả dụng cho đội (phương tiện + thiết bị): {availableAssetsForTeam.length}
-                                    </p>
-                                    {blockedTeamId && (
-                                        <p className="mt-1 text-xs font-semibold text-rose-700">
-                                            Yêu cầu khẩn cấp: không thể phân công lại cho đội #{blockedTeamId} (đội đã gửi khẩn cấp).
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="h-[260px] sm:h-[420px] xl:h-full xl:min-h-[460px]">
-                            <GoogleMap
-                                center={mapCenter}
-                                markerPosition={
-                                    Number.isFinite(Number(selectedRequest?.latitude || selectedRequest?.lat))
-                                        && Number.isFinite(Number(selectedRequest?.longitude || selectedRequest?.lng))
-                                        ? {
-                                            lat: Number(selectedRequest?.latitude || selectedRequest?.lat),
-                                            lng: Number(selectedRequest?.longitude || selectedRequest?.lng),
-                                        }
-                                        : undefined
-                                }
-                                additionalMarkers={[
+                    <div className="h-[260px] sm:h-[420px] xl:h-full xl:min-h-[460px]">
+                        <GoogleMap
+                            center={mapCenter}
+                            markerPosition={
+                                Number.isFinite(Number(selectedRequest?.latitude || selectedRequest?.lat))
+                                    && Number.isFinite(Number(selectedRequest?.longitude || selectedRequest?.lng))
+                                    ? {
+                                        lat: Number(selectedRequest?.latitude || selectedRequest?.lat),
+                                        lng: Number(selectedRequest?.longitude || selectedRequest?.lng),
+                                    }
+                                    : undefined
+                            }
+                            additionalMarkers={
+                                [
                                     ...(Number.isFinite(Number(selectedTeam?.currentLatitude))
                                         && Number.isFinite(Number(selectedTeam?.currentLongitude))
                                         ? [{
@@ -567,79 +568,80 @@ export default function RescueAssignPage() {
                                             };
                                         })
                                         .filter(Boolean),
-                                ]}
-                                zoom={13}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex max-h-[340px] flex-col border-t border-slate-200 xl:max-h-none xl:border-l xl:border-slate-200 xl:border-t-0">
-                        <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
-                            <div className="flex items-center justify-between gap-3">
-                                <div>
-                                    <h2 className="text-sm font-bold text-slate-900">Yêu cầu VERIFIED</h2>
-                                    <p className="mt-0.5 text-xs text-slate-600">Chọn yêu cầu để xem map và phân công</p>
-                                </div>
-                                <label className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700">
-                                    <input
-                                        type="checkbox"
-                                        checked={mergeMode}
-                                        onChange={(e) => setMergeMode(e.target.checked)}
-                                        className="h-4 w-4 rounded border-slate-300"
-                                    />
-                                    Gộp
-                                </label>
-                            </div>
-                        </div>
-                        <div className="flex-1 overflow-y-auto">
-                            {loadingRequests ? (
-                                <div className="p-4 text-xs text-slate-500">Đang tải yêu cầu VERIFIED...</div>
-                            ) : availableRequests.length === 0 ? (
-                                <div className="p-4 text-xs text-slate-500">Không có yêu cầu VERIFIED.</div>
-                            ) : (
-                                availableRequests.map((request) => {
-                                    const checked = selectedRequestIds.includes(String(request.id));
-                                    const emergencyBadge = request.emergency
-                                        ? (emergencyActionLabel(request.emergencyActionStatus) || 'KHẨN CẤP')
-                                        : null;
-                                    return (
-                                        <div key={request.id} className={`border-b border-slate-100 px-4 py-3 ${checked ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
-                                            <label className="flex cursor-pointer items-start gap-3">
-                                                <input
-                                                    type={mergeMode ? 'checkbox' : 'radio'}
-                                                    name="selectedRequest"
-                                                    checked={checked}
-                                                    onChange={() => toggleRequestSelection(request.id)}
-                                                    className="mt-1 h-4 w-4"
-                                                />
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="flex items-center justify-between gap-2">
-                                                        <p className="truncate text-xs font-semibold text-slate-900">{request.code || `Yêu cầu #${request.id}`}</p>
-                                                        <Badge variant="success" size="sm">VERIFIED</Badge>
-                                                    </div>
-                                                    <p className="mt-0.5 text-[11px] text-slate-600">Địa chỉ: {request.addressText || 'Không có địa chỉ'}</p>
-                                                    <p className="mt-0.5 text-[11px] text-slate-500">Số người: {request.affectedPeopleCount ?? '-'}</p>
-                                                    {emergencyBadge && (
-                                                        <p className="mt-0.5 text-[11px] font-semibold text-amber-700">{emergencyBadge}</p>
-                                                    )}
-                                                </div>
-                                            </label>
-                                            <div className="mt-2 flex justify-end">
-                                                <button
-                                                    type="button"
-                                                    className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-white"
-                                                    onClick={() => setDetailRequestId(String(request.id))}
-                                                >
-                                                    Xem chi tiết
-                                                </button>
-                                            </div>
-                                        </div>
-                                    );
-                                })
-                            )}
-                        </div>
+                                ]
+                            }
+                            zoom={13}
+                        />
                     </div>
                 </div>
+
+                <div className="flex max-h-[340px] flex-col border-t border-slate-200 xl:max-h-none xl:border-l xl:border-slate-200 xl:border-t-0">
+                    <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                        <div className="flex items-center justify-between gap-3">
+                            <div>
+                                <h2 className="text-sm font-bold text-slate-900">Yêu cầu VERIFIED</h2>
+                                <p className="mt-0.5 text-xs text-slate-600">Chọn yêu cầu để xem map và phân công</p>
+                            </div>
+                            <label className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700">
+                                <input
+                                    type="checkbox"
+                                    checked={mergeMode}
+                                    onChange={(e) => setMergeMode(e.target.checked)}
+                                    className="h-4 w-4 rounded border-slate-300"
+                                />
+                                Gộp
+                            </label>
+                        </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto">
+                        {loadingRequests ? (
+                            <div className="p-4 text-xs text-slate-500">Đang tải yêu cầu VERIFIED...</div>
+                        ) : availableRequests.length === 0 ? (
+                            <div className="p-4 text-xs text-slate-500">Không có yêu cầu VERIFIED.</div>
+                        ) : (
+                            availableRequests.map((request) => {
+                                const checked = selectedRequestIds.includes(String(request.id));
+                                const emergencyBadge = request.emergency
+                                    ? (emergencyActionLabel(request.emergencyActionStatus) || 'KHẨN CẤP')
+                                    : null;
+                                return (
+                                    <div key={request.id} className={`border-b border-slate-100 px-4 py-3 ${checked ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
+                                        <label className="flex cursor-pointer items-start gap-3">
+                                            <input
+                                                type={mergeMode ? 'checkbox' : 'radio'}
+                                                name="selectedRequest"
+                                                checked={checked}
+                                                onChange={() => toggleRequestSelection(request.id)}
+                                                className="mt-1 h-4 w-4"
+                                            />
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <p className="truncate text-xs font-semibold text-slate-900">{request.code || `Yêu cầu #${request.id}`}</p>
+                                                    <Badge variant="success" size="sm">VERIFIED</Badge>
+                                                </div>
+                                                <p className="mt-0.5 text-[11px] text-slate-600">Địa chỉ: {request.addressText || 'Không có địa chỉ'}</p>
+                                                <p className="mt-0.5 text-[11px] text-slate-500">Số người: {request.affectedPeopleCount ?? '-'}</p>
+                                                {emergencyBadge && (
+                                                    <p className="mt-0.5 text-[11px] font-semibold text-amber-700">{emergencyBadge}</p>
+                                                )}
+                                            </div>
+                                        </label>
+                                        <div className="mt-2 flex justify-end">
+                                            <button
+                                                type="button"
+                                                className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-white"
+                                                onClick={() => setDetailRequestId(String(request.id))}
+                                            >
+                                                Xem chi tiết
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+                </div>
+            </div>
 
             <div className="max-h-[42vh] overflow-y-auto border-t border-slate-200 bg-white px-4 py-3 xl:max-h-[34vh]">
                 <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
