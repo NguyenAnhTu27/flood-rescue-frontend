@@ -10,8 +10,7 @@ import { getToken } from "./storage.js";
 
 // Get API base URL from environment or use default
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ||
-  "https://flood-rescue-backend-production.up.railway.app";
+  import.meta.env.VITE_API_BASE_URL || "https://localhost:8080/api";
 
 /**
  * Main HTTP client function
