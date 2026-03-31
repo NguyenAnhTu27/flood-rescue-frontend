@@ -7,6 +7,7 @@
 export const PUBLIC_ROUTES = {
   HOME: "/",
   EMERGENCY_GUIDE: "/huong-dan-khan-cap",
+  CONTACT: "/lien-he",
   TERMS_OF_USE: "/dieu-khoan-su-dung",
   PRIVACY_POLICY: "/chinh-sach-bao-mat",
   SUPPORT_CONTACT: "/lien-he-ho-tro",
@@ -58,6 +59,9 @@ export const RESCUER_ROUTES = {
   DASHBOARD: "/doi-cuu-ho",
   MY_ASSIGNMENTS: "/doi-cuu-ho/nhiem-vu",
   ASSIGNMENT_DETAIL: "/doi-cuu-ho/nhiem-vu/:id",
+  MISSION_MAP: "/doi-cuu-ho/ban-do-nhiem-vu",
+  FIELD_UPDATE: "/doi-cuu-ho/cap-nhat-hien-truong",
+  UPDATE_STATUS: "/doi-cuu-ho/cap-nhat-trang-thai",
   UPDATE_RESCUE_STATUS: "/doi-cuu-ho/cap-nhat-trang-thai",
   RELIEF_PRIORITIZE: "/doi-cuu-ho/sap-xep-yeu-cau-cuu-tro",
   RELIEF_PRIORITIZE_DETAIL: "/doi-cuu-ho/sap-xep-yeu-cau-cuu-tro/:id",
@@ -67,17 +71,25 @@ export const RESCUER_ROUTES = {
 export const MANAGER_ROUTES = {
   DASHBOARD: "/quan-ly",
   RELIEF_REQUESTS: "/quan-ly/yeu-cau-cuu-tro",
+  RELIEF_REQUEST_DASHBOARD: "/quan-ly/tong-quan-cuu-tro",
   INVENTORY_OVERVIEW: "/quan-ly/kho-hang",
   ITEM_CATEGORIES: "/quan-ly/danh-muc-hang",
   ITEM_CLASSIFICATIONS: "/quan-ly/phan-loai-hang",
   ITEM_UNITS: "/quan-ly/don-vi",
   CREATE_RECEIPT: "/quan-ly/phieu-nhap",
+  RECEIPT_APPROVAL: "/quan-ly/phe-duyet-phieu-nhap",
   CREATE_ISSUE: "/quan-ly/phieu-xuat",
   RELIEF_TEAM_MANAGEMENT: "/quan-ly/doi-cuu-ho-cuu-tro",
   RELIEF_APPROVED_ISSUES: "/quan-ly/yeu-cau-cuu-tro-da-duyet-phieu-xuat",
   RELIEF_REQUEST_CREATE: "/quan-ly/tao-yeu-cau-cuu-tro",
+  RELIEF_APPROVE: "/quan-ly/phe-duyet-cuu-tro",
+  DISTRIBUTION_PLAN: "/quan-ly/ke-hoach-phan-phoi",
+  DISTRIBUTION_VOUCHER: "/quan-ly/phieu-phan-phoi",
+  DISTRIBUTION_TRACKING: "/quan-ly/theo-doi-phan-phoi",
   ASSETS_MANAGEMENT: "/quan-ly/phuong-tien",
   CREATE_ASSET: "/quan-ly/tao-phuong-tien",
+  ASSIGN_ASSET_TO_TASK: "/quan-ly/phan-cong-phuong-tien",
+  REPORTS: "/quan-ly/bao-cao",
 };
 
 // -------- ADMIN ROUTES --------

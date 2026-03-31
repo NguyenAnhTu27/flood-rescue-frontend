@@ -53,7 +53,7 @@ export default function StaticContentPage() {
             await new Promise((resolve) => setTimeout(resolve, 700));
             window.alert('Cảm ơn bạn! Chúng tôi đã nhận được yêu cầu và sẽ phản hồi sớm.');
             setForm({ name: '', email: '', phone: '', topic: 'Yêu cầu cứu trợ khẩn cấp', message: '' });
-        } catch (err) {
+        } catch {
             window.alert('Gửi không thành công. Vui lòng thử lại sau.');
         } finally {
             setSending(false);

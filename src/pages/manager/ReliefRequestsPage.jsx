@@ -35,7 +35,7 @@ export default function ReliefRequestsPage() {
     const [requests, setRequests] = useState([]);
     const [teams, setTeams] = useState([]);
     const [vehicles, setVehicles] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [mapRefreshSeconds, setMapRefreshSeconds] = useState(20);
     const [rejectingRequestId, setRejectingRequestId] = useState(null);

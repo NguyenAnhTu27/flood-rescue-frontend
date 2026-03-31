@@ -374,7 +374,7 @@ export default function DistributionVoucherPage() {
                 });
 
                 setRows(mappedRows);
-            } catch (e) {
+            } catch {
                 const selectedReq = approvedRequests.find((req) => String(req.id) === String(selectedApprovedRequestId));
                 if (selectedReq) {
                     setRequestLabel(`${selectedReq.code}${selectedReq.area ? ` - ${selectedReq.area}` : ''} (Da duyet)`);

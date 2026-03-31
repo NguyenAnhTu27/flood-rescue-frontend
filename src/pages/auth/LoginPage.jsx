@@ -24,7 +24,7 @@ const ROLES = [
 
 export default function LoginPage() {
     const navigate = useNavigate();
-    const [selectedRole, setSelectedRole] = useState('CITIZEN');
+    const selectedRole = 'CITIZEN';
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);

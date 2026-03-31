@@ -54,7 +54,6 @@ export default function ReceiptApprovalPage() {
     const [approveModalLoading, setApproveModalLoading] = useState(false);
     // State để track row nào đang được expand để hiển thị form duyệt
     const [expandedRows, setExpandedRows] = useState(new Set());
-    const [expandedReceiptDetails, setExpandedReceiptDetails] = useState({});
 
     // Load danh sách phiếu nhập
     const fetchReceipts = async () => {
@@ -138,28 +137,10 @@ export default function ReceiptApprovalPage() {
             // Đóng row
             newExpanded.delete(receiptId);
             setExpandedRows(newExpanded);
-            // Xóa chi tiết đã load
-            setExpandedReceiptDetails(prev => {
-                const newDetails = { ...prev };
-                delete newDetails[receiptId];
-                return newDetails;
-            });
         } else {
-            // Mở row và load chi tiết
+            // Mở row
             newExpanded.add(receiptId);
             setExpandedRows(newExpanded);
-
-            // Load chi tiết phiếu nhập
-            try {
-                const detail = await getInventoryReceipt(receiptId);
-                setExpandedReceiptDetails(prev => ({
-                    ...prev,
-                    [receiptId]: detail
-                }));
-            } catch (e) {
-                console.error('[ReceiptApprovalPage] Error loading receipt detail for expand:', e);
-                // Nếu load lỗi, vẫn giữ row mở nhưng không có chi tiết
-            }
         }
     };
 
@@ -204,7 +185,6 @@ export default function ReceiptApprovalPage() {
             setReceiptToApprove(null);
             // Đóng tất cả các row đang expand
             setExpandedRows(new Set());
-            setExpandedReceiptDetails({});
             await fetchReceipts();
         } catch (e) {
             console.error('[ReceiptApprovalPage] Error approving receipt:', e);
@@ -410,7 +390,6 @@ export default function ReceiptApprovalPage() {
                                     });
 
                                     const isExpanded = expandedRows.has(receipt.id);
-                                    const receiptDetail = expandedReceiptDetails[receipt.id];
 
                                     return (
                                         <React.Fragment key={receipt.id}>
@@ -469,11 +448,7 @@ export default function ReceiptApprovalPage() {
                                                             return (
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => {
-                                                                        if (window.confirm(`Bạn có chắc chắn muốn duyệt phiếu nhập "${receipt.code || `#${receipt.id}`}"?\n\nSau khi duyệt, tồn kho sẽ được cập nhật tự động.`)) {
-                                                                            handleApprove(receipt.id, receipt.code || `#${receipt.id}`);
-                                                                        }
-                                                                    }}
+                                                                    onClick={() => openApproveModal(receipt)}
                                                                     disabled={approveLoading || cancelLoading || loading}
                                                                     className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                                                                 >

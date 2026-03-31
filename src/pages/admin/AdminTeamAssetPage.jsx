@@ -1,6 +1,28 @@
 import React, { useState, useEffect } from "react";
 import { ADMIN_API_BASE_URL } from "../../app/config/env.js";
 
+function EyeIcon() {
+    return (
+        <svg width="20" height="20" viewBox="0 0 24 24">
+            <path
+                fill="currentColor"
+                d="M12 5C6 5 2 12 2 12s4 7 10 7s10-7 10-7s-4-7-10-7Zm0 11a4 4 0 1 1 0-8a4 4 0 0 1 0 8Z"
+            />
+        </svg>
+    );
+}
+
+function EyeSlashIcon() {
+    return (
+        <svg width="20" height="20" viewBox="0 0 24 24">
+            <path
+                fill="currentColor"
+                d="M2 5l2-2l18 18l-2 2l-4.2-4.2A10.6 10.6 0 0 1 12 19c-6 0-10-7-10-7a21.8 21.8 0 0 1 5.2-5.8L2 5Zm20 7s-4-7-10-7c-1.4 0-2.7.3-4 .8l1.6 1.6A4 4 0 0 1 16.6 14L22 12Z"
+            />
+        </svg>
+    );
+}
+
 export default function AdminDashboard() {
 
     const token = localStorage.getItem("token");
@@ -22,28 +44,6 @@ export default function AdminDashboard() {
         password: "",
         roleId: 1
     });
-
-    // =========================
-    // ICONS
-    // =========================
-
-    const EyeIcon = () => (
-        <svg width="20" height="20" viewBox="0 0 24 24">
-            <path
-                fill="currentColor"
-                d="M12 5C6 5 2 12 2 12s4 7 10 7s10-7 10-7s-4-7-10-7Zm0 11a4 4 0 1 1 0-8a4 4 0 0 1 0 8Z"
-            />
-        </svg>
-    );
-
-    const EyeSlashIcon = () => (
-        <svg width="20" height="20" viewBox="0 0 24 24">
-            <path
-                fill="currentColor"
-                d="M2 5l2-2l18 18l-2 2l-4.2-4.2A10.6 10.6 0 0 1 12 19c-6 0-10-7-10-7a21.8 21.8 0 0 1 5.2-5.8L2 5Zm20 7s-4-7-10-7c-1.4 0-2.7.3-4 .8l1.6 1.6A4 4 0 0 1 16.6 14L22 12Z"
-            />
-        </svg>
-    );
 
     // =========================
     // CREATE USER

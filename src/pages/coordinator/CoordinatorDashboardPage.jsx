@@ -168,7 +168,13 @@ export default function CoordinatorDashboard() {
             setLoading(true);
             setError(null);
             const data = await getCoordinatorDashboard();
-            setRequests(data?.requests || []);
+            const requestsFromApi = data?.requests || [];
+            const sortedRequests = [...requestsFromApi].sort((a, b) => {
+                const tsB = getRequestTimestamp(b);
+                const tsA = getRequestTimestamp(a);
+                return tsB - tsA;
+            });
+            setRequests(sortedRequests);
             setTeams(data?.teams || []);
             setSyncTime(new Date());
         } catch (err) {
@@ -216,6 +222,52 @@ export default function CoordinatorDashboard() {
         });
     };
 
+    const parseRelativeTimeAgo = (text) => {
+        if (!text) return 0;
+        const normalized = String(text || '').trim().toLowerCase();
+        if (!normalized) return 0;
+        if (normalized.includes('vừa') || normalized.includes('giây') || normalized.includes('mới')) {
+            return Date.now();
+        }
+
+        const absolute = Date.now();
+        const days = normalized.match(/(\d+)\s*d(?:\w*)/);
+        if (days) return absolute - Number(days[1]) * 24 * 60 * 60 * 1000;
+        const hours = normalized.match(/(\d+)\s*h(?:\w*)/);
+        if (hours) return absolute - Number(hours[1]) * 60 * 60 * 1000;
+        const minutes = normalized.match(/(\d+)\s*p(?:\w*)/);
+        if (minutes) return absolute - Number(minutes[1]) * 60 * 1000;
+
+        return 0;
+    };
+
+    const parseRequestCodeDate = (code) => {
+        if (!code || typeof code !== 'string') return 0;
+        const m = code.match(/(\d{4})(\d{2})(\d{2})/);
+        if (!m) return 0;
+        const y = Number(m[1]);
+        const mo = Number(m[2]) - 1;
+        const d = Number(m[3]);
+        const dt = new Date(y, mo, d);
+        return Number.isFinite(dt.getTime()) ? dt.getTime() : 0;
+    };
+
+    const getRequestTimestamp = (request) => {
+        if (!request || typeof request !== 'object') return 0;
+
+        const candidate = request.updatedAt || request.createdAt || request.createdDate || request.requestedAt || request.time;
+        const parsed = candidate ? Date.parse(String(candidate)) : NaN;
+        if (Number.isFinite(parsed)) return parsed;
+
+        const codeTs = parseRequestCodeDate(request.code || request.id || '');
+        if (codeTs > 0) return codeTs;
+
+        const timeAgoTs = parseRelativeTimeAgo(request.timeAgo);
+        if (timeAgoTs > 0) return timeAgoTs;
+
+        return 0;
+    };
+
     const getRequestStatusBadge = (status, waitingForTeam = false) => {
         if (waitingForTeam) {
             return { label: 'CHỜ CÓ ĐỘI', color: 'bg-blue-100 text-blue-700 border-blue-200' };
@@ -241,9 +293,7 @@ export default function CoordinatorDashboard() {
     };
 
     const pendingRequestsCount = requests.filter((r) => String(r?.status || '').toUpperCase() === 'PENDING' && !r.waitingForTeam).length;
-    const waitingTeamCount = requests.filter((r) => Boolean(r.waitingForTeam)).length;
     const availableTeamsCount = teams.filter((t) => String(t?.status || '').toUpperCase() === 'AVAILABLE').length;
-    const busyTeamsCount = teams.filter((t) => String(t?.status || '').toUpperCase() === 'BUSY').length;
 
     const handleOpenVerifyPage = (request) => {
         if (!request?.id) return;

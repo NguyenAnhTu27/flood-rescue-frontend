@@ -39,6 +39,20 @@ function fmtDate(value) {
     }
 }
 
+function decodeVietnameseText(value) {
+    if (!value && value !== 0) return '';
+    const text = String(value);
+
+    // Nếu server trả về text bị mã hóa nhầm (mojibake) kiểu UTF-8 được đọc là Latin-1,
+    // chuyển lại về UTF-8 để hiển thị đúng tiếng Việt.
+    try {
+        const decoded = decodeURIComponent(escape(text));
+        return decoded || text;
+    } catch {
+        return text;
+    }
+}
+
 function badgeClass(status) {
     const normalized = String(status || '').toUpperCase();
     const map = {
@@ -99,8 +113,8 @@ function SidebarTaskButton({ taskGroup, active, onSelect, showTeamName = false }
             type="button"
             onClick={onSelect}
             className={`w-full rounded-2xl border px-4 py-3 text-left transition ${active
-                    ? 'border-blue-200 bg-blue-50/90 shadow-[0_12px_32px_rgba(37,99,235,0.10)]'
-                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                ? 'border-blue-200 bg-blue-50/90 shadow-[0_12px_32px_rgba(37,99,235,0.10)]'
+                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                 }`}
         >
             <div className="flex items-start justify-between gap-3">
@@ -513,10 +527,10 @@ export default function RescueRequestHandle() {
                                         {Array.isArray(detail.timeline) && detail.timeline.length > 0 ? (
                                             detail.timeline.map((t) => (
                                                 <div key={t.id} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-700">
-                                                    <div className="font-semibold text-slate-900">{t.eventType || 'EVENT'}</div>
-                                                    <div className="mt-1 leading-5">{t.note || '—'}</div>
+                                                    <div className="font-semibold text-slate-900">{decodeVietnameseText(t.eventType) || 'EVENT'}</div>
+                                                    <div className="mt-1 leading-5">{decodeVietnameseText(t.note) || '—'}</div>
                                                     <div className="mt-2 text-slate-500">
-                                                        {t.actorName || 'Hệ thống'} • {fmtDate(t.createdAt)}
+                                                        {decodeVietnameseText(t.actorName) || 'Hệ thống'} • {fmtDate(t.createdAt)}
                                                     </div>
                                                 </div>
                                             ))

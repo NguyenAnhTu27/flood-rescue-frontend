@@ -69,7 +69,7 @@ export default function RootLayout({ children }) {
         footerFacebookUrl: "#",
         footerTwitterUrl: "#",
         footerYoutubeUrl: "#",
-        footerCopyright: "© 2024 Hệ thống Quản lý Cứu hộ - Cứu trợ. Bản quyền thuộc về Cơ quan chủ quản.",
+        footerCopyright: "© 2026 Hệ thống Quản lý Cứu hộ - Cứu trợ. Bản quyền thuộc về Cơ quan chủ quản.",
     });
     const role = getRole();
     const [currentUser, setCurrentUser] = useState(() => getUser());
@@ -749,7 +749,7 @@ export default function RootLayout({ children }) {
                     </div>
 
                     <div className="mt-8 border-t border-slate-200 pt-4 text-center text-xs text-slate-500 sm:text-sm">
-                        {footerSettings.footerCopyright}
+                        © 2026 Hệ thống Quản lý Cứu hộ - Cứu trợ. Bản quyền thuộc về Cơ quan chủ quản.
                     </div>
                 </div>
             </footer>

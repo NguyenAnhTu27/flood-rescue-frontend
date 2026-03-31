@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
     Home as HomeIcon,
@@ -71,7 +71,7 @@ function PrimaryButton({ to, children, className = "" }) {
                 "inline-flex items-center justify-center gap-2 rounded-xl",
                 "bg-blue-600 px-5 py-3 text-sm font-semibold text-white",
                 "shadow-lg shadow-blue-600/20 transition duration-300",
-                "hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-600/25",
+                "hover:-translate-y-0.5 hover:bg-slate-100 hover:text-black hover:shadow-xl hover:shadow-blue-600/10",
                 "active:translate-y-0",
                 className,
             ].join(" ")}
@@ -89,7 +89,7 @@ function SecondaryButton({ to, children, className = "" }) {
                 "inline-flex items-center justify-center gap-2 rounded-xl",
                 "border border-slate-200 bg-white/90 px-5 py-3 text-sm font-semibold text-slate-700",
                 "shadow-sm transition duration-300 backdrop-blur",
-                "hover:-translate-y-0.5 hover:border-blue-200 hover:bg-white hover:text-blue-600 hover:shadow-md",
+                "hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:text-black hover:shadow-md",
                 className,
             ].join(" ")}
         >
@@ -136,7 +136,7 @@ export default function HomePage() {
         footerFacebookUrl: "#",
         footerTwitterUrl: "#",
         footerYoutubeUrl: "#",
-        footerCopyright: "© 2024 Hệ thống Quản lý Cứu hộ - Cứu trợ. Bản quyền thuộc về Cơ quan chủ quản.",
+        footerCopyright: "© 2026 Hệ thống Quản lý Cứu hộ - Cứu trợ. Bản quyền thuộc về Cơ quan chủ quản.",
     });
 
     useEffect(() => {
@@ -232,14 +232,14 @@ export default function HomePage() {
                                 </p>
 
                                 <div className="mt-8 flex flex-wrap gap-3">
-                                    <PrimaryButton to={AUTH_ROUTES.LOGIN} className="text-black  hover:bg-slate-100">
+                                    <PrimaryButton to={AUTH_ROUTES.LOGIN} className="text-black hover:bg-slate-100 hover:text-black">
                                         Gửi yêu cầu cứu hộ
                                         <ArrowRight size={16} />
                                     </PrimaryButton>
 
                                     <SecondaryButton
                                         to={CITIZEN_ROUTES.DASHBOARD}
-                                        className="border-white/20 bg-white/10 text-black hover:border-blue-500 hover:bg-blue-500 hover:text-white"
+                                        className="border-white/20 bg-white/10 text-black hover:border-slate-200 hover:bg-white hover:text-black"
                                     >
                                         <MapPin size={16} />
                                         Theo dõi bản đồ
@@ -347,12 +347,12 @@ export default function HomePage() {
                                 </p>
 
                                 <div className="mt-8 flex flex-wrap gap-3">
-                                    <PrimaryButton to={AUTH_ROUTES.REGISTER} className="bg-white text-black hover:bg-slate-100">
+                                    <PrimaryButton to={AUTH_ROUTES.REGISTER} className=" text-black hover:text-black">
                                         Đăng ký nhận hỗ trợ
                                     </PrimaryButton>
                                     <SecondaryButton
                                         to={PUBLIC_ROUTES.EMERGENCY_GUIDE}
-                                        className="border-white/20 bg-white/10 text-black hover:border-blue-500 hover:bg-blue-500 hover:text-white"
+                                        className="border-white/20 bg-white/10 text-black hover:border-slate-200 hover:bg-white hover:text-black"
                                     >
                                         Xem hướng dẫn
                                     </SecondaryButton>
@@ -531,7 +531,7 @@ export default function HomePage() {
                         </div>
 
                         <div className="mt-8 border-t border-slate-200 pt-6 text-center text-xs text-slate-500 sm:text-sm">
-                            {footerSettings.footerCopyright}
+                            © 2026 Hệ thống Quản lý Cứu hộ - Cứu trợ. Bản quyền thuộc về Cơ quan chủ quản.
                         </div>
                     </Container>
                 </footer>

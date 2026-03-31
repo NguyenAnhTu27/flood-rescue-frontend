@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { getMyRescueRequests, createRescueRequest } from '../api.js';
+import { getMyRescueRequests } from '../api.js';
 
 export default function RescueRequestList() {
     const [requests, setRequests] = useState([]);
@@ -40,34 +40,6 @@ export default function RescueRequestList() {
             console.error('Fetch error:', err);
         } finally {
             setLoading(false);
-        }
-    };
-
-    /**
-     * Create new rescue request
-     */
-    const handleCreate = async (formData) => {
-        try {
-            setError(null);
-
-            // Call API
-            const response = await createRescueRequest({
-                location: formData.location,
-                latitude: formData.latitude,
-                longitude: formData.longitude,
-                description: formData.description,
-                peopleCount: formData.peopleCount,
-                urgency: formData.urgency,
-            });
-
-            // Refresh list after creation
-            await fetchRequests();
-
-            // Return success response
-            return response;
-        } catch (err) {
-            setError(err.message || 'Không thể tạo yêu cầu cứu hộ');
-            throw err; // Re-throw to handle in form component
         }
     };
 

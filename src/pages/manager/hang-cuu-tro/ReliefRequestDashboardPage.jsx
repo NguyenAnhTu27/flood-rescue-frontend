@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Download, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { MANAGER_ROUTES } from '../../../app/routes/route.constants.js';
 import { listReliefRequests, getAreas, getItemCategories } from '../../../features/relief/api.js';
 
@@ -145,20 +145,14 @@ export default function ReliefRequestDashboardPage() {
 
                 // Parse response format
                 let requestsList = [];
-                let totalCount = 0;
-
                 if (Array.isArray(data)) {
                     requestsList = data;
-                    totalCount = data.length;
                 } else if (Array.isArray(data?.content)) {
                     requestsList = data.content;
-                    totalCount = data.totalElements || data.total || data.content.length;
                 } else if (Array.isArray(data?.data)) {
                     requestsList = data.data;
-                    totalCount = data.total || data.data.length;
                 } else if (Array.isArray(data?.items)) {
                     requestsList = data.items;
-                    totalCount = data.total || data.items.length;
                 }
 
                 // Map và normalize dữ liệu requests
@@ -218,7 +212,6 @@ export default function ReliefRequestDashboardPage() {
             }
         };
         loadRequests();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [statusFilter, currentPage, areas, itemCategories]);
 
     const filteredRequests = useMemo(() => {
@@ -234,12 +227,6 @@ export default function ReliefRequestDashboardPage() {
     const handleViewDetail = (request) => {
         // Navigate to detail/verify page
         navigate(`${MANAGER_ROUTES.RELIEF_APPROVE}?id=${request.id}`);
-    };
-
-    const handleExportReport = () => {
-        // TODO: Implement export functionality
-        console.log('Export report with filters:', { statusFilter });
-        window.alert('Tính năng xuất báo cáo đang được phát triển');
     };
 
     const handleCreateDistributionVoucher = () => {

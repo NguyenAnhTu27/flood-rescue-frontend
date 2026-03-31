@@ -7,7 +7,7 @@
  */
 
 // import { API_BASE_URL } from "../../app/config/env.js";
-import { getToken } from "./storage.js";
+import { getToken, normalizeObjectStrings } from "./storage.js";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
@@ -89,8 +89,12 @@ async function httpClient(url, options = {}) {
 
     if (contentType && contentType.includes("application/json")) {
       data = await response.json();
+      if (data && typeof data === "object") {
+        data = normalizeObjectStrings(data);
+      }
     } else {
-      data = await response.text();
+      const textData = await response.text();
+      data = normalizeObjectStrings(textData);
     }
 
     // Log response in development

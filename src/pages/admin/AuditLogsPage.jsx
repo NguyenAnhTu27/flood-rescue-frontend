@@ -55,7 +55,10 @@ export default function AuditLogsPage() {
   };
 
   useEffect(() => {
-    loadLogs();
+    const timerId = window.setTimeout(() => {
+      void loadLogs();
+    }, 0);
+    return () => window.clearTimeout(timerId);
   }, []);
 
   const levelClass = (level) => {

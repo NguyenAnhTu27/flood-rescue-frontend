@@ -27,7 +27,7 @@ export default function AssetsAssignToTask() {
     const [selectedVehicles, setSelectedVehicles] = useState([]);
     const [mapView, setMapView] = useState('terrain'); // 'satellite' or 'terrain'
     const [mapCenter, setMapCenter] = useState({ lat: 16.0544, lng: 108.2022 });
-    const [loading, setLoading] = useState(false);
+    const [, setLoading] = useState(false);
     const [loadingData, setLoadingData] = useState(true);
     const [loadingRequests, setLoadingRequests] = useState(false);
     const [error, setError] = useState(null);

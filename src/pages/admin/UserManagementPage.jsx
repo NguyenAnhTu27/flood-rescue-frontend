@@ -43,8 +43,6 @@ export default function UserManagementPage() {
     teamId: null,
   });
 
-  const [resetPasswords, setResetPasswords] = useState({});
-
   const roleOptions = useMemo(
     () => [
       { id: "", label: "Tất cả" },
@@ -265,42 +263,12 @@ export default function UserManagementPage() {
         activeUsers: user.status === "ACTIVE" ? Math.max(0, prev.activeUsers - 1) : prev.activeUsers,
         lockedUsers: user.status === "LOCKED" ? Math.max(0, prev.lockedUsers - 1) : prev.lockedUsers,
       }));
-      setResetPasswords((prev) => {
-        const next = { ...prev };
-        delete next[user.id];
-        return next;
-      });
-
       // Force full page refresh so UI always reflects latest backend state.
       window.location.reload();
     } catch (e) {
       showMessage(e.message, "error");
     } finally {
       setDeleteTarget(null);
-    }
-  };
-
-  const resetPassword = async (id) => {
-    try {
-      const password = resetPasswords[id];
-      if (!password?.trim()) {
-        showMessage("Nhập password mới", "error");
-        return;
-      }
-
-      const res = await fetch(`${API}/users/${id}/reset-password`, {
-        method: "PUT",
-        headers: {
-          ...authHeaders,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ password }),
-      });
-      const data = await parseResponse(res);
-      showMessage(typeof data === "string" ? data : "Reset password thành công", "success");
-      setResetPasswords((prev) => ({ ...prev, [id]: "" }));
-    } catch (e) {
-      showMessage(e.message, "error");
     }
   };
 
@@ -363,26 +331,6 @@ export default function UserManagementPage() {
       showMessage(typeof data === "string" ? data : "Reset password thành công", "success");
       setDetailResetPassword("");
       setShowDetailPassword(false);
-      setResetPasswords((prev) => ({ ...prev, [detailUser.id]: "" }));
-    } catch (e) {
-      showMessage(e.message, "error");
-    }
-  };
-
-  const updateStatus = async (id, status) => {
-    try {
-      const res = await fetch(`${API}/users/${id}/status`, {
-        method: "PUT",
-        headers: {
-          ...authHeaders,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ status }),
-      });
-      const data = await parseResponse(res);
-      showMessage(typeof data === "string" ? data : "Cập nhật trạng thái thành công", "success");
-      await getUsers();
-      await getStats();
     } catch (e) {
       showMessage(e.message, "error");
     }
@@ -717,7 +665,6 @@ export default function UserManagementPage() {
                         value={detailResetPassword}
                         onChange={(e) => {
                           setDetailResetPassword(e.target.value);
-                          setResetPasswords((prev) => ({ ...prev, [detailUser.id]: e.target.value }));
                         }}
                       />
                       <button
