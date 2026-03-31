@@ -14,6 +14,7 @@ import {
 import { AUTH_ROUTES, PUBLIC_ROUTES } from '../../app/routes/route.constants.js';
 import Input from '../../shared/ui/Input.jsx';
 import Textarea from '../../shared/ui/Textarea.jsx';
+import GoogleMap from '../../features/map/components/MapBox.jsx';
 
 function Container({ children, className = '' }) {
     return <div className={`mx-auto w-full max-w-[90%] px-2 lg:px-3 ${className}`}>{children}</div>;
@@ -23,6 +24,7 @@ export default function ContactPage() {
     const [form, setForm] = useState({ name: '', email: '', phone: '', subject: '', message: '' });
     const [sending, setSending] = useState(false);
     const [sent, setSent] = useState(false);
+    const [mapCenter, setMapCenter] = useState({ lat: 21.021069, lng: 105.829981 });
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -88,232 +90,274 @@ export default function ContactPage() {
 
             <main>
                 {/* ================= Hero ================= */}
-                <section className="border-b border-slate-100 bg-slate-50/50 py-10 sm:py-14">
+                <section className="bg-gradient-to-br from-[#f8f9ff] via-[#e0eaff] to-[#e6f1ff] py-20 px-6">
                     <Container>
                         <div className="text-center">
-                            <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
-                                Liên hệ
-                            </h1>
-                            <p className="mx-auto mt-3 max-w-xl text-sm text-slate-600 sm:text-base">
-                                Gửi ý kiến, góp ý hoặc yêu cầu hỗ trợ. Chúng tôi sẽ phản hồi trong thời gian sớm nhất.
+                            <h1 className="font-headline text-4xl md:text-5xl font-extrabold tracking-tight text-[#005da9] mb-4">Liên hệ với chúng tôi</h1>
+                            <p className="mx-auto max-w-2xl text-base text-slate-700 md:text-xl">
+                                Đội ngũ điều phối cứu hộ sẵn sàng lắng nghe và hỗ trợ cộng đồng 24/7 trong mọi tình huống khẩn cấp do thiên tai.
                             </p>
                         </div>
                     </Container>
                 </section>
 
                 {/* ================= Contact content ================= */}
-                <section className="py-12 sm:py-16">
-                    <Container>
-                        <div className="grid gap-10 lg:grid-cols-5">
-                            {/* Left: Contact info cards */}
-                            <div className="space-y-4 lg:col-span-2">
-                                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                                        <Mail size={20} />
+                <section className="max-w-7xl mx-auto px-6 -mt-12 mb-16">
+                    <div className="grid grid-cols-1 lg:grid-cols-10 gap-8">
+                        <div className="lg:col-span-6 bg-white border border-slate-200/70 shadow-sm rounded-xl p-8 md:p-10 transition-transform duration-300 hover:-translate-y-1 hover:shadow-md">
+                            <h2 className="text-2xl font-extrabold text-[#005da9] mb-5 flex items-center gap-2">
+                                <span className="inline-block w-9 h-9 rounded-lg bg-[#cfe4ff] text-[#005da9] flex items-center justify-center">✉️</span>
+                                Gửi tin nhắn phản hồi
+                            </h2>
+                            <form onSubmit={handleSubmit} className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="text-sm font-semibold text-slate-700 mb-1 block">Họ và tên</label>
+                                        <Input
+                                            name="name"
+                                            value={form.name}
+                                            onChange={handleChange}
+                                            placeholder="Nguyễn Văn A"
+                                            required
+                                            className="focus:ring-[#0063cc]/40"
+                                        />
                                     </div>
-                                    <h3 className="mt-3 text-sm font-bold text-slate-900">Email</h3>
-                                    <p className="mt-1 text-sm text-slate-600">support@cuuho.gov.vn</p>
-                                    <p className="text-sm text-slate-600">hotro@cuuho.gov.vn</p>
-                                </div>
-                                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                                        <Phone size={20} />
+                                    <div>
+                                        <label className="text-sm font-semibold text-slate-700 mb-1 block">Email</label>
+                                        <Input
+                                            name="email"
+                                            type="email"
+                                            value={form.email}
+                                            onChange={handleChange}
+                                            placeholder="example@gmail.com"
+                                            required
+                                            className="focus:ring-[#0063cc]/40"
+                                        />
                                     </div>
-                                    <h3 className="mt-3 text-sm font-bold text-slate-900">Điện thoại</h3>
-                                    <p className="mt-1 text-sm text-slate-600">Tổng đài: 1900-xxxx</p>
-                                    <p className="text-sm text-slate-600">Khẩn cấp: 114</p>
                                 </div>
-                                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="text-sm font-semibold text-slate-700 mb-1 block">Số điện thoại</label>
+                                        <Input
+                                            name="phone"
+                                            type="tel"
+                                            value={form.phone}
+                                            onChange={handleChange}
+                                            placeholder="090x xxx xxx"
+                                            className="focus:ring-[#0063cc]/40"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-semibold text-slate-700 mb-1 block">Chủ đề</label>
+                                        <select
+                                            name="subject"
+                                            value={form.subject}
+                                            onChange={handleChange}
+                                            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#005da9] focus:ring-2 focus:ring-[#005da9]/20"
+                                        >
+                                            <option value="">Chọn chủ đề</option>
+                                            <option value="cuu-tro">Yêu cầu cứu trợ khẩn cấp</option>
+                                            <option value="ho-tro-ky-thuat">Hỗ trợ kỹ thuật ứng dụng</option>
+                                            <option value="tinh-nguyen-vien">Đăng ký tình nguyện viên</option>
+                                            <option value="gop-y">Đóng góp ý kiến</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="text-sm font-semibold text-slate-700 mb-1 block">Nội dung tin nhắn</label>
+                                    <Textarea
+                                        name="message"
+                                        value={form.message}
+                                        onChange={handleChange}
+                                        placeholder="Mô tả chi tiết vấn đề bạn cần hỗ trợ..."
+                                        rows={5}
+                                        required
+                                        className="focus:ring-[#0063cc]/40"
+                                    />
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={sending}
+                                    className="w-full md:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-[#005da9] px-8 py-3 text-base font-bold text-white transition-all duration-200 hover:bg-[#004b8d] active:scale-95 disabled:opacity-50"
+                                >
+                                    <Send size={18} />
+                                    {sending ? 'Đang gửi...' : 'Gửi tin nhắn'}
+                                </button>
+
+                                {sent && (
+                                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+                                        Đã gửi thành công. Cảm ơn bạn đã liên hệ.
+                                    </div>
+                                )}
+                            </form>
+                        </div>
+
+                        <div className="lg:col-span-4 space-y-6">
+                            <div className="rounded-xl border-l-4 border-red-500 bg-red-50 p-6 shadow-sm animate-slide-up">
+                                <h3 className="text-xl font-extrabold text-red-700">Hotline Khẩn Cấp</h3>
+                                <div className="mt-2 flex items-end gap-3">
+                                    <span className="text-5xl font-black text-red-700">114</span>
+                                    <p className="text-sm text-red-700">Hoạt động 24/7 cho các tình huống cứu nạn, cứu hộ trực tiếp.</p>
+                                </div>
+                            </div>
+
+                            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
+                                <div className="flex items-start gap-3">
+                                    <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-blue-100 text-blue-600">
                                         <MapPin size={20} />
                                     </div>
-                                    <h3 className="mt-3 text-sm font-bold text-slate-900">Địa chỉ</h3>
-                                    <p className="mt-1 text-sm leading-relaxed text-slate-600">
-                                        Trung tâm Điều phối Cứu hộ - Cứu trợ<br />
-                                        Số 123 Đường Mẫu, Quận 1, TP. Hồ Chí Minh
-                                    </p>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-slate-900">Địa chỉ văn phòng</h4>
+                                        <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+                                            Tòa nhà Điều phối Trung tâm,<br />
+                                            Số 18, Đường Giải Phóng, Quận Hai Bà Trưng, Quảng Bình
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Right: Form */}
-                            <div className="lg:col-span-3">
-                                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-                                    <h2 className="text-lg font-bold text-slate-900">Gửi tin nhắn</h2>
-                                    <p className="mt-1 text-sm text-slate-600">
-                                        Điền form bên dưới, chúng tôi sẽ liên hệ lại bạn.
-                                    </p>
-                                    {sent && (
-                                        <div className="mt-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">
-                                            Đã gửi thành công. Cảm ơn bạn đã liên hệ.
-                                        </div>
-                                    )}
-                                    <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-                                        <div className="grid gap-4 sm:grid-cols-2">
-                                            <div>
-                                                <label className="mb-1 block text-xs font-medium text-slate-600">
-                                                    Họ và tên
-                                                </label>
-                                                <Input
-                                                    name="name"
-                                                    value={form.name}
-                                                    onChange={handleChange}
-                                                    placeholder="Nguyễn Văn A"
-                                                    required
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="mb-1 block text-xs font-medium text-slate-600">
-                                                    Email
-                                                </label>
-                                                <Input
-                                                    name="email"
-                                                    type="email"
-                                                    value={form.email}
-                                                    onChange={handleChange}
-                                                    placeholder="email@example.com"
-                                                    required
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="grid gap-4 sm:grid-cols-2">
-                                            <div>
-                                                <label className="mb-1 block text-xs font-medium text-slate-600">
-                                                    Số điện thoại
-                                                </label>
-                                                <Input
-                                                    name="phone"
-                                                    type="tel"
-                                                    value={form.phone}
-                                                    onChange={handleChange}
-                                                    placeholder="0900 xxx xxx"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="mb-1 block text-xs font-medium text-slate-600">
-                                                    Chủ đề
-                                                </label>
-                                                <Input
-                                                    name="subject"
-                                                    value={form.subject}
-                                                    onChange={handleChange}
-                                                    placeholder="Yêu cầu hỗ trợ / Góp ý / Khác"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="mb-1 block text-xs font-medium text-slate-600">
-                                                Nội dung
-                                            </label>
-                                            <Textarea
-                                                name="message"
-                                                value={form.message}
-                                                onChange={handleChange}
-                                                placeholder="Nội dung tin nhắn..."
-                                                rows={4}
-                                                required
-                                            />
-                                        </div>
-                                        <button
-                                            type="submit"
-                                            disabled={sending}
-                                            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
-                                        >
-                                            <Send size={16} />
-                                            {sending ? 'Đang gửi...' : 'Gửi tin nhắn'}
-                                        </button>
-                                    </form>
+                            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
+                                <div className="flex items-start gap-3">
+                                    <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+                                        <Mail size={20} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-slate-900">Hỗ trợ kỹ thuật</h4>
+                                        <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+                                            support@rescuesystem.vn<br />
+                                            024.3322.1100
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
+                                <h4 className="text-sm font-bold text-slate-900">Mạng xã hội</h4>
+                                <div className="mt-3 flex gap-2">
+                                    <Link to="#" className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-blue-50 hover:text-blue-600">
+                                        <Facebook size={16} />
+                                    </Link>
+                                    <Link to="#" className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-blue-50 hover:text-blue-600">
+                                        <Twitter size={16} />
+                                    </Link>
+                                    <Link to="#" className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-blue-50 hover:text-blue-600">
+                                        <Youtube size={16} />
+                                    </Link>
                                 </div>
                             </div>
                         </div>
-                    </Container>
+                    </div>
                 </section>
 
-                {/* ================= Footer ================= */}
-                <footer className="mt-16 border-t border-slate-200 bg-white">
-                    <Container className="py-10">
-                        <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
-                                        <HomeIcon className="text-white" size={18} strokeWidth={2.2} />
-                                    </div>
-                                    <span className="text-sm font-bold">QUẢN LÝ CỨU HỘ</span>
-                                </div>
-                                <p className="max-w-md text-xs leading-relaxed text-slate-500 sm:text-sm">
-                                    Hệ thống hỗ trợ cộng đồng trong tình huống thiên tai khẩn cấp.
-                                </p>
-                            </div>
-                            <div className="flex gap-10">
-                                <div>
-                                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                                        Liên kết
-                                    </h4>
-                                    <ul className="mt-3 space-y-2 text-sm text-slate-600">
-                                        <li>
-                                            <Link to={PUBLIC_ROUTES.HOME} className="hover:text-blue-600">
-                                                Trang chủ
-                                            </Link>
-                                        </li>
-                                        <li>
-                                            <Link to={PUBLIC_ROUTES.EMERGENCY_GUIDE} className="hover:text-blue-600">
-                                                Hướng dẫn khẩn cấp
-                                            </Link>
-                                        </li>
-                                        <li>
-                                            <Link to={PUBLIC_ROUTES.CONTACT} className="hover:text-blue-600">
-                                                Liên hệ hỗ trợ
-                                            </Link>
-                                        </li>
-                                    </ul>
-                                </div>
-                                <div>
-                                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                                        Thông tin
-                                    </h4>
-                                    <div className="mt-3 space-y-2 text-sm text-slate-600">
-                                        <div className="flex items-center gap-2">
-                                            <Mail size={16} className="shrink-0 text-slate-500" />
-                                            <span className="break-all">support@cuuho.gov.vn</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Phone size={16} className="shrink-0 text-slate-500" />
-                                            <span>1900-xxxx</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="md:text-right">
-                                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                                    Kết nối
-                                </h4>
-                                <div className="mt-3 flex gap-3 md:justify-end">
-                                    <Link
-                                        to="#"
-                                        className="rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-50"
-                                    >
-                                        <Facebook size={16} className="text-slate-600" />
-                                    </Link>
-                                    <Link
-                                        to="#"
-                                        className="rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-50"
-                                    >
-                                        <Twitter size={16} className="text-slate-600" />
-                                    </Link>
-                                    <Link
-                                        to="#"
-                                        className="rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-50"
-                                    >
-                                        <Youtube size={16} className="text-slate-600" />
-                                    </Link>
-                                </div>
+                <section className="max-w-7xl mx-auto px-6 mb-20">
+                    <div className="h-[420px] overflow-hidden rounded-xl border border-slate-200 shadow-sm relative">
+                        <GoogleMap center={mapCenter} markerPosition={mapCenter} zoom={12} />
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="rounded-xl border border-white bg-white/90 p-5 text-center shadow-lg">
+                                <p className="text-xs font-bold uppercase tracking-wider text-[#005da9]">Văn phòng Trung tâm</p>
+                                <p className="mt-1 text-sm font-semibold text-slate-700">Quảng Bình, Việt Nam</p>
+                                <button
+                                    type="button"
+                                    onClick={() => setMapCenter({ lat: 21.021069, lng: 105.829981 })}
+                                    className="mt-3 text-xs font-bold text-[#005da9] hover:underline inline-flex items-center gap-1"
+                                >
+                                    CHỈ ĐƯỜNG <span className="material-symbols-outlined">arrow_forward</span>
+                                </button>
                             </div>
                         </div>
-                        <div className="mt-8 border-t border-slate-200 pt-6 text-center text-xs text-slate-500 sm:text-sm">
-                            © 2024 Hệ thống Quản lý Cứu hộ - Cứu trợ. Bản quyền thuộc về Cơ quan chủ quản.
+                        <div className="absolute bottom-4 right-4 rounded-md bg-white/90 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                            Mapbox API v3
                         </div>
-                    </Container>
-                </footer>
+                    </div>
+                </section>
             </main>
+            <footer className="mt-16 border-t border-slate-200 bg-white">
+                <Container className="py-10">
+                    <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
+                                    <HomeIcon className="text-white" size={18} strokeWidth={2.2} />
+                                </div>
+                                <span className="text-sm font-bold">QUẢN LÝ CỨU HỘ</span>
+                            </div>
+                            <p className="max-w-md text-xs leading-relaxed text-slate-500 sm:text-sm">
+                                Hệ thống hỗ trợ cộng đồng trong tình huống thiên tai khẩn cấp.
+                            </p>
+                        </div>
+                        <div className="flex gap-10">
+                            <div>
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                                    Liên kết
+                                </h4>
+                                <ul className="mt-3 space-y-2 text-sm text-slate-600">
+                                    <li>
+                                        <Link to={PUBLIC_ROUTES.HOME} className="hover:text-blue-600">
+                                            Trang chủ
+                                        </Link>
+                                    </li>
+                                    <li>
+                                        <Link to={PUBLIC_ROUTES.EMERGENCY_GUIDE} className="hover:text-blue-600">
+                                            Hướng dẫn khẩn cấp
+                                        </Link>
+                                    </li>
+                                    <li>
+                                        <Link to={PUBLIC_ROUTES.CONTACT} className="hover:text-blue-600">
+                                            Liên hệ hỗ trợ
+                                        </Link>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                                    Thông tin
+                                </h4>
+                                <div className="mt-3 space-y-2 text-sm text-slate-600">
+                                    <div className="flex items-center gap-2">
+                                        <Mail size={16} className="shrink-0 text-slate-500" />
+                                        <span className="break-all">support@cuuho.gov.vn</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Phone size={16} className="shrink-0 text-slate-500" />
+                                        <span>1900-xxxx</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="md:text-right">
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                                Kết nối
+                            </h4>
+                            <div className="mt-3 flex gap-3 md:justify-end">
+                                <Link
+                                    to="#"
+                                    className="rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-50"
+                                >
+                                    <Facebook size={16} className="text-slate-600" />
+                                </Link>
+                                <Link
+                                    to="#"
+                                    className="rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-50"
+                                >
+                                    <Twitter size={16} className="text-slate-600" />
+                                </Link>
+                                <Link
+                                    to="#"
+                                    className="rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-50"
+                                >
+                                    <Youtube size={16} className="text-slate-600" />
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="mt-8 border-t border-slate-200 pt-6 text-center text-xs text-slate-500 sm:text-sm">
+                        © 2024 Hệ thống Quản lý Cứu hộ - Cứu trợ. Bản quyền thuộc về Cơ quan chủ quản.
+                    </div>
+                </Container>
+            </footer>
         </div>
     );
 }

@@ -6,8 +6,12 @@
  * Then replace this file with axios version (see API_SETUP_GUIDE.md)
  */
 
-import { API_BASE_URL } from "../../app/config/env.js";
+// import { API_BASE_URL } from "../../app/config/env.js";
 import { getToken } from "./storage.js";
+
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  "http://localhost:8080/api"; /* Fallback nếu biến môi trường không được cung cấp */
 
 async function httpClient(url, options = {}) {
   const token = getToken();

@@ -98,11 +98,10 @@ function SidebarTaskButton({ taskGroup, active, onSelect, showTeamName = false }
         <button
             type="button"
             onClick={onSelect}
-            className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
-                active
+            className={`w-full rounded-2xl border px-4 py-3 text-left transition ${active
                     ? 'border-blue-200 bg-blue-50/90 shadow-[0_12px_32px_rgba(37,99,235,0.10)]'
                     : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-            }`}
+                }`}
         >
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">

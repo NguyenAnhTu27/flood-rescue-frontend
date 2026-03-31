@@ -36,267 +36,198 @@ function IconBadge({ children, className = '' }) {
 
 export default function EmergencyGuidePage() {
     return (
-        <div className="min-h-screen bg-white text-slate-900">
-            {/* ================= Header ================= */}
-            <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur">
-                <Container>
-                    <div className="flex h-14 items-center justify-between">
-                        <Link to={PUBLIC_ROUTES.HOME} className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
-                                <HomeIcon className="text-white" size={18} strokeWidth={2.2} />
-                            </div>
-                            <span className="text-sm font-bold tracking-wide">QUẢN LÝ CỨU HỘ</span>
-                        </Link>
-                        <nav className="hidden items-center gap-8 md:flex">
-                            <Link
-                                to={PUBLIC_ROUTES.HOME}
-                                className="text-sm font-medium text-slate-700 hover:text-blue-600"
-                            >
-                                Giới thiệu
-                            </Link>
-                            <Link
-                                to={PUBLIC_ROUTES.EMERGENCY_GUIDE}
-                                className="text-sm font-medium text-blue-600"
-                            >
-                                Hướng dẫn
-                            </Link>
-                            <Link
-                                to={PUBLIC_ROUTES.CONTACT}
-                                className="text-sm font-medium text-slate-700 hover:text-blue-600"
-                            >
-                                Liên hệ
-                            </Link>
-                        </nav>
-                        <Link
-                            to={AUTH_ROUTES.LOGIN}
-                            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
-                        >
-                            <LogIn size={16} className="shrink-0" />
-                            Đăng nhập
-                        </Link>
-                    </div>
-                </Container>
-            </header>
+        <div className="min-h-screen bg-slate-50">
+            {/* Header */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-sky-700 via-blue-600 to-indigo-700">
+                <div className="absolute -right-20 -top-20 w-72 h-72 rounded-full bg-white/10 blur-3xl" />
+                <div className="absolute left-10 -bottom-28 w-96 h-96 rounded-full bg-blue-500/20 blur-3xl" />
 
-            <main>
-                {/* ================= Hero ================= */}
-                <section className="border-b border-slate-100 bg-slate-50/50 py-10 sm:py-14">
-                    <Container>
-                        <div className="text-center">
-                            <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
-                                Hướng dẫn cứu hộ
+                <div className="max-w-6xl mx-auto px-6 py-14">
+                    <div className="grid lg:grid-cols-2 gap-10 items-center">
+                        <div className="text-white">
+                            <p className="text-sm font-semibold uppercase tracking-wide text-white/80">Cẩm nang</p>
+                            <h1 className="mt-4 text-4xl sm:text-5xl font-extrabold leading-tight">
+                                Chào mừng bạn đến với <span className="text-yellow-200">Cẩm nang Cứu hộ</span>
                             </h1>
-                            <p className="mx-auto mt-3 max-w-2xl text-sm text-slate-600 sm:text-base">
-                                Các bước cần thực hiện khi cần hỗ trợ cứu hộ trong tình huống lũ lụt, thiên tai.
-                                Giữ bình tĩnh và làm theo hướng dẫn để đảm bảo an toàn cho bản thân và gia đình.
+                            <p className="mt-4 text-lg text-white/80 max-w-xl">
+                                Hệ thống hướng dẫn toàn diện cho các hoạt động ứng phó khẩn cấp và cứu hộ thông minh, an toàn và chuyên nghiệp.
                             </p>
-                        </div>
-                    </Container>
-                </section>
 
-                {/* ================= Các bước khi cần cứu hộ ================= */}
-                <section className="py-12 sm:py-16">
-                    <Container>
-                        <h2 className="text-center text-xl font-extrabold tracking-wide sm:text-2xl">
-                            CÁC BƯỚC KHI CẦN CỨU HỘ
-                        </h2>
-                        <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-slate-600 sm:text-base">
-                            Thực hiện theo thứ tự để được hỗ trợ nhanh nhất.
-                        </p>
-
-                        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-                                <IconBadge>
-                                    <BellRing className="text-blue-600" size={20} />
-                                </IconBadge>
-                                <h3 className="mt-4 text-sm font-bold sm:text-base">Bước 1: Tiếp nhận thông tin</h3>
-                                <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                                    Theo dõi cảnh báo từ cơ quan chức năng, đài báo, app. Sạc đầy pin điện thoại,
-                                    chuẩn bị pin dự phòng và giữ liên lạc với người thân.
-                                </p>
-                            </div>
-
-                            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-                                <IconBadge>
-                                    <MapPin className="text-blue-600" size={20} />
-                                </IconBadge>
-                                <h3 className="mt-4 text-sm font-bold sm:text-base">Bước 2: Xác định vị trí</h3>
-                                <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                                    Bật GPS, xác định địa chỉ chính xác (số nhà, đường, phường/xã).
-                                    Sử dụng bản đồ hệ thống để tìm điểm an toàn hoặc gửi tọa độ cho đội cứu hộ.
-                                </p>
-                            </div>
-
-                            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-                                <IconBadge>
-                                    <FileText className="text-blue-600" size={20} />
-                                </IconBadge>
-                                <h3 className="mt-4 text-sm font-bold sm:text-base">Bước 3: Gửi yêu cầu cứu hộ</h3>
-                                <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                                    Đăng nhập hệ thống, điền form yêu cầu cứu hộ: địa chỉ, số người cần cứu,
-                                    tình trạng (có thương tích, người già/trẻ em), số điện thoại liên hệ.
-                                </p>
-                            </div>
-
-                            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-                                <IconBadge>
-                                    <Shield className="text-blue-600" size={20} />
-                                </IconBadge>
-                                <h3 className="mt-4 text-sm font-bold sm:text-base">Bước 4: Chờ xác nhận</h3>
-                                <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                                    Trung tâm sẽ xác minh và điều phối đội cứu hộ. Bạn có thể theo dõi trạng thái
-                                    yêu cầu trên ứng dụng. Giữ điện thoại bật tiếng để nhận cuộc gọi từ đội cứu hộ.
-                                </p>
-                            </div>
-
-                            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-                                <IconBadge>
-                                    <HeartPulse className="text-blue-600" size={20} />
-                                </IconBadge>
-                                <h3 className="mt-4 text-sm font-bold sm:text-base">Bước 5: Hỗ trợ y tế (nếu cần)</h3>
-                                <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                                    Sơ cứu cơ bản khi có người bị thương. Ghi rõ trong yêu cầu nếu có người
-                                    cần cấp cứu để được ưu tiên và phối hợp xe cấp cứu.
-                                </p>
-                            </div>
-
-                            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-                                <IconBadge>
-                                    <AlertTriangle className="text-blue-600" size={20} />
-                                </IconBadge>
-                                <h3 className="mt-4 text-sm font-bold sm:text-base">Bước 6: Tuân thủ chỉ dẫn</h3>
-                                <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                                    Làm theo hướng dẫn của đội cứu hộ khi tiếp cận. Mang theo giấy tờ tùy thân,
-                                    thuốc men cần thiết. Sau khi được cứu, xác nhận và gửi phản hồi trên hệ thống.
-                                </p>
-                            </div>
-                        </div>
-                    </Container>
-                </section>
-
-                {/* ================= Lưu ý an toàn ================= */}
-                <section className="border-t border-slate-100 bg-slate-50/50 py-12 sm:py-16">
-                    <Container>
-                        <h2 className="text-center text-xl font-extrabold tracking-wide sm:text-2xl">
-                            LƯU Ý AN TOÀN
-                        </h2>
-                        <ul className="mx-auto mt-8 max-w-2xl space-y-3 text-sm text-slate-700 sm:text-base">
-                            <li className="flex gap-3">
-                                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" />
-                                Tránh di chuyển qua vùng nước sâu, dòng chảy mạnh hoặc không rõ địa hình.
-                            </li>
-                            <li className="flex gap-3">
-                                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" />
-                                Không chạm vào dây điện, cột điện ngã hoặc thiết bị điện trong nước.
-                            </li>
-                            <li className="flex gap-3">
-                                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" />
-                                Ưu tiên trẻ em, người già, người khuyết tật và người bị thương khi sơ tán.
-                            </li>
-                            <li className="flex gap-3">
-                                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" />
-                                Chuẩn bị túi khẩn cấp: nước, thực phẩm khô, đèn pin, thuốc, giấy tờ.
-                            </li>
-                            <li className="flex gap-3">
-                                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" />
-                                Gọi tổng đài 114 khi cần báo tin khẩn cấp hoặc không thể dùng app.
-                            </li>
-                        </ul>
-                    </Container>
-                </section>
-
-                {/* ================= Hotline & CTA ================= */}
-                <section className="py-12 sm:py-16">
-                    <Container>
-                        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-10 text-center shadow-sm sm:px-10">
-                            <h3 className="text-xl font-extrabold sm:text-2xl">Cần hỗ trợ ngay?</h3>
-                            <p className="mx-auto mt-3 max-w-xl text-sm text-slate-600 sm:text-base">
-                                Gọi tổng đài cứu hộ 114 hoặc đăng nhập để gửi yêu cầu cứu hộ trực tuyến.
-                            </p>
-                            <div className="mt-6 flex flex-wrap justify-center gap-4">
-                                <a
-                                    href="tel:114"
-                                    className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700"
-                                >
-                                    <Phone size={18} />
-                                    Gọi 114
-                                </a>
-                                <Link
-                                    to={AUTH_ROUTES.LOGIN}
-                                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                                >
-                                    Gửi yêu cầu cứu hộ
-                                </Link>
-                            </div>
-                        </div>
-                    </Container>
-                </section>
-
-                {/* ================= Footer ================= */}
-                <footer className="mt-16 border-t border-slate-200 bg-white">
-                    <Container className="py-10">
-                        <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
-                                        <HomeIcon className="text-white" size={18} strokeWidth={2.2} />
-                                    </div>
-                                    <span className="text-sm font-bold">QUẢN LÝ CỨU HỘ</span>
+                            <div className="mt-8 relative max-w-lg">
+                                <div className="pointer-events-none absolute inset-y-0 left-4 flex items-center">
+                                    <svg
+                                        className="h-5 w-5 text-white/70"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.5 10.5a7.5 7.5 0 0013.15 6.15z"
+                                        />
+                                    </svg>
                                 </div>
-                                <p className="max-w-md text-xs leading-relaxed text-slate-500 sm:text-sm">
-                                    Hệ thống hỗ trợ cộng đồng trong tình huống thiên tai khẩn cấp.
-                                </p>
+                                <input
+                                    type="text"
+                                    placeholder="Tìm kiếm hướng dẫn, quy trình hoặc hành động..."
+                                    className="w-full rounded-full border border-white/30 bg-white/10 py-3 pl-12 pr-4 text-white placeholder:text-white/60 shadow-sm focus:border-white focus:outline-none focus:ring-2 focus:ring-white/40"
+                                />
                             </div>
-                            <div className="flex gap-10">
-                                <div>
-                                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Liên kết</h4>
-                                    <ul className="mt-3 space-y-2 text-sm text-slate-600">
-                                        <li>
-                                            <Link to={PUBLIC_ROUTES.HOME} className="hover:text-blue-600">Trang chủ</Link>
-                                        </li>
-                                        <li>
-                                            <Link to={PUBLIC_ROUTES.EMERGENCY_GUIDE} className="hover:text-blue-600">Hướng dẫn</Link>
-                                        </li>
-                                        <li>
-                                            <Link to={PUBLIC_ROUTES.CONTACT} className="hover:text-blue-600">Liên hệ</Link>
-                                        </li>
-                                    </ul>
+                        </div>
+
+                        <div className="relative">
+                            <div className="bg-white/20 backdrop-blur-xl rounded-3xl p-8 shadow-xl border border-white/20">
+                                <h2 className="text-xl font-semibold text-white">Vai trò người dùng</h2>
+                                <p className="mt-2 text-sm text-white/70">Chọn một vai trò để nhận hướng dẫn chi tiết</p>
+
+                                <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                                    {[
+                                        {
+                                            title: 'Công dân',
+                                            desc: 'Gửi yêu cầu cứu hộ, theo dõi tiến trình.',
+                                            icon: '👤',
+                                        },
+                                        {
+                                            title: 'Điều phối',
+                                            desc: 'Phân phối nhiệm vụ, giám sát hiện trường.',
+                                            icon: '🧭',
+                                        },
+                                        {
+                                            title: 'Đội cứu hộ',
+                                            desc: 'Nhận thông tin, điều phối & phản hồi nhanh.',
+                                            icon: '🚑',
+                                        },
+                                        {
+                                            title: 'Quản lý',
+                                            desc: 'Thống kê, báo cáo và đánh giá hiệu suất.',
+                                            icon: '📊',
+                                        },
+                                    ].map((role) => (
+                                        <button
+                                            key={role.title}
+                                            className="flex flex-col items-start rounded-2xl bg-white/15 p-5 text-left shadow-sm transition hover:bg-white/25 focus:outline-none"
+                                        >
+                                            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-white/20 text-white text-lg">
+                                                {role.icon}
+                                            </div>
+                                            <h3 className="mt-4 text-lg font-semibold text-white">{role.title}</h3>
+                                            <p className="mt-1 text-sm text-white/70">{role.desc}</p>
+                                            <span className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-white/70">
+                                                Xem chi tiết
+                                                <svg
+                                                    className="h-4 w-4"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M9 5l7 7-7 7"
+                                                    />
+                                                </svg>
+                                            </span>
+                                        </button>
+                                    ))}
                                 </div>
-                                <div>
-                                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Thông tin</h4>
-                                    <div className="mt-3 space-y-2 text-sm text-slate-600">
-                                        <div className="flex items-center gap-2">
-                                            <Mail size={16} className="shrink-0 text-slate-500" />
-                                            <span className="break-all">support@cuuho.gov.vn</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Phone size={16} className="shrink-0 text-slate-500" />
-                                            <span>114 · 1900-xxxx</span>
-                                        </div>
-                                    </div>
+
+                                <div className="mt-6 flex items-center justify-between text-sm text-white/70">
+                                    <span>Hoặc</span>
+                                    <a href="#basic-process" className="font-semibold text-white hover:text-yellow-200">
+                                        Xem quy trình cơ bản →
+                                    </a>
                                 </div>
                             </div>
-                            <div className="md:text-right">
-                                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Kết nối</h4>
-                                <div className="mt-3 flex gap-3 md:justify-end">
-                                    <Link to="#" className="rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-50">
-                                        <Facebook size={16} className="text-slate-600" />
-                                    </Link>
-                                    <Link to="#" className="rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-50">
-                                        <Twitter size={16} className="text-slate-600" />
-                                    </Link>
-                                    <Link to="#" className="rounded-lg border border-slate-200 bg-white p-2 hover:bg-slate-50">
-                                        <Youtube size={16} className="text-slate-600" />
-                                    </Link>
+
+                            <div className="pointer-events-none absolute -right-16 -bottom-16 w-60 h-60 rounded-full bg-white/5 blur-2xl" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Quy trình cơ bản */}
+            <section id="basic-process" className="max-w-6xl mx-auto px-6 py-14">
+                <div className="text-center">
+                    <p className="text-sm font-semibold text-blue-500 uppercase tracking-wide">Quy trình cơ bản</p>
+                    <h2 className="mt-3 text-3xl sm:text-4xl font-bold text-slate-900">4 bước đơn giản để gửi yêu cầu cứu hộ</h2>
+                    <p className="mt-4 max-w-2xl mx-auto text-base text-slate-600">
+                        Thực hiện theo từng bước để đảm bảo thông tin chính xác và tiếp cận nhanh nhất với đội cứu hộ.
+                    </p>
+                </div>
+
+                <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                    {[
+                        {
+                            number: '1',
+                            title: 'Đăng ký',
+                            desc: 'Tạo tài khoản nhanh chóng và xác thực thông tin liên lạc của bạn.',
+                        },
+                        {
+                            number: '2',
+                            title: 'Gửi yêu cầu',
+                            desc: 'Chọn loại sự cố, nhập vị trí và trạng thái hiện tại.',
+                        },
+                        {
+                            number: '3',
+                            title: 'Phân công',
+                            desc: 'Hệ thống điều phối gửi yêu cầu tới đội cứu hộ gần nhất.',
+                        },
+                        {
+                            number: '4',
+                            title: 'Hoàn tất',
+                            desc: 'Nhận thông báo khi đội cứu hộ đến và đóng yêu cầu.',
+                        },
+                    ].map((step) => (
+                        <div key={step.number} className="relative rounded-3xl bg-white shadow-lg p-6">
+                            <div className="absolute -top-6 left-1/2 -translate-x-1/2">
+                                <div className="flex items-center justify-center w-14 h-14 rounded-full bg-blue-900 text-white text-xl font-bold shadow-lg">
+                                    {step.number}
                                 </div>
                             </div>
+                            <div className="mt-10 text-center">
+                                <h3 className="text-lg font-semibold text-slate-900">{step.title}</h3>
+                                <p className="mt-2 text-sm text-slate-600">{step.desc}</p>
+                            </div>
                         </div>
-                        <div className="mt-8 border-t border-slate-200 pt-6 text-center text-xs text-slate-500 sm:text-sm">
-                            © 2024 Hệ thống Quản lý Cứu hộ - Cứu trợ. Bản quyền thuộc về Cơ quan chủ quản.
+                    ))}
+                </div>
+            </section>
+
+            {/* Bottom danger bar */}
+            <div className="bg-red-600/95">
+                <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col gap-6 md:flex-row items-center justify-between">
+                    <div className="flex items-start gap-4">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/15 text-white text-2xl">
+                            🚨
                         </div>
-                    </Container>
-                </footer>
-            </main>
+                        <div>
+                            <p className="text-lg font-semibold text-white">Bạn đang trong tình trạng nguy hiểm?</p>
+                            <p className="text-sm text-white/80">Gọi ngay đội cứu hộ để được hỗ trợ khẩn cấp.</p>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <a
+                            href="tel:114"
+                            className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-red-600 shadow-lg shadow-red-500/30 transition hover:bg-white/90"
+                        >
+                            <span className="mr-2">Gọi ngay</span>
+                            <span className="text-xl font-bold">114</span>
+                        </a>
+                        <a
+                            href="#basic-process"
+                            className="inline-flex items-center justify-center rounded-full bg-white/15 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-black/20 transition hover:bg-white/25"
+                        >
+                            Xem quy trình chi tiết
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }
