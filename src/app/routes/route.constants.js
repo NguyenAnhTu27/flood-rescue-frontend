@@ -18,6 +18,10 @@ export const PUBLIC_ROUTES = {
     LOGIN: '/dang-nhap',
     REGISTER: '/dang-ky', // chỉ Citizen dùng
   };
+
+export const ACCOUNT_ROUTES = {
+    PROFILE: '/ho-so-ca-nhan',
+};
   
   // -------- CITIZEN ROUTES --------
 export const CITIZEN_ROUTES = {
@@ -83,6 +87,7 @@ export const CITIZEN_ROUTES = {
   
   // -------- ALL PRIVATE ROUTES (OPTIONAL HELPER) --------
   export const PRIVATE_ROUTES = {
+    ...ACCOUNT_ROUTES,
     ...CITIZEN_ROUTES,
     ...COORDINATOR_ROUTES,
     ...RESCUER_ROUTES,

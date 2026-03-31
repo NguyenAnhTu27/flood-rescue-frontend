@@ -45,7 +45,35 @@ export async function logout() {
  * @returns {Promise} User data
  */
 export async function getCurrentUser() {
-    const response = await httpClient.get('/auth/me');
+    try {
+        const response = await httpClient.get('/users/me');
+        return response;
+    } catch (error) {
+        if (error?.status && error.status !== 404) {
+            throw error;
+        }
+        const response = await httpClient.get('/auth/me');
+        return response;
+    }
+}
+
+/**
+ * Update current user profile
+ * @param {Object} data - Profile data
+ * @returns {Promise} Updated user data
+ */
+export async function updateMyProfile(data) {
+    const response = await httpClient.put('/users/me/profile', data);
+    return response;
+}
+
+/**
+ * Change current user password
+ * @param {Object} data - Password payload
+ * @returns {Promise}
+ */
+export async function changeMyPassword(data) {
+    const response = await httpClient.put('/users/me/password', data);
     return response;
 }
 

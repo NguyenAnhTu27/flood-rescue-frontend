@@ -9,6 +9,7 @@ import {
     RESCUER_ROUTES,
     MANAGER_ROUTES,
     ADMIN_ROUTES,
+    ACCOUNT_ROUTES,
 } from './route.constants.js';
 import RootLayout from '../../layouts/RootLayout.jsx';
 import AuthLayout from '../../layouts/AuthLayout.jsx';
@@ -24,6 +25,7 @@ import StaticContentPage from '../../pages/public/StaticContentPage.jsx';
 // Auth
 import LoginPage from '../../pages/auth/LoginPage.jsx';
 import RegisterPage from '../../pages/auth/RegisterPage.jsx';
+import ProfilePage from '../../pages/account/ProfilePage.jsx';
 
 // Citizen
 import CitizenDashboard from '../../pages/citizen/CItizenDashboard.jsx';
@@ -136,6 +138,16 @@ export default function AppRoutes() {
                     <AuthLayout>
                         <RegisterPage />
                     </AuthLayout>
+                }
+            />
+            <Route
+                path={ACCOUNT_ROUTES.PROFILE}
+                element={
+                    <RequireAuth>
+                        <RootLayout>
+                            <ProfilePage />
+                        </RootLayout>
+                    </RequireAuth>
                 }
             />
 
