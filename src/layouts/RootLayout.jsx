@@ -11,7 +11,7 @@ import {
     Twitter,
     Youtube,
 } from "lucide-react";
-import { PUBLIC_ROUTES, CITIZEN_ROUTES, COORDINATOR_ROUTES, RESCUER_ROUTES, MANAGER_ROUTES, ADMIN_ROUTES, ACCOUNT_ROUTES } from "../app/routes/route.constants.js";
+import { PUBLIC_ROUTES, CITIZEN_ROUTES, COORDINATOR_ROUTES, RESCUER_ROUTES, MANAGER_ROUTES, ADMIN_ROUTES } from "../app/routes/route.constants.js";
 import httpClient from "../shared/lib/http.js";
 import { clearAuth, clearCitizenBlockState, getCitizenBlockState, getRole, getUser, setCitizenBlockState } from "../shared/lib/storage.js";
 import { getMyNotifications, getUnreadNotificationCount, markAllNotificationsRead, markNotificationRead, queueEmergencyNotification } from "../features/notifications/api.js";
@@ -72,18 +72,7 @@ export default function RootLayout({ children }) {
         footerCopyright: "© 2024 Hệ thống Quản lý Cứu hộ - Cứu trợ. Bản quyền thuộc về Cơ quan chủ quản.",
     });
     const role = getRole();
-    const [currentUser, setCurrentUser] = useState(() => getUser());
-
-    useEffect(() => {
-        const syncCurrentUser = () => setCurrentUser(getUser());
-        syncCurrentUser();
-        window.addEventListener('storage', syncCurrentUser);
-        window.addEventListener('auth-user-updated', syncCurrentUser);
-        return () => {
-            window.removeEventListener('storage', syncCurrentUser);
-            window.removeEventListener('auth-user-updated', syncCurrentUser);
-        };
-    }, []);
+    const currentUser = getUser();
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -464,34 +453,30 @@ export default function RootLayout({ children }) {
                                         </div>
                                         <div className="h-px bg-slate-200" />
                                         <div className="py-1">
-                                            {role && (
+                                            {role === 'CITIZEN' && (
                                                 <>
                                                     <Link
-                                                        to={ACCOUNT_ROUTES.PROFILE}
+                                                        to="/citizen/profile"
                                                         className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
                                                         onClick={() => setUserOpen(false)}
                                                     >
                                                         Hồ sơ cá nhân
                                                     </Link>
-                                                    {role === 'CITIZEN' && (
-                                                        <>
-                                                            <Link
-                                                                to={`${ACCOUNT_ROUTES.PROFILE}#bao-mat`}
-                                                                className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                                                                onClick={() => setUserOpen(false)}
-                                                            >
-                                                                Cài đặt tài khoản
-                                                            </Link>
-                                                            <div className="h-px bg-slate-200 my-1" />
-                                                            <Link
-                                                                to={CITIZEN_ROUTES.FEEDBACK}
-                                                                className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                                                                onClick={() => setUserOpen(false)}
-                                                            >
-                                                                Đánh giá hệ thống
-                                                            </Link>
-                                                        </>
-                                                    )}
+                                                    <Link
+                                                        to="/citizen/settings"
+                                                        className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                                        onClick={() => setUserOpen(false)}
+                                                    >
+                                                        Cài đặt
+                                                    </Link>
+                                                    <div className="h-px bg-slate-200 my-1" />
+                                                    <Link
+                                                        to={CITIZEN_ROUTES.FEEDBACK}
+                                                        className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                                        onClick={() => setUserOpen(false)}
+                                                    >
+                                                        Đánh giá hệ thống
+                                                    </Link>
                                                     <div className="h-px bg-slate-200 my-1" />
                                                 </>
                                             )}
