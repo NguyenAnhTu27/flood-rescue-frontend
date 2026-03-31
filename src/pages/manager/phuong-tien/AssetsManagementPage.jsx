@@ -1,0 +1,292 @@
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Sailboat, Truck, Zap, FileText, Plus, ChevronLeft, ChevronRight, Users } from 'lucide-react';
+import { MANAGER_ROUTES } from '../../app/routes/route.constants.js';
+import { getAssets } from '../../features/assets/api.js';
+
+const STATUS_FILTERS = [
+    { id: 'all', label: 'Tất cả', value: null },
+    { id: 'available', label: 'Rảnh', value: 'available' },
+    { id: 'in-use', label: 'Đang dùng', value: 'in-use' },
+    { id: 'maintenance', label: 'Bảo trì', value: 'maintenance' },
+];
+
+const TYPE_FILTERS = [
+    { id: 'canoe', label: 'Cano', value: 'canoe', Icon: Sailboat },
+    { id: 'generator', label: 'Máy phát điện', value: 'generator', Icon: Zap },
+    { id: 'water-vehicle', label: 'Xe lội nước', value: 'water-vehicle', Icon: Truck },
+];
+
+const STATUS_LABELS = {
+    available: { label: 'Rảnh', color: 'bg-green-100 text-green-700' },
+    'in-use': { label: 'Đang dùng', color: 'bg-amber-100 text-amber-700' },
+    maintenance: { label: 'Bảo trì', color: 'bg-red-100 text-red-700' },
+};
+
+const TYPE_CONFIG = {
+    canoe: { Icon: Sailboat, iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
+    generator: { Icon: Zap, iconBg: 'bg-red-100', iconColor: 'text-red-600' },
+    'water-vehicle': { Icon: Truck, iconBg: 'bg-amber-100', iconColor: 'text-amber-600' },
+};
+
+const mockAssets = [
+    { id: '1', code: '#CN-042', name: 'Cano Cứu Hộ #CN-042', desc: 'CANO CAO TỐC', type: 'canoe', status: 'available' },
+    { id: '2', code: '#AM-108', name: 'Xe Lội Nước #AM-108', desc: 'PHƯƠNG TIỆN LỘI NƯỚC', type: 'water-vehicle', status: 'in-use' },
+    { id: '3', code: '#GEN-22', name: 'Máy Phát Điện #GEN-22', desc: 'CÔNG SUẤT 5KW', type: 'generator', status: 'maintenance' },
+    { id: '4', code: '#CN-091', name: 'Cano Phao #CN-091', desc: 'CANO PHÃO CAO TỐC', type: 'canoe', status: 'available' },
+    { id: '5', code: '#AM-202', name: 'Xe Lội Nước #AM-202', desc: 'PHƯƠNG TIỆN LỘI NƯỚC', type: 'water-vehicle', status: 'available' },
+    { id: '6', code: '#GEN-07', name: 'Máy Phát Điện #GEN-07', desc: 'CÔNG SUẤT 5KW', type: 'generator', status: 'in-use' },
+];
+
+const ITEMS_PER_PAGE = 6;
+
+function normalizeStatus(rawStatus) {
+    const value = String(rawStatus || '').trim().toLowerCase();
+    if (value === 'available') return 'available';
+    if (value === 'in_use' || value === 'in-use' || value === 'in rescue' || value === 'in_rescue' || value === 'busy') return 'in-use';
+    if (value === 'maintenance') return 'maintenance';
+    return 'available';
+}
+
+function normalizeType(rawType) {
+    const value = String(rawType || '').trim().toLowerCase();
+    if (value === 'canoe' || value === 'boat') return 'canoe';
+    if (value === 'generator') return 'generator';
+    if (value === 'water-vehicle' || value === 'truck' || value === 'vehicle') return 'water-vehicle';
+    return 'canoe';
+}
+
+export default function AssetsManagementPage() {
+    const navigate = useNavigate();
+    const [statusFilter, setStatusFilter] = useState(null);
+    const [typeFilter, setTypeFilter] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [assets, setAssets] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    // Load assets from API
+    useEffect(() => {
+        const loadAssets = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                const data = await getAssets();
+                // Parse response format
+                let assetsList = [];
+                if (Array.isArray(data)) {
+                    assetsList = data;
+                } else if (Array.isArray(data?.content)) {
+                    assetsList = data.content;
+                } else if (Array.isArray(data?.data)) {
+                    assetsList = data.data;
+                } else if (Array.isArray(data?.items)) {
+                    assetsList = data.items;
+                }
+                const normalizedAssets = (assetsList.length > 0 ? assetsList : mockAssets).map((asset) => {
+                    const normalizedType = normalizeType(asset?.type || asset?.assetType);
+                    const code = asset?.code || asset?.assetCode || asset?.licensePlate || `PT-${asset?.id || ''}`;
+                    const teamHolder = asset?.assignedTeamName
+                        || asset?.currentTeamName
+                        || asset?.teamName
+                        || asset?.holderTeamName
+                        || (asset?.assignedTeamId ? `Đội #${asset.assignedTeamId}` : null)
+                        || (asset?.teamId ? `Đội #${asset.teamId}` : null)
+                        || 'Chưa có đội giữ';
+                    const descriptionText =
+                        asset?.assetType
+                        || normalizedType.toUpperCase();
+                    return {
+                        ...asset,
+                        code,
+                        type: normalizedType,
+                        status: normalizeStatus(asset?.status),
+                        name: asset?.name || asset?.assetName || code,
+                        desc: descriptionText,
+                        teamHolder,
+                    };
+                });
+                setAssets(normalizedAssets);
+            } catch (e) {
+                console.warn('[AssetsManagementPage] Could not load assets, using mock data:', e);
+                // Nếu API fail, dùng mock data
+                setAssets(mockAssets);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadAssets();
+    }, []);
+
+    const filteredAssets = useMemo(() => {
+        let list = [...assets];
+        if (statusFilter) {
+            list = list.filter((a) => a.status === statusFilter);
+        }
+        if (typeFilter) {
+            list = list.filter((a) => a.type === typeFilter);
+        }
+        return list;
+    }, [assets, statusFilter, typeFilter]);
+
+    const paginatedAssets = useMemo(() => {
+        const start = (currentPage - 1) * ITEMS_PER_PAGE;
+        return filteredAssets.slice(start, start + ITEMS_PER_PAGE);
+    }, [filteredAssets, currentPage]);
+
+    const totalPages = Math.max(1, Math.ceil(filteredAssets.length / ITEMS_PER_PAGE));
+
+    const handleAddNew = () => {
+        navigate(MANAGER_ROUTES.CREATE_ASSET);
+    };
+
+    const handleViewDetail = () => {
+        // TODO: Navigate to asset detail
+    };
+
+    return (
+        <div className="space-y-6">
+            {/* ===== HEADER ===== */}
+            <div>
+                <h1 className="text-2xl font-bold text-slate-900">
+                    Danh sách Phương tiện & Thiết bị
+                </h1>
+                <p className="mt-1 text-sm text-slate-500">
+                    Quản lý tài sản cứu trợ trực tuyến theo thời gian thực
+                </p>
+            </div>
+
+            {/* ===== FILTER & ACTION BAR ===== */}
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-wrap items-center gap-2">
+                    {/* Status filters */}
+                    {STATUS_FILTERS.map((f) => (
+                        <button
+                            key={f.id}
+                            onClick={() => setStatusFilter(f.value)}
+                            className={`rounded-lg px-4 py-2 text-sm font-medium transition ${statusFilter === f.value
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                }`}
+                        >
+                            {f.label}
+                        </button>
+                    ))}
+                    {/* Type filters */}
+                    {TYPE_FILTERS.map((f) => {
+                        const Icon = f.Icon;
+                        const isActive = typeFilter === f.value;
+                        return (
+                            <button
+                                key={f.id}
+                                onClick={() => setTypeFilter(typeFilter === f.value ? null : f.value)}
+                                className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${isActive ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                    }`}
+                            >
+                                <Icon className="h-4 w-4" />
+                                {f.label}
+                            </button>
+                        );
+                    })}
+                </div>
+                <button
+                    onClick={handleAddNew}
+                    className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-green-700"
+                >
+                    <Plus className="h-4 w-4" />
+                    Thêm mới
+                </button>
+            </div>
+
+            {/* ===== ASSET CARDS GRID ===== */}
+            {loading ? (
+                <div className="rounded-xl border border-slate-200 bg-white p-12 text-center">
+                    <p className="text-slate-500">Đang tải danh sách phương tiện...</p>
+                </div>
+            ) : error ? (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 p-12 text-center">
+                    <p className="text-rose-600">{error}</p>
+                </div>
+            ) : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {paginatedAssets.map((asset) => {
+                        const config = TYPE_CONFIG[asset.type] || TYPE_CONFIG.canoe;
+                        const statusInfo = STATUS_LABELS[asset.status] || STATUS_LABELS.available;
+                        const Icon = config?.Icon || Sailboat;
+                        return (
+                            <div
+                                key={asset.id}
+                                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${config.iconBg} ${config.iconColor}`}>
+                                        <Icon className="h-5 w-5" />
+                                    </div>
+                                    <span className={`rounded-full px-3 py-0.5 text-xs font-medium ${statusInfo.color}`}>
+                                        {statusInfo.label}
+                                    </span>
+                                </div>
+                                <h3 className="mt-3 font-semibold text-slate-900">{asset.name}</h3>
+                                <p className="text-xs uppercase tracking-wide text-slate-500">{asset.desc}</p>
+                                <div className="mt-3 space-y-2">
+                                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                                        <FileText className="h-4 w-4 shrink-0 text-slate-400" />
+                                        <span className="line-clamp-1">Mã: {asset.code || `PT-${asset.id}`}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                                        <Users className="h-4 w-4 shrink-0 text-slate-400" />
+                                        <span className="line-clamp-1">Đội đang giữ: {asset.teamHolder || 'Chưa có đội giữ'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* Empty state */}
+            {!loading && !error && paginatedAssets.length === 0 && (
+                <div className="rounded-xl border border-slate-200 bg-white p-12 text-center">
+                    <p className="text-slate-500">Không có phương tiện nào phù hợp với bộ lọc.</p>
+                </div>
+            )}
+
+            {/* ===== PAGINATION ===== */}
+            <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+                <p className="text-sm text-slate-500">
+                    Hiển thị {paginatedAssets.length} trên {filteredAssets.length} phương tiện
+                </p>
+                <div className="flex items-center gap-1">
+                    <button
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage <= 1}
+                        className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
+                        const page = i + 1;
+                        const isActive = page === currentPage;
+                        return (
+                            <button
+                                key={page}
+                                onClick={() => setCurrentPage(page)}
+                                className={`h-9 w-9 rounded-lg text-sm font-medium transition ${isActive ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                    }`}
+                            >
+                                {page}
+                            </button>
+                        );
+                    })}
+                    <button
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={currentPage >= totalPages}
+                        className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <ChevronRight className="h-5 w-5" />
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
